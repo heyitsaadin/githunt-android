@@ -67,7 +67,7 @@ fun OAuthWebViewScreen(
         },
     ) { padding ->
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(padding),
             factory = {
                 WebView(context).apply {
                     settings.javaScriptEnabled = true // required: Google/GitHub's own login pages need it
