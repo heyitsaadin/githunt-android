@@ -121,4 +121,4 @@ private fun SettingsRow(title: String, isDestructive: Boolean = false, onClick: 
 }
 
 private fun Modifier.clickableRow(onClick: () -> Unit): Modifier =
-    this.then(androidx.compose.foundation.clickable(onClick = onClick))
+    this.then(Modifier.clickable(onClick = onClick))
