@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base app theme is set up in Compose (ui/theme/Theme.kt); this XML
+         theme only needs to exist as the Activity's declared theme and to
+         control the system splash/background before Compose takes over. -->
+    <style name="Theme.GitHunt" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+    </style>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder launcher mark: a rounded terminal-style bracket ">_" on
+     transparent background, evoking "repo discovery" without depending on
+     real brand artwork. Replace with your actual logo whenever ready. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,40 L34,46.5 L46,54 L34,61.5 L34,68 L54,55.5 L54,52.5 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,62 L74,62 L74,68 L58,68 Z"/>
+</vector>

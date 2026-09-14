@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">GitHunt</string>
+    <!-- Used for the App Link intent-filter / OAuth redirect verification.
+         Set this to your deployed domain's host only, e.g. "githunt-psi.vercel.app" -->
+    <string name="deep_link_host">githunt-psi.vercel.app</string>
+</resources>
