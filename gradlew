@@ -60,7 +60,7 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
-CLASSPATH="\\\$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
