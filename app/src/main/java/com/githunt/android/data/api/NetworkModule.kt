@@ -45,7 +45,9 @@ object NetworkModule {
     }
 
     private fun build(context: Context): Retrofit {
-        val logging = HttpLoggingInterceptor().apply {
+        val logging = HttpLoggingInterceptor { message ->
+            AppLog.d("OkHttp", message)
+        }.apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
