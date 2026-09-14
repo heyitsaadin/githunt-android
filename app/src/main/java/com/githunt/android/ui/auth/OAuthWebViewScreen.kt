@@ -41,6 +41,7 @@ private const val THIRTY_DAYS_MILLIS = 30L * 24 * 60 * 60 * 1000
  *   signed in (the route itself enforces this and redirects to /login if not).
  */
 @SuppressLint("SetJavaScriptEnabled")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OAuthWebViewScreen(
     startPath: String,
