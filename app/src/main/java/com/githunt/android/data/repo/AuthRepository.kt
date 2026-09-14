@@ -34,8 +34,12 @@ class AuthRepository(private val context: Context) {
         _isLoading.value = true
         try {
             val res = api.me()
+            if (!res.isSuccessful) {
+                AppLog.w("AuthRepository", "refreshSession: HTTP ${res.code()}, body=${res.errorBody()?.string()}")
+            }
             _currentUser.value = if (res.isSuccessful) res.body()?.user else null
         } catch (e: Exception) {
+            AppLog.e("AuthRepository", "refreshSession threw", e)
             _currentUser.value = null
         } finally {
             _isLoading.value = false
