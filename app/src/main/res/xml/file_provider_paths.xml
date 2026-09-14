@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Exposes only the app's files/ dir (where AppLog writes its log
+         file), not the whole app-private storage area. -->
+    <files-path name="logs" path="." />
+</paths>
