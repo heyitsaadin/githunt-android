@@ -93,7 +93,7 @@ fun AskAiSheet(
                         question = ""
                     }
                 }) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Send, contentDescription = "Send")
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                 }
             }
         }
