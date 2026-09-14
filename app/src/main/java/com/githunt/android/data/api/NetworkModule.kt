@@ -2,6 +2,7 @@ package com.githunt.android.data.api
 
 import android.content.Context
 import com.githunt.android.BuildConfig
+import com.githunt.android.util.AppLog
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
