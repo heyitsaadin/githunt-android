@@ -66,9 +66,12 @@ class AuthRepository(private val context: Context) {
                 _currentUser.value = res.body()!!.user
                 ApiResult.Success(res.body()!!.user!!)
             } else {
-                errorFrom(res.errorBody()?.string(), res.code())
+                val errorBody = res.errorBody()?.string()
+                AppLog.w("AuthRepository", "signup failed: HTTP ${res.code()}, body=$errorBody")
+                errorFrom(errorBody, res.code())
             }
         } catch (e: Exception) {
+            AppLog.e("AuthRepository", "signup threw", e)
             ApiResult.Failure(e.message ?: "Network error. Check your connection.")
         }
     }
