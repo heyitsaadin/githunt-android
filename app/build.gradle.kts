@@ -1,3 +1,5 @@
+import java.net.URL
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,7 +21,7 @@ val fetchFigtree by tasks.registering {
     doLast {
         try {
             target.parentFile.mkdirs()
-            java.net.URL("https://github.com/google/fonts/raw/main/ofl/figtree/Figtree%5Bwght%5D.ttf")
+            URL("https://github.com/google/fonts/raw/main/ofl/figtree/Figtree%5Bwght%5D.ttf")
                 .openStream()
                 .use { input -> scratch.outputStream().use { out -> input.copyTo(out) } }
             if (scratch.length() > 50_000) {
