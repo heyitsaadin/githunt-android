@@ -54,6 +54,11 @@ class AppContainer(context: Context) {
     val authRepository = AuthRepository(retrofit.create(AuthApi::class.java), cookieJar, json)
 
     val googleSignIn = GoogleSignIn(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+
+    val feedRepository = com.githunt.android.data.feed.FeedRepository(
+        retrofit.create(com.githunt.android.data.feed.FeedApi::class.java),
+        json,
+    )
 }
 
 private fun userAgent(): String {
