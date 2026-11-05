@@ -25,4 +25,7 @@ object CardIcons {
 
     /** The web's "clip" bookmark. Pass filled = true when the repo is clipped. */
     const val Clip = "M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.2L5 21V4.5a1 1 0 0 1 1-1z"
+
+    /** Chevron on the Show README / Show less button. Rotate it 180 degrees when open. */
+    const val ChevronDown = "M6 9L12 15L18 9"
 }

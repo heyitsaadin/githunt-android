@@ -2,11 +2,16 @@ package com.githunt.android.ui.components
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,13 +33,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -50,7 +59,9 @@ import coil.compose.SubcomposeAsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
+import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
+import com.githunt.android.data.feed.text
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -62,6 +73,9 @@ private val Mono = FontFamily.Monospace
 /**
  * One repo, as the website draws it. Used by Discover and the profile tabs.
  * Pass [onClipToggle] to show the bookmark; [clipped] says whether it is filled.
+ *
+ * "Show README" expands the README inside the card, like the website. If the app container
+ * isn't available (previews, tests) it opens the repo's README on GitHub instead.
  */
 @Composable
 fun RepoCard(
@@ -75,17 +89,40 @@ fun RepoCard(
     val context = LocalContext.current
     val shape = RoundedCornerShape(16.dp)
     val githubUrl = item.url
-    val readmeUrl = githubUrl?.trimEnd('/')?.plus("#readme")
+    val repoName = item.fullName.substringAfter('/')
+    val readmeRepository = remember(context) {
+        (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
+    }
 
+    // README state. `expanded` survives scrolling the card off screen and back; the text itself
+    // comes from the repository's in-memory cache when the card is reopened.
+    var expanded by rememberSaveable(item.fullName) { mutableStateOf(false) }
+    var markdown by remember(item.fullName) { mutableStateOf<String?>(null) }
+    var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
+    var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(expanded, item.fullName) {
+        if (expanded && markdown == null && readmeRepository != null) {
+            loadingReadme = true
+            readmeError = null
+            readmeRepository.load(item.owner, repoName)
+                .onSuccess { markdown = it }
+                .onFailure {
+                    readmeError = it.message ?: "Could not load the README."
+                    expanded = false
+                }
+            loadingReadme = false
+        }
+    }
+
+    // No whole-card click: it would fight the README text and links. Like the website,
+    // GitHub opens from the button and the preview image.
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
-            .clickable(enabled = githubUrl != null) {
-                githubUrl?.let { runCatching { uriHandler.openUri(it) } }
-            },
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
     ) {
         // The website's full-bleed README media preview. Shows a shimmer while it loads
         // and disappears completely if the image can't be loaded, like the website.
@@ -104,7 +141,7 @@ fun RepoCard(
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = item.fullName.substringAfter('/'),
+                        text = repoName,
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -148,19 +185,22 @@ fun RepoCard(
                 )
             }
 
-            item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
-                Spacer(Modifier.height(6.dp))
-                HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = snippet,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 12.5.sp,
-                    lineHeight = 20.sp,
-                    color = scheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // The short README excerpt is replaced by the full README once it is open.
+            if (!expanded) {
+                item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
+                    Spacer(Modifier.height(6.dp))
+                    HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = snippet,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.5.sp,
+                        lineHeight = 20.sp,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             if (item.topics.isNotEmpty()) {
@@ -185,12 +225,59 @@ fun RepoCard(
                 }
             }
 
+            // The README opens here, above the buttons, like the website.
+            val readmeText = markdown
+            AnimatedVisibility(
+                visible = expanded && readmeText != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                if (readmeText != null) {
+                    Column {
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
+                        Spacer(Modifier.height(10.dp))
+                        ReadmeView(
+                            markdown = readmeText,
+                            owner = item.owner,
+                            repo = repoName,
+                            branch = item.raw?.text("default_branch"),
+                        )
+                    }
+                }
+            }
+
+            readmeError?.let { message ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = message,
+                    fontFamily = Mono,
+                    fontSize = 12.sp,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionPill(
-                    text = "Show README",
+                    text = when {
+                        loadingReadme -> "Loading\u2026"
+                        expanded -> "Show less"
+                        else -> "Show README"
+                    },
                     modifier = Modifier.weight(1f),
-                    onClick = { readmeUrl?.let { runCatching { uriHandler.openUri(it) } } },
+                    chevronUp = if (loadingReadme) null else expanded,
+                    enabled = !loadingReadme,
+                    onClick = {
+                        if (readmeRepository == null) {
+                            // No container available: fall back to GitHub's own README view.
+                            githubUrl?.trimEnd('/')?.plus("#readme")
+                                ?.let { runCatching { uriHandler.openUri(it) } }
+                        } else {
+                            readmeError = null
+                            expanded = !expanded
+                        }
+                    },
                 )
                 ActionPill(
                     text = "Open GitHub  \u2197",
@@ -299,31 +386,47 @@ private fun CardAction(
     }
 }
 
+/** [chevronUp] null = no chevron; false = pointing down; true = pointing up (open). */
 @Composable
 private fun ActionPill(
     text: String,
     modifier: Modifier = Modifier,
+    chevronUp: Boolean? = null,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
+            .alpha(if (enabled) 1f else 0.6f)
             .clip(CircleShape)
             .background(scheme.surfaceVariant.copy(alpha = 0.55f))
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            fontFamily = Mono,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.Medium,
-            color = scheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = text,
+                fontFamily = Mono,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (chevronUp != null) {
+                Spacer(Modifier.width(6.dp))
+                PathIcon(
+                    pathData = CardIcons.ChevronDown,
+                    tint = scheme.onSurface,
+                    iconSize = 12.dp,
+                    strokeWidth = 2f,
+                    modifier = Modifier.rotate(if (chevronUp) 180f else 0f),
+                )
+            }
+        }
     }
 }
 
