@@ -160,28 +160,31 @@ class AuthViewModel(
         if (!manual && signedIn.user.emailVerified) return
 
         _home.update { it.copy(refreshing = true, notice = if (manual) null else it.notice) }
-        viewModelScope.launch {
-            when (val result = repo.refreshUser()) {
-                is ApiResult.Ok -> {
-                    val user = result.value
-                    if (user == null) {
-                        _session.value = Session.SignedOut
-                    } else {
-                        _session.value = Session.SignedIn(user)
-                        if (manual && !user.emailVerified) {
-                            _home.update { it.copy(notice = "Not confirmed yet. Open the link in the email first.") }
+        refreshJob = viewModelScope.launch {
+            try {
+                when (val result = repo.refreshUser()) {
+                    is ApiResult.Ok -> {
+                        val user = result.value
+                        if (user == null) {
+                            _session.value = Session.SignedOut
+                        } else {
+                            _session.value = Session.SignedIn(user)
+                            if (manual && !user.emailVerified) {
+                                _home.update { it.copy(notice = "Not confirmed yet. Open the link in the email first.") }
+                            }
+                        }
+                    }
+                    is ApiResult.Err -> {
+                        if (result.kind == ApiResult.Kind.Unauthorized) {
+                            _session.value = Session.SignedOut
+                        } else if (manual) {
+                            _home.update { it.copy(notice = result.message) }
                         }
                     }
                 }
-                is ApiResult.Err -> {
-                    if (result.kind == ApiResult.Kind.Unauthorized) {
-                        _session.value = Session.SignedOut
-                    } else if (manual) {
-                        _home.update { it.copy(notice = result.message) }
-                    }
-                }
+            } finally {
+                _home.update { it.copy(refreshing = false) }
             }
-            _home.update { it.copy(refreshing = false) }
         }
     }
 
