@@ -1,19 +1,29 @@
 package com.githunt.android.ui
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,11 +31,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.clips.ClipsRepository
 import com.githunt.android.data.feed.RepoItem
@@ -35,6 +53,10 @@ import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.AppBottomNav
 import com.githunt.android.ui.components.AppTab
+import com.githunt.android.ui.components.OutlineButton
+import com.githunt.android.ui.components.RepoCardSkeleton
+import com.githunt.android.ui.components.SubPageBar
+import com.githunt.android.ui.components.relativeTime
 import com.githunt.android.ui.discover.DiscoverScreen
 import com.githunt.android.ui.discover.DiscoverViewModel
 import com.githunt.android.ui.feed.FeedScreen
@@ -43,11 +65,16 @@ import com.githunt.android.ui.profile.ProfileScreen
 import com.githunt.android.ui.profile.ProfileViewModel
 import com.githunt.android.ui.settings.SettingsHost
 import com.githunt.android.ui.settings.SettingsViewModel
+import com.githunt.android.ui.theme.LocalGhMono
+import kotlinx.coroutines.launch
 
 /**
  * The signed-in app: Home (feed), Discover and Profile behind one bottom dock, like the website.
  * Each tab keeps its scroll position when you switch away and back; tapping the tab you are
  * already on scrolls it to the top.
+ *
+ * Pages opened from the home menu (Notifications, Clipped repos) and Settings are full-screen:
+ * they hide the bottom dock and have a back button instead.
  */
 @Composable
 fun MainScaffold(
@@ -138,7 +165,7 @@ fun MainScaffold(
             }
         }
 
-        if (!settingsOpen) AppBottomNav(
+        if (!settingsOpen && quickPage == null) AppBottomNav(
             selected = tab,
             avatarUrl = user.avatarUrl,
             onSelect = { picked ->
@@ -156,33 +183,99 @@ fun MainScaffold(
     }
 }
 
+/**
+ * Clipped repos: the same [RepoCard] the feed and Discover use (so images, README, stats and
+ * buttons all match the website), each with its bookmark filled. Tapping the bookmark unclips it
+ * and the card leaves the list straight away; if the server refuses, it comes back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ClipsScreen(repository: ClipsRepository, onBack: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<RepoItem>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(repository) {
+    var refreshing by remember { mutableStateOf(false) }
+    var reloadTick by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(repository, reloadTick) {
         when (val result = repository.all()) {
-            is ApiResult.Ok -> items = result.value
+            is ApiResult.Ok -> {
+                items = result.value
+                error = null
+            }
             is ApiResult.Err -> error = result.message
         }
+        refreshing = false
     }
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(16.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.TextButton(onClick = onBack) { Text("‹ Back") }
-            Text("Clipped repos", style = MaterialTheme.typography.titleLarge)
+
+    fun unclip(repo: RepoItem) {
+        val before = items ?: return
+        items = before.filterNot { it.fullName == repo.fullName }
+        scope.launch {
+            if (repository.remove(repo.fullName) is ApiResult.Err) {
+                items = before
+                Toast.makeText(context, "Couldn't remove that clip. Try again.", Toast.LENGTH_SHORT).show()
+            }
         }
-        when {
-            items == null && error == null -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Text(error.orEmpty(), modifier = Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error)
-            items.isNullOrEmpty() -> Text("Nothing clipped yet. Save a repository from Discover to see it here.", modifier = Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else -> LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+    }
+
+    val list = items
+    Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+        SubPageBar(
+            title = "Clipped repos",
+            onBack = onBack,
+            subtitle = list?.let { if (it.size == 1) "1 repo" else "${it.size} repos" },
+        )
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                reloadTick++
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .navigationBarsPadding(),
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(items.orEmpty(), key = { it.fullName }) { repo -> RepoCard(item = repo) }
+                when {
+                    list == null && error == null -> {
+                        items(3, key = { index -> "skeleton-$index" }) { RepoCardSkeleton() }
+                    }
+                    list == null -> item(key = "error") {
+                        PageMessage(
+                            title = "Couldn't load your clips",
+                            body = error.orEmpty(),
+                            actionLabel = "Try again",
+                            onAction = {
+                                error = null
+                                reloadTick++
+                            },
+                        )
+                    }
+                    list.isEmpty() -> item(key = "empty") {
+                        PageMessage(
+                            title = "Nothing clipped yet",
+                            body = "Tap the bookmark on a repo in Discover to save it here.",
+                        )
+                    }
+                    else -> {
+                        items(list, key = { it.fullName }) { repo ->
+                            RepoCard(
+                                item = repo,
+                                clipped = true,
+                                onClipToggle = { unclip(repo) },
+                            )
+                        }
+                        item(key = "footer") { Spacer(Modifier.height(8.dp)) }
+                    }
+                }
             }
         }
     }
@@ -190,36 +283,121 @@ private fun ClipsScreen(repository: ClipsRepository, onBack: () -> Unit) {
 
 @Composable
 private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val mono = LocalGhMono.current
     val state by viewModel.inbox.collectAsState()
     LaunchedEffect(Unit) { viewModel.loadNotificationInbox() }
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(16.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.TextButton(onClick = onBack) { Text("‹ Back") }
-            Text("Notifications", style = MaterialTheme.typography.titleLarge)
-        }
-        when {
-            state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator() }
-            state.error != null -> Text(state.error.orEmpty(), modifier = Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error)
-            state.items.isEmpty() -> Text("No notifications in the last 24 hours. New alerts will appear here.", modifier = Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else -> LazyColumn(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
-            ) {
-                items(state.items, key = { it.id }) { item ->
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                            .padding(16.dp),
-                    ) {
-                        Text(item.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                        if (item.body.isNotBlank()) Text(item.body, modifier = Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(item.createdAt, modifier = Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val shape = RoundedCornerShape(16.dp)
+
+    Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+        SubPageBar(title = "Notifications", onBack = onBack, subtitle = "Last 24 hours")
+        Box(modifier = Modifier.fillMaxWidth().weight(1f).navigationBarsPadding()) {
+            when {
+                state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(16.dp),
+                        strokeWidth = 2.dp,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                state.error != null -> PageMessage(
+                    title = "Couldn't load notifications",
+                    body = state.error.orEmpty(),
+                    actionLabel = "Try again",
+                    onAction = { viewModel.loadNotificationInbox() },
+                )
+                state.items.isEmpty() -> PageMessage(
+                    title = "You're all caught up",
+                    body = "No notifications in the last 24 hours. New alerts will appear here.",
+                )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.items, key = { it.id }) { item ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(shape)
+                                .background(scheme.surface)
+                                .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+                                .padding(14.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Text(
+                                    text = item.title,
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontSize = 15.sp,
+                                    lineHeight = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = scheme.onBackground,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                val ago = relativeTime(item.createdAt)
+                                if (ago.isNotEmpty()) {
+                                    Text(
+                                        text = ago,
+                                        modifier = Modifier.padding(start = 12.dp, top = 2.dp),
+                                        fontFamily = mono,
+                                        fontSize = 12.sp,
+                                        color = scheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            if (item.body.isNotBlank()) {
+                                Text(
+                                    text = item.body,
+                                    modifier = Modifier.padding(top = 6.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
+                                    color = scheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
+                    item(key = "footer") { Spacer(Modifier.height(8.dp)) }
                 }
             }
+        }
+    }
+}
+
+/** Centered title + message (and an optional button) for empty and error states on these pages. */
+@Composable
+private fun PageMessage(
+    title: String,
+    body: String,
+    actionLabel: String? = null,
+    onAction: () -> Unit = {},
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 72.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        if (actionLabel != null) {
+            Spacer(Modifier.height(16.dp))
+            OutlineButton(text = actionLabel, onClick = onAction)
         }
     }
 }
