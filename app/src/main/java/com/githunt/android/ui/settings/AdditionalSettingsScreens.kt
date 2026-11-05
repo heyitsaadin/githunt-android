@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.githunt.android.BuildConfig
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
 
