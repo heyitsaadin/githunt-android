@@ -11,6 +11,7 @@ import com.githunt.android.data.auth.SessionCheck
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.di.AppContainer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
