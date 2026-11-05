@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -53,19 +53,18 @@ enum class AppTab(val label: String, val icon: String) {
     Profile("Profile", NavIcons.Person),
 }
 
-private val DockHeight = 68.dp
-private val DockCorner = 30.dp
+private val NavHeight = 64.dp
 private val IndicatorWidth = 64.dp
 private val IndicatorHeight = 32.dp
-private val IndicatorTop = 9.dp
+private val IndicatorTop = 8.dp
 
 /**
- * Floating pill dock. One soft pill slides (with a little spring) under whichever tab is active,
- * the active icon pops up a touch, and a press squeezes the icon. Colours come only from the app's
- * monochrome scheme, so it follows light and dark mode with no accent colour.
+ * Flat bottom bar with a hairline on top. One soft pill slides (with a little spring) under
+ * whichever tab is active, the active icon pops up a touch, and a press squeezes the icon.
+ * Colours come only from the app's monochrome scheme, so it follows light and dark mode.
  *
- * Layout note: it still sits below the content in a Column (nothing scrolls underneath it), so no
- * screen needs extra bottom padding.
+ * It sits below the content in a Column (nothing scrolls underneath it), so no screen needs
+ * extra bottom padding.
  */
 @Composable
 fun AppBottomNav(
@@ -77,22 +76,18 @@ fun AppBottomNav(
     val scheme = MaterialTheme.colorScheme
     val haptics = LocalHapticFeedback.current
     val tabs = AppTab.entries
-    val shape = RoundedCornerShape(DockCorner)
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(scheme.background)
-            .navigationBarsPadding()
-            .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 8.dp),
+            .background(scheme.background),
     ) {
+        HorizontalDivider(color = scheme.outline)
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(DockHeight)
-                .shadow(elevation = 6.dp, shape = shape)
-                .background(scheme.surface, shape)
-                .border(1.dp, scheme.outline, shape),
+                .navigationBarsPadding()
+                .height(NavHeight),
         ) {
             val tabWidth = maxWidth / tabs.size
             val indicatorX = animateDpAsState(
@@ -105,7 +100,7 @@ fun AppBottomNav(
             )
 
             // The sliding pill sits behind the icons. Its position is read in the layout phase,
-            // so the slide never recomposes the dock.
+            // so the slide never recomposes the bar.
             Box(
                 modifier = Modifier
                     .offset { IntOffset(indicatorX.value.roundToPx(), IndicatorTop.roundToPx()) }
@@ -161,7 +156,7 @@ private fun RowScope.NavTab(
         label = "navIconScale",
     )
     val ringColor by animateColorAsState(
-        targetValue = if (active) scheme.onSurface else androidx.compose.ui.graphics.Color.Transparent,
+        targetValue = if (active) scheme.onSurface else Color.Transparent,
         animationSpec = tween(durationMillis = 180),
         label = "navAvatarRing",
     )
