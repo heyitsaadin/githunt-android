@@ -21,17 +21,26 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Switch
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,10 +77,16 @@ fun FeedScreen(
     onRefreshUser: (manual: Boolean) -> Unit,
     onResend: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenClips: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenSettings: () -> Unit,
+    darkTheme: Boolean,
+    onToggleTheme: (Boolean) -> Unit,
     scrollToTopTick: Int,
 ) {
     val scheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
+    var menuExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
@@ -98,6 +113,32 @@ fun FeedScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(size = 26.sp)
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Text("☰", fontSize = 23.sp, color = scheme.onSurface)
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column {
+                                    Text("Appearance", fontWeight = FontWeight.SemiBold)
+                                    Text(if (darkTheme) "Dark" else "Light", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                                }
+                                Switch(checked = darkTheme, onCheckedChange = { onToggleTheme(it); menuExpanded = false })
+                            }
+                        },
+                        onClick = { onToggleTheme(!darkTheme); menuExpanded = false },
+                    )
+                    DropdownMenuItem(text = { Text("Notifications") }, onClick = { menuExpanded = false; onOpenNotifications() })
+                    DropdownMenuItem(text = { Text("Clipped repos") }, onClick = { menuExpanded = false; onOpenClips() })
+                    DropdownMenuItem(text = { Text("Settings") }, onClick = { menuExpanded = false; onOpenSettings() })
+                }
+            }
         }
 
         PullToRefreshBox(
