@@ -17,13 +17,20 @@ import com.githunt.android.ui.auth.AuthScreen
 import com.githunt.android.ui.auth.AuthViewModel
 import com.githunt.android.ui.auth.AuthViewModelFactory
 import com.githunt.android.ui.auth.Session
-import com.githunt.android.ui.home.HomeScreen
+import com.githunt.android.ui.feed.FeedScreen
+import com.githunt.android.ui.feed.FeedViewModel
+import com.githunt.android.ui.feed.FeedViewModelFactory
 import com.githunt.android.ui.theme.GitHuntTheme
 
 class MainActivity : ComponentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels {
         AuthViewModelFactory((application as GitHuntApp).container)
+    }
+
+    // Created lazily: only touched once someone is signed in.
+    private val feedViewModel: FeedViewModel by viewModels {
+        FeedViewModelFactory((application as GitHuntApp).container)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,13 +48,19 @@ class MainActivity : ComponentActivity() {
                     when (val current = session) {
                         Session.Loading -> LoadingScreen()
                         Session.SignedOut -> AuthScreen(viewModel = authViewModel)
-                        is Session.SignedIn -> HomeScreen(
-                            user = current.user,
-                            state = home,
-                            onRefresh = authViewModel::refreshUser,
-                            onResend = authViewModel::resendVerification,
-                            onSignOut = authViewModel::signOut,
-                        )
+                        is Session.SignedIn -> {
+                            val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                            FeedScreen(
+                                user = current.user,
+                                feed = feed,
+                                home = home,
+                                onRefreshFeed = feedViewModel::refresh,
+                                onLoadMore = feedViewModel::loadMore,
+                                onRefreshUser = authViewModel::refreshUser,
+                                onResend = authViewModel::resendVerification,
+                                onSignOut = authViewModel::signOut,
+                            )
+                        }
                         is Session.Unavailable -> UnavailableScreen(
                             message = current.message,
                             onRetry = authViewModel::restore,
