@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonPrimitive
  * GET /api/feed/default. Each entry in [repos] is a repo object exactly as the
  * website's cards read it (full_name, owner, owner_avatar, stars, ...). They are
  * kept as raw JSON and read by hand so one odd field can never break the page.
+ * /api/github and /api/github/shared (Discover) answer with the same shape.
  */
 @Serializable
 data class DefaultFeedResponse(
@@ -40,6 +41,8 @@ data class RepoItem(
     val updatedAt: String?,
     val readmeSnippet: String?,
     val readmeImages: List<String>,
+    /** The repo object as the server sent it. Clipping sends it back untouched, like the website does. */
+    val raw: JsonObject? = null,
 ) : FeedItem {
     override val key: String get() = "repo-$fullName"
 }
@@ -62,18 +65,18 @@ data class FeedPage(
     val hasMore: Boolean,
 )
 
-private fun JsonObject.text(key: String): String? =
+internal fun JsonObject.text(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.takeIf { it.isNotBlank() }
 
-private fun JsonObject.number(key: String): Int =
+internal fun JsonObject.number(key: String): Int =
     text(key)?.toDoubleOrNull()?.toInt() ?: 0
 
-private fun JsonObject.textList(key: String): List<String> =
+internal fun JsonObject.textList(key: String): List<String> =
     (this[key] as? JsonArray)
         ?.mapNotNull { el -> (el as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content }
         ?: emptyList()
 
-private fun JsonObject.toRepoItem(): RepoItem? {
+internal fun JsonObject.toRepoItem(): RepoItem? {
     val fullName = text("full_name") ?: return null
     return RepoItem(
         seqId = text("id")?.toLongOrNull() ?: fullName.hashCode().toLong(),
@@ -89,11 +92,15 @@ private fun JsonObject.toRepoItem(): RepoItem? {
         updatedAt = text("updated_at"),
         readmeSnippet = text("readme_snippet"),
         readmeImages = textList("readme_images"),
+        raw = this,
     )
 }
 
+/** A repo object kept as raw JSON (Discover, clips, profile tabs), read into what the UI draws. */
+fun JsonElement.toRepoItemOrNull(): RepoItem? = (this as? JsonObject)?.toRepoItem()
+
 fun DefaultFeedResponse.toPage(requestedPage: Int): FeedPage {
-    val items = repos.mapNotNull { (it as? JsonObject)?.toRepoItem() }
+    val items = repos.mapNotNull { it.toRepoItemOrNull() }
     return FeedPage(
         items = items,
         nextCursor = (requestedPage + 1).toLong(),
