@@ -22,7 +22,7 @@ android {
         versionName = "2.0.0-alpha1"
 
         // Where the GitHunt backend (the Next.js app on Vercel) lives.
-        val apiBaseUrl = buildSetting("apiBaseUrl", "GITHUNT_API_BASE_URL", "https://githunt-psi.vercel.app/")
+        val apiBaseUrl = buildSetting("apiBaseUrl", "GITHUNT_API_BASE_URL", "https://githunt-aadin.vercel.app/")
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         // The *web* OAuth client id from Google Cloud (same value as the
