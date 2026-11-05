@@ -13,6 +13,8 @@ import com.githunt.android.data.discover.DiscoverRepository
 import com.githunt.android.data.net.SessionCookieJar
 import com.githunt.android.data.profile.ProfileApi
 import com.githunt.android.data.profile.ProfileRepository
+import com.githunt.android.data.readme.ReadmeApi
+import com.githunt.android.data.readme.ReadmeRepository
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -70,6 +72,9 @@ class AppContainer(context: Context) {
     val clipsRepository = ClipsRepository(retrofit.create(ClipsApi::class.java), json)
 
     val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
+
+    /** Loads README markdown for the repo card's "Show README" button. */
+    val readmeRepository = ReadmeRepository(retrofit.create(ReadmeApi::class.java))
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
