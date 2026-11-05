@@ -268,7 +268,10 @@ private fun RepoCard(item: RepoItem) {
             .fillMaxWidth()
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .clickable(enabled = githubUrl != null) {
+                githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+            },
     ) {
         // Match the website's full-bleed README media preview.
         item.readmeImages.firstOrNull()?.let { preview ->
