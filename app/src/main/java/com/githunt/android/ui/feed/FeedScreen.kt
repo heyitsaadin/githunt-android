@@ -49,7 +49,6 @@ import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.BottomNav
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
-import com.githunt.android.ui.components.StatusChip
 import com.githunt.android.ui.components.Wordmark
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -96,11 +95,6 @@ fun FeedScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(size = 26.sp)
-            if (user.emailVerified) {
-                StatusChip(text = "Verified", tone = scheme.onSurfaceVariant)
-            } else {
-                StatusChip(text = "Unverified", tone = scheme.error)
-            }
         }
 
         PullToRefreshBox(
