@@ -35,6 +35,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Ask Android to run this window at the fastest refresh rate supported
+        // by the device. The system can still apply user/battery policies.
+        val maxRefreshRate = windowManager.defaultDisplay.supportedModes
+            .maxOfOrNull { it.refreshRate }
+        if (maxRefreshRate != null) {
+            window.attributes = window.attributes.apply {
+                preferredRefreshRate = maxRefreshRate
+            }
+        }
+
         enableEdgeToEdge()
         setContent {
             GitHuntTheme {
