@@ -37,6 +37,9 @@ data class RepoItem(
     val forks: Int,
     val language: String?,
     val topics: List<String>,
+    val updatedAt: String?,
+    val readmeSnippet: String?,
+    val readmeImages: List<String>,
 ) : FeedItem {
     override val key: String get() = "repo-$fullName"
 }
@@ -83,6 +86,9 @@ private fun JsonObject.toRepoItem(): RepoItem? {
         forks = number("forks"),
         language = text("language"),
         topics = textList("topics"),
+        updatedAt = text("updated_at"),
+        readmeSnippet = text("readme_snippet"),
+        readmeImages = textList("readme_images"),
     )
 }
 
