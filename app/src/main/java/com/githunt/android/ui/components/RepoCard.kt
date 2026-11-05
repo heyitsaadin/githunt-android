@@ -14,7 +14,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +48,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.awaitEachGesture
+import androidx.compose.ui.input.pointer.awaitFirstDown
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -489,19 +493,19 @@ private fun proxiedImageUrl(src: String): String {
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
 }
 
-// Same timings as the website's ImageCarousel: a slide stays up for 2.2s, and auto-scroll holds
-// off for 4s after the person swipes so it never fights an in-progress browse.
-private const val AUTOPLAY_INTERVAL_MS = 2200L
-private const val RESUME_AFTER_INTERACTION_MS = 4000L
+// A calmer slide interval, with a longer pause after direct touch so browsing never feels rushed.
+private const val AUTOPLAY_INTERVAL_MS = 5000L
+private const val RESUME_AFTER_INTERACTION_MS = 8000L
 
 /**
  * The card's README picture area: the website's ImageCarousel.
  *
  * - One image: a plain 16:9 picture. Several: swipe sideways, with a small dot pager pill at the
  *   bottom (the active dot stretches into a bar).
- * - With several images it auto-advances every 2.2s (looping back to the first), but only while
+ * - With several images it auto-advances every 5s (looping back to the first), but only while
  *   the card is mostly on screen (60%+), the app is in the foreground, and the system's
- *   animations aren't switched off. Touching the carousel pauses it for 4s.
+ *   animations aren't switched off. Touching or holding the image pauses autoplay while the
+ *   finger is down, then keeps it paused for 8s after release.
  * - README images are often SVG, so the SVG decoder is on.
  * - The 16:9 box is reserved up front so nothing jumps; a shimmer fills each image while it loads.
  *   An image that can't be loaded is dropped from the carousel, and if none load the whole
@@ -527,12 +531,16 @@ private fun RepoImageCarousel(
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
 
-    // A finger on the carousel pauses auto-scroll for a few seconds.
-    LaunchedEffect(pagerState) {
-        pagerState.interactionSource.interactions.collect { interaction ->
-            if (interaction is DragInteraction.Start) {
-                pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
-            }
+    // Keep autoplay paused for the entire time a finger is on the image, including long presses.
+    // After release, leave an extra pause so the person has time to inspect the selected image.
+    val touchPauseModifier = Modifier.pointerInput(pagerState) {
+        awaitEachGesture {
+            awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
+            pausedUntil = Long.MAX_VALUE
+            do {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+            } while (event.changes.any { it.pressed })
+            pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
         }
     }
 
@@ -555,6 +563,7 @@ private fun RepoImageCarousel(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f)
+            .then(touchPauseModifier)
             .onGloballyPositioned { coordinates ->
                 // "On screen" = at least 60% of the carousel is inside the window.
                 val bounds = coordinates.boundsInWindow()
