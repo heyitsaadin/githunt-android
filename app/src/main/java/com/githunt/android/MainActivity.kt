@@ -1,6 +1,7 @@
 package com.githunt.android
 
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.ui.LoadingScreen
@@ -59,38 +63,53 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // If the person turned system animations off, skip the typing splash.
+        val animationsOff = Settings.Global.getFloat(
+            contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+
         enableEdgeToEdge()
         setContent {
             GitHuntTheme {
                 val session by authViewModel.session.collectAsStateWithLifecycle()
                 val home by authViewModel.home.collectAsStateWithLifecycle()
 
+                // The typing splash plays once per launch. The app waits for it to finish, even if
+                // the session check is already done.
+                var splashPlayed by rememberSaveable { mutableStateOf(animationsOff) }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    when (val current = session) {
-                        Session.Loading -> LoadingScreen()
-                        Session.SignedOut -> AuthScreen(viewModel = authViewModel)
-                        is Session.SignedIn -> {
-                            val feed by feedViewModel.state.collectAsStateWithLifecycle()
-                            MainScaffold(
-                                user = current.user,
-                                feed = feed,
-                                home = home,
-                                onRefreshFeed = feedViewModel::refresh,
-                                onLoadMore = feedViewModel::loadMore,
-                                onRefreshUser = authViewModel::refreshUser,
-                                onResend = authViewModel::resendVerification,
-                                onSignOut = authViewModel::signOut,
-                                discoverViewModel = discoverViewModel,
-                                profileViewModel = profileViewModel,
+                    if (!splashPlayed) {
+                        LoadingScreen(animate = true, onAnimationFinished = { splashPlayed = true })
+                    } else {
+                        when (val current = session) {
+                            Session.Loading -> LoadingScreen()
+                            Session.SignedOut -> AuthScreen(viewModel = authViewModel)
+                            is Session.SignedIn -> {
+                                val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                                MainScaffold(
+                                    user = current.user,
+                                    feed = feed,
+                                    home = home,
+                                    onRefreshFeed = feedViewModel::refresh,
+                                    onLoadMore = feedViewModel::loadMore,
+                                    onRefreshUser = authViewModel::refreshUser,
+                                    onResend = authViewModel::resendVerification,
+                                    onSignOut = authViewModel::signOut,
+                                    discoverViewModel = discoverViewModel,
+                                    profileViewModel = profileViewModel,
+                                )
+                            }
+                            is Session.Unavailable -> UnavailableScreen(
+                                message = current.message,
+                                onRetry = authViewModel::restore,
                             )
                         }
-                        is Session.Unavailable -> UnavailableScreen(
-                            message = current.message,
-                            onRetry = authViewModel::restore,
-                        )
                     }
                 }
             }
