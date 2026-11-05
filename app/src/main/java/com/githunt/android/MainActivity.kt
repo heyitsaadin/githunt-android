@@ -1,6 +1,7 @@
 package com.githunt.android
 
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,8 +9,10 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.ui.LoadingScreen
@@ -19,8 +22,6 @@ import com.githunt.android.ui.auth.AuthScreen
 import com.githunt.android.ui.auth.AuthViewModel
 import com.githunt.android.ui.auth.AuthViewModelFactory
 import com.githunt.android.ui.auth.Session
-import com.githunt.android.ui.components.LocalReadmeLoader
-import com.githunt.android.ui.components.ReadmeLoader
 import com.githunt.android.ui.discover.DiscoverViewModel
 import com.githunt.android.ui.discover.DiscoverViewModelFactory
 import com.githunt.android.ui.feed.FeedViewModel
@@ -49,11 +50,6 @@ class MainActivity : ComponentActivity() {
         ProfileViewModelFactory((application as GitHuntApp).container)
     }
 
-    // Lets every RepoCard expand its README inline.
-    private val readmeLoader: ReadmeLoader = { owner, repo ->
-        (application as GitHuntApp).container.readmeRepository.load(owner, repo)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -67,17 +63,30 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // If the person turned system animations off, skip the typing splash.
+        val animationsOff = Settings.Global.getFloat(
+            contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+
         enableEdgeToEdge()
         setContent {
             GitHuntTheme {
                 val session by authViewModel.session.collectAsStateWithLifecycle()
                 val home by authViewModel.home.collectAsStateWithLifecycle()
 
-                CompositionLocalProvider(LocalReadmeLoader provides readmeLoader) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background,
-                    ) {
+                // The typing splash plays once per launch. The app waits for it to finish, even if
+                // the session check is already done.
+                var splashPlayed by rememberSaveable { mutableStateOf(animationsOff) }
+
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    if (!splashPlayed) {
+                        LoadingScreen(animate = true, onAnimationFinished = { splashPlayed = true })
+                    } else {
                         when (val current = session) {
                             Session.Loading -> LoadingScreen()
                             Session.SignedOut -> AuthScreen(viewModel = authViewModel)
