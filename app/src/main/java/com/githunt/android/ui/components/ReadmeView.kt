@@ -44,8 +44,9 @@ fun ReadmeView(
     val textColor = scheme.onSurfaceVariant.toArgb()
     val linkColor = scheme.onBackground.toArgb()
     val codeBg = scheme.surfaceVariant.toArgb()
-    val markwon = remember(context, textColor, linkColor, codeBg) {
-        buildMarkwon(context, textColor, linkColor, codeBg)
+    val blockMargin = (14f * context.resources.displayMetrics.density).toInt()
+    val markwon = remember(context, textColor, linkColor, codeBg, blockMargin) {
+        buildMarkwon(context, textColor, linkColor, codeBg, blockMargin)
     }
     val prepared = remember(markdown, owner, repo, branch) { prepareReadme(markdown, owner, repo, branch) }
 
@@ -54,7 +55,9 @@ fun ReadmeView(
         factory = { ctx ->
             TextView(ctx).apply {
                 textSize = 13.5f
-                setLineSpacing(0f, 1.25f)
+                setLineSpacing(0f, 1.3f)
+                includeFontPadding = false
+                setPadding(0, (4f * resources.displayMetrics.density).toInt(), 0, (4f * resources.displayMetrics.density).toInt())
                 movementMethod = LinkMovementMethod.getInstance()
             }
         },
@@ -71,12 +74,13 @@ fun ReadmeView(
     )
 }
 
-private fun buildMarkwon(context: Context, text: Int, link: Int, codeBg: Int): Markwon =
+private fun buildMarkwon(context: Context, text: Int, link: Int, codeBg: Int, blockMargin: Int): Markwon =
     Markwon.builder(context)
         .usePlugin(object : AbstractMarkwonPlugin() {
             override fun configureTheme(builder: MarkwonTheme.Builder) {
                 builder
                     .linkColor(link)
+                    .blockMargin(blockMargin)
                     .codeTextColor(text)
                     .codeBackgroundColor(codeBg)
                     .codeBlockTextColor(text)
