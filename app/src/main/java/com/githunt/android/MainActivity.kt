@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,6 +19,8 @@ import com.githunt.android.ui.auth.AuthScreen
 import com.githunt.android.ui.auth.AuthViewModel
 import com.githunt.android.ui.auth.AuthViewModelFactory
 import com.githunt.android.ui.auth.Session
+import com.githunt.android.ui.components.LocalReadmeLoader
+import com.githunt.android.ui.components.ReadmeLoader
 import com.githunt.android.ui.discover.DiscoverViewModel
 import com.githunt.android.ui.discover.DiscoverViewModelFactory
 import com.githunt.android.ui.feed.FeedViewModel
@@ -46,6 +49,11 @@ class MainActivity : ComponentActivity() {
         ProfileViewModelFactory((application as GitHuntApp).container)
     }
 
+    // Lets every RepoCard expand its README inline.
+    private val readmeLoader: ReadmeLoader = { owner, repo ->
+        (application as GitHuntApp).container.readmeRepository.load(owner, repo)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -65,32 +73,34 @@ class MainActivity : ComponentActivity() {
                 val session by authViewModel.session.collectAsStateWithLifecycle()
                 val home by authViewModel.home.collectAsStateWithLifecycle()
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    when (val current = session) {
-                        Session.Loading -> LoadingScreen()
-                        Session.SignedOut -> AuthScreen(viewModel = authViewModel)
-                        is Session.SignedIn -> {
-                            val feed by feedViewModel.state.collectAsStateWithLifecycle()
-                            MainScaffold(
-                                user = current.user,
-                                feed = feed,
-                                home = home,
-                                onRefreshFeed = feedViewModel::refresh,
-                                onLoadMore = feedViewModel::loadMore,
-                                onRefreshUser = authViewModel::refreshUser,
-                                onResend = authViewModel::resendVerification,
-                                onSignOut = authViewModel::signOut,
-                                discoverViewModel = discoverViewModel,
-                                profileViewModel = profileViewModel,
+                CompositionLocalProvider(LocalReadmeLoader provides readmeLoader) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background,
+                    ) {
+                        when (val current = session) {
+                            Session.Loading -> LoadingScreen()
+                            Session.SignedOut -> AuthScreen(viewModel = authViewModel)
+                            is Session.SignedIn -> {
+                                val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                                MainScaffold(
+                                    user = current.user,
+                                    feed = feed,
+                                    home = home,
+                                    onRefreshFeed = feedViewModel::refresh,
+                                    onLoadMore = feedViewModel::loadMore,
+                                    onRefreshUser = authViewModel::refreshUser,
+                                    onResend = authViewModel::resendVerification,
+                                    onSignOut = authViewModel::signOut,
+                                    discoverViewModel = discoverViewModel,
+                                    profileViewModel = profileViewModel,
+                                )
+                            }
+                            is Session.Unavailable -> UnavailableScreen(
+                                message = current.message,
+                                onRetry = authViewModel::restore,
                             )
                         }
-                        is Session.Unavailable -> UnavailableScreen(
-                            message = current.message,
-                            onRetry = authViewModel::restore,
-                        )
                     }
                 }
             }
