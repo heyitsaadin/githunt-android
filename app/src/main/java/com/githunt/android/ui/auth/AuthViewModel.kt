@@ -29,12 +29,14 @@ sealed interface Session {
 
 data class AuthFormState(
     val mode: AuthMode = AuthMode.LogIn,
-    val username: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
     val email: String = "",
     val password: String = "",
     val busy: Boolean = false,
     val googleBusy: Boolean = false,
     val error: String? = null,
+    val notice: String? = null,
 )
 
 /** State for the signed-in placeholder screen (email confirmation). */
@@ -77,41 +79,64 @@ class AuthViewModel(
     // ---- form ----
 
     fun setMode(mode: AuthMode) {
-        _form.update { it.copy(mode = mode, error = null) }
+        _form.update { it.copy(mode = mode, error = null, notice = null) }
     }
 
-    fun onUsernameChange(value: String) {
-        val cleaned = value.lowercase().filter { c -> !c.isWhitespace() }.take(32)
-        _form.update { it.copy(username = cleaned, error = null) }
+    fun onFirstNameChange(value: String) {
+        _form.update { it.copy(firstName = value.take(40), error = null, notice = null) }
+    }
+
+    fun onLastNameChange(value: String) {
+        _form.update { it.copy(lastName = value.take(40), error = null, notice = null) }
     }
 
     fun onEmailChange(value: String) {
         val cleaned = value.filter { c -> !c.isWhitespace() }.take(120)
-        _form.update { it.copy(email = cleaned, error = null) }
+        _form.update { it.copy(email = cleaned, error = null, notice = null) }
     }
 
     fun onPasswordChange(value: String) {
-        _form.update { it.copy(password = value.take(128), error = null) }
+        _form.update { it.copy(password = value.take(128), error = null, notice = null) }
+    }
+
+    /** There is no reset endpoint on the backend yet, so say so instead of doing nothing. */
+    fun requestPasswordReset() {
+        _form.update { it.copy(error = null, notice = "Password reset isn't available in the app yet.") }
     }
 
     fun submit() {
         val current = _form.value
         if (current.busy || current.googleBusy) return
 
-        val problem = AuthValidation.check(current.mode, current.username, current.email, current.password)
+        val problem = AuthValidation.check(current.mode, current.firstName, current.email, current.password)
         if (problem != null) {
-            _form.update { it.copy(error = problem) }
+            _form.update { it.copy(error = problem, notice = null) }
             return
         }
 
-        _form.update { it.copy(busy = true, error = null) }
+        _form.update { it.copy(busy = true, error = null, notice = null) }
         viewModelScope.launch {
             val result = when (current.mode) {
-                AuthMode.LogIn -> repo.login(current.username, current.password)
-                AuthMode.SignUp -> repo.signup(current.username, current.email, current.password)
+                // The backend accepts an email address in the same field it used for usernames.
+                AuthMode.LogIn -> repo.login(current.email, current.password)
+                AuthMode.SignUp -> signUp(current)
             }
             handleAuthResult(result)
         }
+    }
+
+    /** Makes up a username from the first name; if it happens to be taken, tries a few more. */
+    private suspend fun signUp(form: AuthFormState): ApiResult<User> {
+        var last: ApiResult<User> = ApiResult.Err("Could not create account.", ApiResult.Kind.Server)
+        for (attempt in 1..4) {
+            last = repo.signup(AuthValidation.usernameFor(form.firstName), form.email, form.password)
+            val err = last as? ApiResult.Err
+            val usernameTaken = err != null &&
+                err.code == 409 &&
+                err.message.contains("username", ignoreCase = true)
+            if (!usernameTaken) return last
+        }
+        return last
     }
 
     /** [activityContext] must be the Activity: Credential Manager draws its account picker on top of it. */
@@ -120,11 +145,11 @@ class AuthViewModel(
         if (current.busy || current.googleBusy) return
 
         if (!google.isConfigured) {
-            _form.update { it.copy(error = "Google sign-in isn't set up in this build yet.") }
+            _form.update { it.copy(error = "Google sign-in isn't set up in this build yet.", notice = null) }
             return
         }
 
-        _form.update { it.copy(googleBusy = true, error = null) }
+        _form.update { it.copy(googleBusy = true, error = null, notice = null) }
         viewModelScope.launch {
             when (val outcome = google.requestIdToken(activityContext)) {
                 is GoogleResult.Token -> handleAuthResult(repo.signInWithGoogle(outcome.idToken))

@@ -7,11 +7,14 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
+// "primary" is plain white (dark) or near-black (light): no accent colour anywhere.
 private val DarkColors = darkColorScheme(
-    primary = Signal,
+    primary = Bone,
     onPrimary = Ink,
     background = Ink,
     onBackground = Bone,
@@ -26,7 +29,7 @@ private val DarkColors = darkColorScheme(
 )
 
 private val LightColors = lightColorScheme(
-    primary = Moss,
+    primary = Carbon,
     onPrimary = Color.White,
     background = Paper,
     onBackground = Carbon,
@@ -51,9 +54,11 @@ fun GitHuntTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    val typography = remember(context) { ghTypography(ghFontFamily(context)) }
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = GhTypography,
+        typography = typography,
         shapes = GhShapes,
         content = content,
     )
