@@ -41,7 +41,8 @@ class AppContainer(context: Context) {
             }
         )
         .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        // The feed page does live GitHub lookups on the server, so a cold page can take a while.
+        .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
