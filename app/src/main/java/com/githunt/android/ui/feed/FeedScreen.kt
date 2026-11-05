@@ -1,6 +1,7 @@
 package com.githunt.android.ui.feed
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +40,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -115,13 +122,42 @@ fun FeedScreen(
             Wordmark(size = 26.sp)
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Text("☰", fontSize = 23.sp, color = scheme.onSurface)
+                    Canvas(Modifier.size(width = 28.dp, height = 24.dp)) {
+                        val stroke = 2.5.dp.toPx()
+                        drawLine(
+                            color = scheme.onSurface,
+                            start = Offset(size.width * 0.08f, size.height * 0.30f),
+                            end = Offset(size.width * 0.92f, size.height * 0.30f),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                        drawLine(
+                            color = scheme.onSurface,
+                            start = Offset(size.width * 0.08f, size.height * 0.72f),
+                            end = Offset(size.width * 0.68f, size.height * 0.72f),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                    }
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = {
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.width(272.dp).clip(RoundedCornerShape(24.dp)),
+                ) {
+                    Surface(
+                        color = scheme.surface,
+                        shape = RoundedCornerShape(24.dp),
+                        tonalElevation = 6.dp,
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                    .clickable { onToggleTheme(!darkTheme); menuExpanded = false }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -131,12 +167,12 @@ fun FeedScreen(
                                 }
                                 Switch(checked = darkTheme, onCheckedChange = { onToggleTheme(it); menuExpanded = false })
                             }
-                        },
-                        onClick = { onToggleTheme(!darkTheme); menuExpanded = false },
-                    )
-                    DropdownMenuItem(text = { Text("Notifications") }, onClick = { menuExpanded = false; onOpenNotifications() })
-                    DropdownMenuItem(text = { Text("Clipped repos") }, onClick = { menuExpanded = false; onOpenClips() })
-                    DropdownMenuItem(text = { Text("Settings") }, onClick = { menuExpanded = false; onOpenSettings() })
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(scheme.outline.copy(alpha = 0.35f)))
+                            QuickMenuAction("Notifications", onClick = { menuExpanded = false; onOpenNotifications() })
+                            QuickMenuAction("Clipped repos", onClick = { menuExpanded = false; onOpenClips() })
+                            QuickMenuAction("Settings", onClick = { menuExpanded = false; onOpenSettings() })
+                        }
+                    }
                 }
             }
         }
@@ -355,4 +391,17 @@ private fun compact(n: Int): String = when {
     n >= 1_000_000 -> String.format(Locale.US, "%.1fM", n / 1_000_000.0)
     n >= 1_000 -> String.format(Locale.US, "%.1fk", n / 1_000.0)
     else -> n.toString()
+}
+
+@Composable
+private fun QuickMenuAction(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 15.dp),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
 }
