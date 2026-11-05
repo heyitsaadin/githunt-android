@@ -2,6 +2,7 @@ package com.githunt.android.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -71,7 +72,11 @@ fun MainScaffold(
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var quickPage by rememberSaveable { mutableStateOf<String?>(null) }
     val themeMode by settingsViewModel.prefs.theme.collectAsState()
-    val darkTheme = themeMode != ThemeMode.Light
+    val darkTheme = when (themeMode) {
+        ThemeMode.System -> isSystemInDarkTheme()
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+    }
     val stateHolder = rememberSaveableStateHolder()
 
     BackHandler(enabled = settingsOpen) { settingsOpen = false }
