@@ -28,6 +28,8 @@ import com.githunt.android.ui.feed.FeedViewModel
 import com.githunt.android.ui.feed.FeedViewModelFactory
 import com.githunt.android.ui.profile.ProfileViewModel
 import com.githunt.android.ui.profile.ProfileViewModelFactory
+import com.githunt.android.ui.settings.SettingsViewModel
+import com.githunt.android.ui.settings.SettingsViewModelFactory
 import com.githunt.android.ui.theme.GitHuntTheme
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +50,10 @@ class MainActivity : ComponentActivity() {
 
     private val profileViewModel: ProfileViewModel by viewModels {
         ProfileViewModelFactory((application as GitHuntApp).container)
+    }
+
+    private val settingsViewModel: SettingsViewModel by viewModels {
+        SettingsViewModelFactory((application as GitHuntApp).container)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,6 +109,7 @@ class MainActivity : ComponentActivity() {
                                     onSignOut = authViewModel::signOut,
                                     discoverViewModel = discoverViewModel,
                                     profileViewModel = profileViewModel,
+                                    settingsViewModel = settingsViewModel,
                                 )
                             }
                             is Session.Unavailable -> UnavailableScreen(
