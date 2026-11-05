@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,15 +46,18 @@ import com.githunt.android.data.feed.FeedItem
 import com.githunt.android.data.feed.PostItem
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.ui.auth.HomeState
+import com.githunt.android.ui.components.BottomNav
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.StatusChip
 import com.githunt.android.ui.components.Wordmark
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 /**
  * The signed-in home: the GitHunt feed. If the email is not confirmed yet, a
  * confirm banner sits on top of it instead of blocking the whole app.
+ * Grey top bar, grey bottom nav (Home + Sign out) around the feed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +72,8 @@ fun FeedScreen(
     onSignOut: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     // Coming back from the mail app: check whether the link was opened.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -77,35 +83,23 @@ fun FeedScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
-            .statusBarsPadding(),
+            .background(scheme.background),
     ) {
+        // Top bar: grey, and it runs up behind the status bar.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(scheme.surfaceVariant)
+                .statusBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(size = 26.sp)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (user.emailVerified) {
-                    StatusChip(text = "VERIFIED", tone = scheme.primary)
-                } else {
-                    StatusChip(text = "UNVERIFIED", tone = scheme.error)
-                }
-                Text(
-                    text = "SIGN OUT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = scheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onSignOut() }
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                )
+            if (user.emailVerified) {
+                StatusChip(text = "Verified", tone = scheme.onSurfaceVariant)
+            } else {
+                StatusChip(text = "Unverified", tone = scheme.error)
             }
         }
 
@@ -117,6 +111,7 @@ fun FeedScreen(
                 .weight(1f),
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -135,7 +130,7 @@ fun FeedScreen(
                                 .padding(vertical = 48.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(strokeWidth = 2.dp, color = scheme.primary)
+                            CircularProgressIndicator(strokeWidth = 2.dp, color = scheme.onSurfaceVariant)
                         }
                     }
                 } else if (feed.items.isEmpty()) {
@@ -178,7 +173,7 @@ fun FeedScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp,
-                                    color = scheme.primary,
+                                    color = scheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -195,10 +190,15 @@ fun FeedScreen(
                                 .padding(16.dp),
                         )
                     }
-                    Spacer(Modifier.navigationBarsPadding().height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
+
+        BottomNav(
+            onHome = { scope.launch { listState.animateScrollToItem(0) } },
+            onSignOut = onSignOut,
+        )
     }
 }
 
@@ -329,7 +329,7 @@ private fun RepoCard(item: RepoItem) {
                 Text(
                     text = language,
                     style = MaterialTheme.typography.labelSmall,
-                    color = scheme.primary,
+                    color = scheme.onBackground,
                 )
             }
             Text(
