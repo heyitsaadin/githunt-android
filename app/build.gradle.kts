@@ -28,7 +28,7 @@ android {
         // The *web* OAuth client id from Google Cloud (same value as the
         // GOOGLE_CLIENT_ID env var on Vercel). Empty = Google button explains
         // that it is not configured yet; password sign-in still works.
-        val googleWebClientId = buildSetting("googleWebClientId", "GITHUNT_GOOGLE_WEB_CLIENT_ID", "")
+        val googleWebClientId = buildSetting("googleWebClientId", "GITHUNT_GOOGLE_WEB_CLIENT_ID", "192191799004-bmumsvcd1c0l2tehfgfmhsg4bn1hkkf3.apps.googleusercontent.com")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
