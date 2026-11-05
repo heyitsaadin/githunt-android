@@ -130,6 +130,7 @@ dependencies {
 
     // Images (feed avatars)
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.coil-kt:coil-svg:2.7.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
