@@ -30,13 +30,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,7 +86,6 @@ fun ProfileScreen(
     user: User,
     viewModel: ProfileViewModel,
     onRefreshUser: (manual: Boolean) -> Unit,
-    onSignOut: () -> Unit,
     onOpenSettings: () -> Unit,
     scrollToTopTick: Int = 0,
 ) {
@@ -101,8 +96,6 @@ fun ProfileScreen(
     val listState = rememberLazyListState()
     val base = remember { BuildConfig.API_BASE_URL.trimEnd('/') }
     val accent = if (isSystemInDarkTheme()) AccentDark else AccentLight
-    var menuOpen by remember { mutableStateOf(false) }
-    var confirmSignOut by remember { mutableStateOf(false) }
     var handledTick by rememberSaveable { mutableStateOf(scrollToTopTick) }
 
     LaunchedEffect(user.id, user.githubUsername) { viewModel.bind(user) }
@@ -159,15 +152,8 @@ fun ProfileScreen(
                     onGithub = {
                         user.githubUsername?.let { runCatching { uriHandler.openUri("https://github.com/$it") } }
                     },
-                    menuOpen = menuOpen,
-                    onMenuOpen = { menuOpen = it },
                     onSettings = {
-                        menuOpen = false
                         onOpenSettings()
-                    },
-                    onSignOutRequest = {
-                        menuOpen = false
-                        confirmSignOut = true
                     },
                 )
             }
@@ -236,29 +222,6 @@ fun ProfileScreen(
         }
     }
 
-    if (confirmSignOut) {
-        AlertDialog(
-            onDismissRequest = { confirmSignOut = false },
-            containerColor = scheme.surface,
-            title = { Text("Sign out?", style = MaterialTheme.typography.titleMedium) },
-            text = {
-                Text(
-                    text = "You'll need to log in again to see your feed.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onSurfaceVariant,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmSignOut = false
-                    onSignOut()
-                }) { Text("Sign out") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmSignOut = false }) { Text("Cancel") }
-            },
-        )
-    }
 }
 
 private fun LazyListScope.skeletons() {
@@ -303,10 +266,7 @@ private fun ProfileHeader(
     onEdit: () -> Unit,
     onShare: () -> Unit,
     onGithub: () -> Unit,
-    menuOpen: Boolean,
-    onMenuOpen: (Boolean) -> Unit,
     onSettings: () -> Unit,
-    onSignOutRequest: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -551,20 +511,10 @@ private fun ProfileHeader(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color(0x66000000))
-                    .clickable { onMenuOpen(true) },
+                    .clickable(onClick = onSettings),
                 contentAlignment = Alignment.Center,
             ) {
                 PathIcon(pathData = NavIcons.Settings, tint = Color.White, iconSize = 20.dp)
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { onMenuOpen(false) }) {
-                DropdownMenuItem(
-                    text = { Text("Settings") },
-                    onClick = onSettings,
-                )
-                DropdownMenuItem(
-                    text = { Text("Sign out") },
-                    onClick = onSignOutRequest,
-                )
             }
         }
     }
