@@ -149,7 +149,11 @@ class AuthViewModel(
     // ---- signed in ----
 
     /** [manual] = the person tapped the button, so tell them when nothing changed. */
+    private var refreshJob: Job? = null
+    private var signingOut = false
+
     fun refreshUser(manual: Boolean) {
+        if (signingOut) return
         val signedIn = _session.value as? Session.SignedIn ?: return
         if (_home.value.refreshing) return
         // Automatic refreshes (on resume) only matter while the email is unconfirmed.
