@@ -1,0 +1,73 @@
+package com.githunt.android.data.settings
+
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Query
+
+/** The settings endpoints of the existing GitHunt web backend. No server changes needed. */
+interface SettingsApi {
+
+    // Security
+    @GET("api/auth/sessions")
+    suspend fun sessions(): Response<SessionsResponse>
+
+    @DELETE("api/auth/sessions")
+    suspend fun revokeSession(@Query("id") id: String): Response<RevokeResponse>
+
+    @DELETE("api/auth/sessions")
+    suspend fun revokeOthers(@Query("all_others") flag: Int = 1): Response<Unit>
+
+    // Account
+    @POST("api/auth/change-password")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): Response<Unit>
+
+    @DELETE("api/auth/me")
+    suspend fun deleteAccount(): Response<Unit>
+
+    // Personalization
+    @GET("api/personalization")
+    suspend fun personalization(): Response<PersonalizationState>
+
+    @PATCH("api/personalization")
+    suspend fun setPersonalization(@Body body: PersonalizationPatch): Response<Unit>
+
+    @DELETE("api/personalization")
+    suspend fun clearPersonalization(): Response<Unit>
+
+    // Notifications
+    @GET("api/push/prefs")
+    suspend fun pushPrefs(): Response<PushPrefsResponse>
+
+    @PATCH("api/push/prefs")
+    suspend fun setHotAlerts(@Body body: HotAlertsPatch): Response<Unit>
+
+    @PATCH("api/push/prefs")
+    suspend fun setDailyDigest(@Body body: DigestPatch): Response<Unit>
+
+    @PATCH("api/push/prefs")
+    suspend fun setInterests(@Body body: InterestsPatch): Response<InterestsResponse>
+
+    @POST("api/push/test")
+    suspend fun pushTest(): Response<Unit>
+
+    // GitHub API connection
+    @GET("api/settings/github-token")
+    suspend fun githubToken(): Response<GithubTokenStatus>
+
+    @POST("api/settings/github-token")
+    suspend fun saveGithubToken(@Body body: SaveTokenRequest): Response<GithubTokenStatus>
+
+    @DELETE("api/settings/github-token")
+    suspend fun removeGithubToken(): Response<Unit>
+
+    // About
+    @POST("api/feature-requests")
+    suspend fun featureRequest(@Body body: FeatureRequestBody): Response<Unit>
+
+    @GET("api/build-logs")
+    suspend fun buildLogs(): Response<BuildLogsResponse>
+}
