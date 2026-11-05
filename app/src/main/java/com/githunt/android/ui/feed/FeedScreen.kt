@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +47,6 @@ import com.githunt.android.data.feed.FeedItem
 import com.githunt.android.data.feed.PostItem
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.ui.auth.HomeState
-import com.githunt.android.ui.components.BottomNav
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.Wordmark
@@ -57,7 +55,6 @@ import java.time.Instant
 import java.time.Duration
 import java.time.format.DateTimeParseException
 import android.content.Intent
-import kotlinx.coroutines.launch
 
 /**
  * The signed-in home: the GitHunt feed. If the email is not confirmed yet, a
@@ -75,10 +72,14 @@ fun FeedScreen(
     onRefreshUser: (manual: Boolean) -> Unit,
     onResend: () -> Unit,
     onSignOut: () -> Unit,
+    scrollToTopTick: Int,
 ) {
     val scheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(scrollToTopTick) {
+        if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
 
     // Coming back from the mail app: check whether the link was opened.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -195,10 +196,6 @@ fun FeedScreen(
             }
         }
 
-        BottomNav(
-            onHome = { scope.launch { listState.animateScrollToItem(0) } },
-            onSignOut = onSignOut,
-        )
     }
 }
 
