@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,6 +29,9 @@ import com.githunt.android.ui.feed.FeedViewModel
 import com.githunt.android.ui.feed.FeedViewModelFactory
 import com.githunt.android.ui.profile.ProfileViewModel
 import com.githunt.android.ui.profile.ProfileViewModelFactory
+import com.githunt.android.ui.settings.SettingsViewModel
+import com.githunt.android.ui.settings.SettingsViewModelFactory
+import com.githunt.android.data.settings.ThemeMode
 import com.githunt.android.ui.theme.GitHuntTheme
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +52,10 @@ class MainActivity : ComponentActivity() {
 
     private val profileViewModel: ProfileViewModel by viewModels {
         ProfileViewModelFactory((application as GitHuntApp).container)
+    }
+
+    private val settingsViewModel: SettingsViewModel by viewModels {
+        SettingsViewModelFactory((application as GitHuntApp).container)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +80,13 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            GitHuntTheme {
+            val themeMode by settingsViewModel.prefs.theme.collectAsStateWithLifecycle()
+            val useDarkTheme = when (themeMode) {
+                ThemeMode.System -> isSystemInDarkTheme()
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
+            GitHuntTheme(darkTheme = useDarkTheme) {
                 val session by authViewModel.session.collectAsStateWithLifecycle()
                 val home by authViewModel.home.collectAsStateWithLifecycle()
 
@@ -103,6 +117,8 @@ class MainActivity : ComponentActivity() {
                                     onSignOut = authViewModel::signOut,
                                     discoverViewModel = discoverViewModel,
                                     profileViewModel = profileViewModel,
+                                    settingsViewModel = settingsViewModel,
+                                    clipsRepository = (application as GitHuntApp).container.clipsRepository,
                                 )
                             }
                             is Session.Unavailable -> UnavailableScreen(

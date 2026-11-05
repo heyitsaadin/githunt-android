@@ -64,6 +64,12 @@ interface SettingsApi {
     @DELETE("api/settings/github-token")
     suspend fun removeGithubToken(): Response<Unit>
 
+    @GET("api/notifications")
+    suspend fun notifications(): Response<NotificationInboxResponse>
+
+    @POST("api/notifications")
+    suspend fun markNotificationsSeen(@Body body: NotificationSeenRequest): Response<Unit>
+
     // About
     @POST("api/feature-requests")
     suspend fun featureRequest(@Body body: FeatureRequestBody): Response<Unit>

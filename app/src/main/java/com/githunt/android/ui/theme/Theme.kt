@@ -7,6 +7,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -56,10 +57,13 @@ fun GitHuntTheme(
 ) {
     val context = LocalContext.current
     val typography = remember(context) { ghTypography(ghFontFamily(context)) }
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = typography,
-        shapes = GhShapes,
-        content = content,
-    )
+    val mono = remember(context) { ghMonoFamily(context) }
+    CompositionLocalProvider(LocalGhMono provides mono) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = typography,
+            shapes = GhShapes,
+            content = content,
+        )
+    }
 }

@@ -137,3 +137,24 @@ data class BuildLog(
 
 @Serializable
 data class BuildLogsResponse(val logs: List<BuildLog> = emptyList())
+
+
+@Serializable
+data class NotificationInboxResponse(
+    val ttlHours: Int = 24,
+    val notifications: List<InboxNotification> = emptyList(),
+)
+
+@Serializable
+data class InboxNotification(
+    val id: String,
+    val kind: String = "",
+    val title: String = "",
+    val body: String = "",
+    val url: String? = null,
+    val image: String? = null,
+    val createdAt: String = "",
+)
+
+@Serializable
+data class NotificationSeenRequest(val upTo: String?)

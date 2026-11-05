@@ -9,6 +9,7 @@ import com.githunt.android.data.settings.BuildLog
 import com.githunt.android.data.settings.DeviceSession
 import com.githunt.android.data.settings.GithubTokenStatus
 import com.githunt.android.data.settings.Interests
+import com.githunt.android.data.settings.InboxNotification
 import com.githunt.android.data.settings.SettingsRepository
 import com.githunt.android.di.AppContainer
 import kotlinx.coroutines.delay
@@ -65,6 +66,12 @@ data class GithubUi(
     val phase: TokenPhase = TokenPhase.Idle,
     val error: String? = null,
     val removing: Boolean = false,
+)
+
+data class NotificationInboxUi(
+    val loading: Boolean = true,
+    val items: List<InboxNotification> = emptyList(),
+    val error: String? = null,
 )
 
 data class LogsUi(
@@ -397,6 +404,29 @@ class SettingsViewModel(
                 }
             }
         }
+    }
+
+    // ---- Notification inbox ----
+
+    private val _inbox = MutableStateFlow(NotificationInboxUi())
+    val inbox: StateFlow<NotificationInboxUi> = _inbox.asStateFlow()
+
+    fun loadNotificationInbox() {
+        if (!_inbox.value.loading && _inbox.value.error == null) return
+        viewModelScope.launch {
+            when (val result = repo.notifications()) {
+                is ApiResult.Ok -> {
+                    _inbox.value = NotificationInboxUi(loading = false, items = result.value.notifications)
+                    repo.markNotificationsSeen(result.value.notifications.firstOrNull()?.createdAt)
+                }
+                is ApiResult.Err -> _inbox.value = NotificationInboxUi(loading = false, error = result.message)
+            }
+        }
+    }
+
+    fun retryNotificationInbox() {
+        _inbox.value = NotificationInboxUi()
+        loadNotificationInbox()
     }
 
     // ---- About ----

@@ -49,5 +49,11 @@ class SettingsRepository(
     suspend fun featureRequest(message: String, contact: String): ApiResult<Unit> =
         apiCall(json) { api.featureRequest(FeatureRequestBody(message, contact)) }
 
+    suspend fun notifications(): ApiResult<NotificationInboxResponse> =
+        apiCall(json) { api.notifications() }
+
+    suspend fun markNotificationsSeen(upTo: String?): ApiResult<Unit> =
+        apiCall(json) { api.markNotificationsSeen(NotificationSeenRequest(upTo)) }
+
     suspend fun buildLogs(): ApiResult<BuildLogsResponse> = apiCall(json) { api.buildLogs() }
 }
