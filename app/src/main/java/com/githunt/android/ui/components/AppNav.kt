@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -41,50 +43,40 @@ fun AppBottomNav(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(scheme.background),
+            .background(scheme.surfaceVariant),
     ) {
-        HorizontalDivider(color = scheme.outline.copy(alpha = 0.5f))
-        Box(
+        HorizontalDivider(color = scheme.outline)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center,
+                .height(64.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(scheme.surfaceVariant)
-                    .padding(6.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                NavTab(
-                    label = "Home",
-                    icon = NavIcons.Home,
-                    active = selected == AppTab.Home,
-                    onClick = { onSelect(AppTab.Home) },
-                )
-                NavTab(
-                    label = "Discover",
-                    icon = NavIcons.Discover,
-                    active = selected == AppTab.Discover,
-                    onClick = { onSelect(AppTab.Discover) },
-                )
-                NavTab(
-                    label = "Profile",
-                    icon = NavIcons.Person,
-                    active = selected == AppTab.Profile,
-                    avatarUrl = avatarUrl,
-                    onClick = { onSelect(AppTab.Profile) },
-                )
-            }
+            NavTab(
+                label = "Home",
+                icon = NavIcons.Home,
+                active = selected == AppTab.Home,
+                onClick = { onSelect(AppTab.Home) },
+            )
+            NavTab(
+                label = "Discover",
+                icon = NavIcons.Discover,
+                active = selected == AppTab.Discover,
+                onClick = { onSelect(AppTab.Discover) },
+            )
+            NavTab(
+                label = "Profile",
+                icon = NavIcons.Person,
+                active = selected == AppTab.Profile,
+                avatarUrl = avatarUrl,
+                onClick = { onSelect(AppTab.Profile) },
+            )
         }
     }
 }
 
 @Composable
-private fun NavTab(
+private fun RowScope.NavTab(
     label: String,
     icon: String,
     active: Boolean,
@@ -93,28 +85,33 @@ private fun NavTab(
 ) {
     val scheme = MaterialTheme.colorScheme
     val tint = if (active) scheme.onBackground else scheme.onSurfaceVariant
-    Box(
+    Column(
         modifier = Modifier
-            .width(72.dp)
-            .height(44.dp)
-            .clip(CircleShape)
-            .background(if (active) scheme.onBackground.copy(alpha = 0.12f) else Color.Transparent)
+            .weight(1f)
+            .fillMaxHeight()
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        if (avatarUrl != null) {
+        if (label == "Profile" && avatarUrl != null) {
             AsyncImage(
                 model = avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .then(if (active) Modifier.border(2.dp, tint, CircleShape) else Modifier),
+                    .then(if (active) Modifier.border(1.5.dp, tint, CircleShape) else Modifier),
             )
         } else {
             PathIcon(pathData = icon, tint = tint, iconSize = 24.dp)
         }
+        Spacer(Modifier.height(2.dp))
+        androidx.compose.material3.Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
+        )
     }
 }
