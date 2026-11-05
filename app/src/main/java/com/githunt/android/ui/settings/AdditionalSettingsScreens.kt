@@ -1,5 +1,17 @@
 package com.githunt.android.ui.settings
 
+import android.text.method.LinkMovementMethod
+import android.widget.TextView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.viewinterop.AndroidView
+import io.noties.markwon.Markwon
+import io.noties.markwon.AbstractMarkwonPlugin
+import io.noties.markwon.core.MarkwonTheme
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.ext.tasklist.TaskListPlugin
+import io.noties.markwon.html.HtmlPlugin
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -299,20 +311,73 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val state by vm.logs.collectAsState()
     LaunchedEffect(Unit) { vm.loadLogs() }
     SettingsScaffold(title = "Changelog", onBack = onBack) {
-        SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
-            if (state.logs == null && state.error == null) {
+        if (state.logs == null && state.error == null) {
+            SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
                 SettingsNote("Loading build notes…")
-            } else if (state.logs.isNullOrEmpty()) {
+            }
+        } else if (state.logs.isNullOrEmpty()) {
+            SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
                 SettingsNote(state.error ?: "No build notes are available.")
-            } else {
-                state.logs.orEmpty().forEach { log ->
-                    SettingsRow(
-                        title = log.title.ifBlank { log.version },
-                        subtitle = listOfNotNull(log.version.takeIf { it.isNotBlank() }, log.date, log.buildNumber?.let { "Build $it" }).joinToString(" · "),
-                    )
-                    if (log.markdown.isNotBlank()) SettingsBody(log.markdown)
+            }
+        } else {
+            state.logs.orEmpty().forEachIndexed { index, log ->
+                SettingsSection(
+                    title = log.title.ifBlank { log.version },
+                    description = listOfNotNull(
+                        log.version.takeIf { it.isNotBlank() },
+                        log.date,
+                        log.buildNumber?.let { "Build $it" },
+                    ).joinToString(" · "),
+                    first = index == 0,
+                ) {
+                    if (log.markdown.isNotBlank()) ChangelogMarkdown(log.markdown)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ChangelogMarkdown(markdown: String) {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+    val textColor = scheme.onSurfaceVariant.toArgb()
+    val linkColor = scheme.primary.toArgb()
+    val codeBackground = scheme.surfaceVariant.toArgb()
+    val markwon = remember(context, textColor, linkColor, codeBackground) {
+        Markwon.builder(context)
+            .usePlugin(object : AbstractMarkwonPlugin() {
+                override fun configureTheme(builder: MarkwonTheme.Builder) {
+                    builder.linkColor(linkColor)
+                        .codeTextColor(textColor)
+                        .codeBackgroundColor(codeBackground)
+                        .codeBlockTextColor(textColor)
+                        .codeBlockBackgroundColor(codeBackground)
+                }
+            })
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TablePlugin.create(context))
+            .usePlugin(TaskListPlugin.create(context))
+            .usePlugin(HtmlPlugin.create())
+            .build()
+    }
+    AndroidView(
+        modifier = Modifier.fillMaxWidth(),
+        factory = { ctx ->
+            TextView(ctx).apply {
+                textSize = 14f
+                setLineSpacing(0f, 1.2f)
+                movementMethod = LinkMovementMethod.getInstance()
+            }
+        },
+        update = { view ->
+            view.setTextColor(textColor)
+            view.setLinkTextColor(linkColor)
+            val key = markdown to markwon
+            if (view.tag != key) {
+                view.tag = key
+                markwon.setMarkdown(view, markdown)
+            }
+        },
+    )
 }
