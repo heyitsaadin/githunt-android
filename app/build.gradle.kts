@@ -10,6 +10,30 @@ fun buildSetting(prop: String, env: String, fallback: String): String =
         ?: System.getenv(env)?.takeIf { it.isNotBlank() }
         ?: fallback
 
+// The app font is Figtree (res/font/figtree.ttf). It is downloaded once, the first time the
+// project builds. If the download fails the build carries on and the app uses the system font.
+val fetchFigtree by tasks.registering {
+    val target = layout.projectDirectory.file("src/main/res/font/figtree.ttf").asFile
+    val scratch = File(temporaryDir, "figtree.part")
+    onlyIf { !target.exists() }
+    doLast {
+        try {
+            target.parentFile.mkdirs()
+            java.net.URL("https://github.com/google/fonts/raw/main/ofl/figtree/Figtree%5Bwght%5D.ttf")
+                .openStream()
+                .use { input -> scratch.outputStream().use { out -> input.copyTo(out) } }
+            if (scratch.length() > 50_000) {
+                scratch.copyTo(target, overwrite = true)
+            }
+        } catch (e: Exception) {
+            logger.warn("Figtree font not downloaded (${e.message}). The app will use the system font.")
+        } finally {
+            scratch.delete()
+        }
+    }
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchFigtree) }
+
 android {
     namespace = "com.githunt.android"
     compileSdk = 34
