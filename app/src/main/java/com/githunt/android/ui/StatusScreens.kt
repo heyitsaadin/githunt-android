@@ -18,16 +18,24 @@ import androidx.compose.ui.unit.sp
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.Wordmark
 
-/** Shown for the moment while the app checks whether the person is still signed in. */
+/**
+ * Shown while the app checks whether the person is still signed in.
+ * With [animate] the wordmark types itself out and [onAnimationFinished] is called when it is done;
+ * without it this is the plain static wordmark.
+ */
 @Composable
-fun LoadingScreen() {
+fun LoadingScreen(animate: Boolean = false, onAnimationFinished: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
-        Wordmark(size = 40.sp)
+        if (animate) {
+            AnimatedWordmark(fontSize = 40.sp, onFinished = onAnimationFinished)
+        } else {
+            Wordmark(size = 40.sp)
+        }
     }
 }
 
