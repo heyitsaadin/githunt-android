@@ -22,7 +22,7 @@ fun ghFontFamily(context: Context): FontFamily {
     if (resId == 0) return FontFamily.SansSerif
     return FontFamily(
         listOf(400, 500, 600, 700, 800).map { w ->
-            Font(resId, FontWeight(w), FontStyle.Normal, FontVariation.Settings(FontVariation.weight(w)))
+            Font(resId, FontWeight(w), FontStyle.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(w)))
         },
     )
 }
