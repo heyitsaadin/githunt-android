@@ -1,12 +1,18 @@
 package com.githunt.android.ui.feed
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,8 +29,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.IconButton
@@ -41,16 +45,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
@@ -104,26 +110,29 @@ fun FeedScreen(
         onRefreshUser(false)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(scheme.background),
-    ) {
-        // Top bar: grey, and it runs up behind the status bar.
-        Row(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(scheme.surfaceVariant)
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .fillMaxSize()
+                .background(scheme.background),
         ) {
-            Wordmark(size = 26.sp)
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Canvas(Modifier.size(width = 28.dp, height = 24.dp)) {
-                        val stroke = 2.5.dp.toPx()
+            // Top bar: grey, and it runs up behind the status bar.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(scheme.surfaceVariant)
+                    .statusBarsPadding()
+                    .padding(horizontal = MenuBarPadding, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Wordmark(size = 26.sp)
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(MenuButtonSize),
+                ) {
+                    Canvas(Modifier.size(width = 22.dp, height = 18.dp)) {
+                        val stroke = 2.dp.toPx()
                         drawLine(
                             color = scheme.onSurface,
                             start = Offset(size.width * 0.08f, size.height * 0.30f),
@@ -140,129 +149,222 @@ fun FeedScreen(
                         )
                     }
                 }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.width(272.dp).clip(RoundedCornerShape(24.dp)),
-                ) {
-                    Surface(
-                        color = scheme.surface,
-                        shape = RoundedCornerShape(24.dp),
-                        tonalElevation = 6.dp,
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                    .clickable { onToggleTheme(!darkTheme); menuExpanded = false }
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Column {
-                                    Text("Appearance", fontWeight = FontWeight.SemiBold)
-                                    Text(if (darkTheme) "Dark" else "Light", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-                                }
-                                Switch(checked = darkTheme, onCheckedChange = { onToggleTheme(it); menuExpanded = false })
-                            }
-                            Box(Modifier.fillMaxWidth().height(1.dp).background(scheme.outline.copy(alpha = 0.35f)))
-                            QuickMenuAction("Notifications", onClick = { menuExpanded = false; onOpenNotifications() })
-                            QuickMenuAction("Clipped repos", onClick = { menuExpanded = false; onOpenClips() })
-                            QuickMenuAction("Settings", onClick = { menuExpanded = false; onOpenSettings() })
-                        }
-                    }
-                }
             }
-        }
 
-        PullToRefreshBox(
-            isRefreshing = feed.refreshing,
-            onRefresh = onRefreshFeed,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            PullToRefreshBox(
+                isRefreshing = feed.refreshing,
+                onRefresh = onRefreshFeed,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
             ) {
-                if (!user.emailVerified) {
-                    item(key = "confirm-email") {
-                        ConfirmEmailBanner(home = home, onRefreshUser = onRefreshUser, onResend = onResend)
-                    }
-                }
-
-                if (feed.loading && feed.items.isEmpty()) {
-                    // Same placeholder cards Discover shows while it loads.
-                    items(3, key = { index -> "skeleton-$index" }) {
-                        RepoCardSkeleton()
-                    }
-                } else if (feed.items.isEmpty()) {
-                    item(key = "empty") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 48.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = feed.error ?: "Nothing here yet.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = scheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            OutlineButton(text = "Try again", onClick = onRefreshFeed)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (!user.emailVerified) {
+                        item(key = "confirm-email") {
+                            ConfirmEmailBanner(home = home, onRefreshUser = onRefreshUser, onResend = onResend)
                         }
                     }
-                }
 
-                items(feed.items, key = { it.key }) { item ->
-                    when (item) {
-                        is RepoItem -> RepoCard(item = item)
-                        is PostItem -> PostCard(item)
-                    }
-                }
-
-                item(key = "footer") {
-                    if (feed.hasMore) {
-                        // Reaching the footer means the person scrolled to the end: fetch older items.
-                        LaunchedEffect(feed.items.size) { onLoadMore() }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (feed.loadingMore) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
+                    if (feed.loading && feed.items.isEmpty()) {
+                        // Same placeholder cards Discover shows while it loads.
+                        items(3, key = { index -> "skeleton-$index" }) {
+                            RepoCardSkeleton()
+                        }
+                    } else if (feed.items.isEmpty()) {
+                        item(key = "empty") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 48.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = feed.error ?: "Nothing here yet.",
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = scheme.onSurfaceVariant,
                                 )
+                                Spacer(Modifier.height(16.dp))
+                                OutlineButton(text = "Try again", onClick = onRefreshFeed)
                             }
                         }
                     }
-                    if (feed.error != null && feed.items.isNotEmpty()) {
-                        Text(
-                            text = "Couldn't load more. Tap to retry.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = scheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { onLoadMore() }
-                                .padding(16.dp),
-                        )
+
+                    items(feed.items, key = { it.key }) { item ->
+                        when (item) {
+                            is RepoItem -> RepoCard(item = item)
+                            is PostItem -> PostCard(item)
+                        }
                     }
-                    Spacer(Modifier.height(8.dp))
+
+                    item(key = "footer") {
+                        if (feed.hasMore) {
+                            // Reaching the footer means the person scrolled to the end: fetch older items.
+                            LaunchedEffect(feed.items.size) { onLoadMore() }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (feed.loadingMore) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = scheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                        if (feed.error != null && feed.items.isNotEmpty()) {
+                            Text(
+                                text = "Couldn't load more. Tap to retry.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = scheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onLoadMore() }
+                                    .padding(16.dp),
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
             }
         }
 
+        // The menu grows out of the menu icon and fully covers it while open.
+        ExpandingMenu(
+            expanded = menuExpanded,
+            onDismiss = { menuExpanded = false },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = MenuCardInset, end = MenuBarPadding - MenuCardInset + MenuCardInset),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onToggleTheme(!darkTheme); menuExpanded = false }
+                    .padding(vertical = 8.dp, horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column {
+                    Text(
+                        "Appearance",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        if (darkTheme) "Dark" else "Light",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = darkTheme,
+                    onCheckedChange = { onToggleTheme(it); menuExpanded = false },
+                    modifier = Modifier.scale(0.8f),
+                )
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(scheme.outline.copy(alpha = 0.35f)))
+            QuickMenuAction("Notifications", onClick = { menuExpanded = false; onOpenNotifications() })
+            QuickMenuAction("Clipped repos", onClick = { menuExpanded = false; onOpenClips() })
+            QuickMenuAction("Settings", onClick = { menuExpanded = false; onOpenSettings() })
+        }
+    }
+}
+
+// Menu geometry. The top bar pads its content by MenuBarPadding at the sides and 12.dp on top, and
+// the icon button is MenuButtonSize square, so the card (inset by MenuCardInset past the button's
+// top/right edges) sits right on top of it and hides it completely.
+private val MenuBarPadding = 20.dp
+private val MenuButtonSize = 40.dp
+private val MenuCardInset = 4.dp
+private val MenuWidth = 220.dp
+
+// Where the icon's centre sits inside the card, measured from the card's top-right corner.
+private val MenuPivot = MenuCardInset + MenuButtonSize / 2
+
+private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
+
+/**
+ * A small floating card that scales up out of the menu icon (and back into it on close).
+ * Replaces Material's DropdownMenu, whose own popup container was drawing a square backing
+ * rectangle behind the rounded corners.
+ *
+ * Place it inside a Box, aligned top-end, over the icon.
+ */
+@Composable
+private fun ExpandingMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val progress by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = if (expanded) {
+            tween(durationMillis = 340, easing = EmphasizedDecelerate)
+        } else {
+            tween(durationMillis = 200, easing = EmphasizedAccelerate)
+        },
+        label = "menu-expand",
+    )
+
+    if (!expanded && progress <= 0f) return
+
+    BackHandler(enabled = expanded, onBack = onDismiss)
+
+    if (expanded) {
+        // Invisible full-screen layer: tap anywhere outside the card to close it.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+        )
+    }
+
+    Surface(
+        modifier = modifier
+            .width(MenuWidth)
+            .graphicsLayer {
+                scaleX = lerp(0.18f, 1f, progress)
+                scaleY = lerp(0.14f, 1f, progress)
+                alpha = (progress * 4f).coerceIn(0f, 1f)
+                if (size.width > 0f && size.height > 0f) {
+                    transformOrigin = TransformOrigin(
+                        pivotFractionX = (size.width - MenuPivot.toPx()) / size.width,
+                        pivotFractionY = MenuPivot.toPx() / size.height,
+                    )
+                }
+            },
+        color = scheme.surface,
+        shape = RoundedCornerShape(22.dp),
+        tonalElevation = 6.dp,
+        shadowElevation = 10.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = ((progress - 0.3f) / 0.7f).coerceIn(0f, 1f) }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            content = content,
+        )
     }
 }
 
@@ -398,10 +500,11 @@ private fun QuickMenuAction(label: String, onClick: () -> Unit) {
     Text(
         text = label,
         modifier = Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 15.dp),
-        style = MaterialTheme.typography.titleMedium,
+            .padding(horizontal = 8.dp, vertical = 11.dp),
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurface,
     )
 }
