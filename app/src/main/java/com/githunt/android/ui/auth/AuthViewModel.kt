@@ -206,11 +206,18 @@ class AuthViewModel(
     }
 
     fun signOut() {
+        if (signingOut) return
+        signingOut = true
+        refreshJob?.cancel()
         viewModelScope.launch {
-            repo.logout()
-            _form.value = AuthFormState()
-            _home.value = HomeState()
-            _session.value = Session.SignedOut
+            try {
+                repo.logout()
+            } finally {
+                _form.value = AuthFormState()
+                _home.value = HomeState()
+                _session.value = Session.SignedOut
+                signingOut = false
+            }
         }
     }
 }
