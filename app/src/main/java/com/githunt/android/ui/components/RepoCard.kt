@@ -59,6 +59,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
+import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
 import java.time.Duration
@@ -73,8 +74,8 @@ private val Mono = FontFamily.Monospace
  * One repo, as the website draws it. Used by Discover and the profile tabs.
  * Pass [onClipToggle] to show the bookmark; [clipped] says whether it is filled.
  *
- * "Show README" expands the README inside the card (like the website) when a
- * [LocalReadmeLoader] is provided; otherwise it opens the repo on GitHub.
+ * "Show README" expands the README inside the card, like the website. If the app container
+ * isn't available (previews, tests) it opens the repo's README on GitHub instead.
  */
 @Composable
 fun RepoCard(
@@ -89,7 +90,9 @@ fun RepoCard(
     val shape = RoundedCornerShape(16.dp)
     val githubUrl = item.url
     val repoName = item.fullName.substringAfter('/')
-    val loadReadme = LocalReadmeLoader.current
+    val readmeRepository = remember(context) {
+        (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
+    }
 
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
@@ -99,10 +102,10 @@ fun RepoCard(
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(expanded, item.fullName) {
-        if (expanded && markdown == null && loadReadme != null) {
+        if (expanded && markdown == null && readmeRepository != null) {
             loadingReadme = true
             readmeError = null
-            loadReadme(item.owner, repoName)
+            readmeRepository.load(item.owner, repoName)
                 .onSuccess { markdown = it }
                 .onFailure {
                     readmeError = it.message ?: "Could not load the README."
@@ -266,8 +269,8 @@ fun RepoCard(
                     chevronUp = if (loadingReadme) null else expanded,
                     enabled = !loadingReadme,
                     onClick = {
-                        if (loadReadme == null) {
-                            // No loader available: fall back to GitHub's own README view.
+                        if (readmeRepository == null) {
+                            // No container available: fall back to GitHub's own README view.
                             githubUrl?.trimEnd('/')?.plus("#readme")
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
