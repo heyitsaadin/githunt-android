@@ -3,11 +3,6 @@ package com.githunt.android.ui.components
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,7 +16,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -54,8 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
@@ -222,6 +214,20 @@ fun RepoCard(
                                 .padding(horizontal = 7.dp, vertical = 2.dp),
                         )
                     }
+                }
+            }
+
+            // While the README downloads, a skeleton holds its place so the card feels alive.
+            AnimatedVisibility(
+                visible = loadingReadme,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(10.dp))
+                    ReadmeSkeleton()
                 }
             }
 
@@ -449,22 +455,11 @@ private fun proxiedImageUrl(src: String): String {
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
 }
 
-@Composable
-private fun PreviewSkeleton(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "preview-shimmer")
-    val alpha by transition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "preview-shimmer-alpha",
-    )
-    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha)))
-}
-
 /**
  * The card's 16:9 README picture. README images are often SVG, so the SVG decoder is on.
- * While loading it shows a shimmer; if loading fails the whole block is removed so the
- * card never carries a big empty box (the website's SmartImage does the same).
+ * The 16:9 box is reserved up front, so nothing jumps when the image arrives: a shimmer fills it
+ * while loading and fades out as the picture fades in. If loading fails the whole block is
+ * removed so the card never carries a big empty box (the website's SmartImage does the same).
  */
 @Composable
 private fun RepoPreview(url: String, contentDescription: String, onClick: () -> Unit) {
@@ -475,15 +470,14 @@ private fun RepoPreview(url: String, contentDescription: String, onClick: () -> 
             ImageRequest.Builder(context)
                 .data(proxiedImageUrl(url))
                 .decoderFactory(SvgDecoder.Factory())
-                .crossfade(true)
+                .crossfade(350)
                 .build()
         }
-        SubcomposeAsyncImage(
+        ShimmerImage(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
-            loading = { PreviewSkeleton(Modifier.fillMaxSize()) },
-            onError = { failed = true },
+            onFailed = { failed = true },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
@@ -492,6 +486,7 @@ private fun RepoPreview(url: String, contentDescription: String, onClick: () -> 
     }
 }
 
+/** Round avatar. A shimmer circle shows until the picture has loaded, then fades into it. */
 @Composable
 fun RepoAvatar(url: String?, size: Dp = 36.dp) {
     Box(
@@ -501,63 +496,21 @@ fun RepoAvatar(url: String?, size: Dp = 36.dp) {
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         if (url != null) {
-            AsyncImage(
-                model = proxiedImageUrl(url),
+            val context = LocalContext.current
+            val request = remember(url) {
+                ImageRequest.Builder(context)
+                    .data(proxiedImageUrl(url))
+                    .crossfade(250)
+                    .build()
+            }
+            ShimmerImage(
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.matchParentSize(),
             )
         }
     }
-}
-
-/** Grey placeholder shaped like [RepoCard], shown while a list loads. */
-@Composable
-fun RepoCardSkeleton(modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
-            .padding(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(scheme.surfaceVariant),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                SkeletonBar(fraction = 0.5f, height = 14.dp)
-                Spacer(Modifier.height(8.dp))
-                SkeletonBar(fraction = 0.3f, height = 10.dp)
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        SkeletonBar(fraction = 1f, height = 12.dp)
-        Spacer(Modifier.height(8.dp))
-        SkeletonBar(fraction = 0.85f, height = 12.dp)
-        Spacer(Modifier.height(8.dp))
-        SkeletonBar(fraction = 0.6f, height = 12.dp)
-        Spacer(Modifier.height(16.dp))
-        SkeletonBar(fraction = 0.4f, height = 10.dp)
-    }
-}
-
-@Composable
-fun SkeletonBar(fraction: Float, height: Dp, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth(fraction)
-            .height(height)
-            .clip(RoundedCornerShape(height / 2))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    )
 }
 
 /** "950", "1.2k", "19k", "1.5M". Drops a trailing ".0" like the website does. */
