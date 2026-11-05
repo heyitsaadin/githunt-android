@@ -26,6 +26,8 @@ import com.githunt.android.ui.feed.FeedScreen
 import com.githunt.android.ui.feed.FeedUiState
 import com.githunt.android.ui.profile.ProfileScreen
 import com.githunt.android.ui.profile.ProfileViewModel
+import com.githunt.android.ui.settings.SettingsHost
+import com.githunt.android.ui.settings.SettingsViewModel
 
 /**
  * The signed-in app: Home (feed), Discover and Profile behind one bottom dock, like the website.
@@ -44,15 +46,18 @@ fun MainScaffold(
     onSignOut: () -> Unit,
     discoverViewModel: DiscoverViewModel,
     profileViewModel: ProfileViewModel,
+    settingsViewModel: SettingsViewModel,
 ) {
     val scheme = MaterialTheme.colorScheme
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
     var homeTap by remember { mutableIntStateOf(0) }
     var discoverTap by remember { mutableIntStateOf(0) }
     var profileTap by remember { mutableIntStateOf(0) }
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
     val stateHolder = rememberSaveableStateHolder()
 
-    BackHandler(enabled = tab != AppTab.Home) { tab = AppTab.Home }
+    BackHandler(enabled = settingsOpen) { settingsOpen = false }
+    BackHandler(enabled = !settingsOpen && tab != AppTab.Home) { tab = AppTab.Home }
 
     Column(
         modifier = Modifier
@@ -64,7 +69,14 @@ fun MainScaffold(
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
-            stateHolder.SaveableStateProvider(tab.name) {
+            if (settingsOpen) {
+                SettingsHost(
+                    user = user,
+                    viewModel = settingsViewModel,
+                    onClose = { settingsOpen = false },
+                    onSignOut = onSignOut,
+                )
+            } else stateHolder.SaveableStateProvider(tab.name) {
                 when (tab) {
                     AppTab.Home -> FeedScreen(
                         user = user,
@@ -87,13 +99,14 @@ fun MainScaffold(
                         viewModel = profileViewModel,
                         onRefreshUser = onRefreshUser,
                         onSignOut = onSignOut,
+                        onOpenSettings = { settingsOpen = true },
                         scrollToTopTick = profileTap,
                     )
                 }
             }
         }
 
-        AppBottomNav(
+        if (!settingsOpen) AppBottomNav(
             selected = tab,
             avatarUrl = user.avatarUrl,
             onSelect = { picked ->
