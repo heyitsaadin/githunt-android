@@ -57,6 +57,10 @@ private const val T_TOP = 0.62f
 private const val H_STEM = 0.26f
 private const val T_STEM = 0.38f
 
+// Overall pace of the whole animation: 1 = the first version, bigger = slower.
+private const val SLOWDOWN = 1.35f
+private fun slow(millis: Int): Int = (millis * SLOWDOWN).toInt()
+
 /**
  * The same wordmark as [Wordmark], but it types itself out, then the dot drops onto the "h",
  * bounces, hops onto the "t" and finally rolls home to the end of the word.
