@@ -113,36 +113,36 @@ fun AnimatedWordmark(
         pivot = TransformOrigin(dotCx / l.size.width, baseline / l.size.height)
 
         // 1. Typing.
-        delay(250)
+        delay(slow(250).toLong())
         caretOn = true
         longArrayOf(80, 70, 95, 85, 70, 75, 110).forEachIndexed { i, gap ->
             typed = i + 1
-            delay(gap)
+            delay((gap * SLOWDOWN).toLong())
         }
-        delay(150)
+        delay(slow(150).toLong())
         caretOn = false
-        delay(60)
+        delay(slow(60).toLong())
 
         // 2. The dot falls onto the h.
         dotX.snapTo(hX)
         dotY.snapTo(hY - 1.8f * fs)
         dotShown = true
-        dotY.animateTo(hY, tween(380, easing = FastOutLinearInEasing))
+        dotY.animateTo(hY, tween(slow(380), easing = FastOutLinearInEasing))
         launch { thump(squash, 0.62f) }
 
         // 3. A little bounce on the h, then a hop onto the t.
-        hop(dotX, dotY, hX, hY, apex = 0.22f * fs, millis = 260)
-        hop(dotX, dotY, tX, tY, apex = 0.5f * fs, millis = 340)
+        hop(dotX, dotY, hX, hY, apex = 0.22f * fs, millis = slow(260))
+        hop(dotX, dotY, tX, tY, apex = 0.5f * fs, millis = slow(340))
         launch { thump(squash, 0.68f) }
-        hop(dotX, dotY, tX, tY, apex = 0.12f * fs, millis = 190)
+        hop(dotX, dotY, tX, tY, apex = 0.12f * fs, millis = slow(190))
 
         // 4. Home: down to the baseline after the last letter, with a tiny settle.
-        hop(dotX, dotY, 0f, 0f, apex = 0.55f * fs, millis = 360)
+        hop(dotX, dotY, 0f, 0f, apex = 0.55f * fs, millis = slow(360))
         launch { thump(squash, 0.72f) }
-        hop(dotX, dotY, 0f, 0f, apex = 0.06f * fs, millis = 150)
+        hop(dotX, dotY, 0f, 0f, apex = 0.06f * fs, millis = slow(150))
 
         settled = true
-        delay(220)
+        delay(slow(220).toLong())
         finished()
     }
 
