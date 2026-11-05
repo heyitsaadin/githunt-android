@@ -91,6 +91,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     onRefreshUser: (manual: Boolean) -> Unit,
     onSignOut: () -> Unit,
+    onOpenSettings: () -> Unit,
     scrollToTopTick: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -162,7 +163,7 @@ fun ProfileScreen(
                     onMenuOpen = { menuOpen = it },
                     onSettings = {
                         menuOpen = false
-                        openWeb("profile/settings")
+                        onOpenSettings()
                     },
                     onSignOutRequest = {
                         menuOpen = false
