@@ -98,7 +98,6 @@ fun MainScaffold(
                         user = user,
                         viewModel = profileViewModel,
                         onRefreshUser = onRefreshUser,
-                        onSignOut = onSignOut,
                         onOpenSettings = { settingsOpen = true },
                         scrollToTopTick = profileTap,
                     )
