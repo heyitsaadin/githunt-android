@@ -22,6 +22,7 @@ data class FeedUiState(
     val refreshing: Boolean = false,
     val loadingMore: Boolean = false,
     val hasMore: Boolean = false,
+    /** The next page number to ask the server for. */
     val cursor: Long? = null,
     val error: String? = null,
 )
@@ -37,7 +38,7 @@ class FeedViewModel(private val repo: FeedRepository) : ViewModel() {
         refresh()
     }
 
-    /** Newest page. Replaces what is on screen. */
+    /** Top of the feed. Replaces what is on screen. */
     fun refresh() {
         job?.cancel()
         val hadItems = _state.value.items.isNotEmpty()
@@ -45,7 +46,7 @@ class FeedViewModel(private val repo: FeedRepository) : ViewModel() {
             it.copy(loading = !hadItems, refreshing = hadItems, loadingMore = false, error = null)
         }
         job = viewModelScope.launch {
-            when (val result = repo.load(before = null)) {
+            when (val result = repo.load(page = 0)) {
                 is ApiResult.Ok -> _state.update {
                     it.copy(
                         items = result.value.items,
@@ -62,14 +63,14 @@ class FeedViewModel(private val repo: FeedRepository) : ViewModel() {
         }
     }
 
-    /** Older items, appended below. */
+    /** Next page, appended below. */
     fun loadMore() {
         val current = _state.value
         if (!current.hasMore || current.loading || current.refreshing || current.loadingMore) return
 
         _state.update { it.copy(loadingMore = true, error = null) }
         job = viewModelScope.launch {
-            when (val result = repo.load(before = current.cursor)) {
+            when (val result = repo.load(page = (current.cursor ?: 1L).toInt())) {
                 is ApiResult.Ok -> _state.update { old ->
                     val seen = old.items.mapTo(HashSet()) { item -> item.key }
                     old.copy(

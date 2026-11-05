@@ -8,9 +8,10 @@ class FeedRepository(
     private val api: FeedApi,
     private val json: Json,
 ) {
-    suspend fun load(before: Long? = null): ApiResult<FeedPage> =
-        when (val result = apiCall(json) { api.feed(before = before) }) {
-            is ApiResult.Ok -> ApiResult.Ok(result.value.toPage())
+    /** [page] 0 is the top of the feed; pass the previous page + 1 to go further down. */
+    suspend fun load(page: Int = 0): ApiResult<FeedPage> =
+        when (val result = apiCall(json) { api.feed(page = page) }) {
+            is ApiResult.Ok -> ApiResult.Ok(result.value.toPage(page))
             is ApiResult.Err -> result
         }
 }

@@ -4,13 +4,16 @@ import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-/** The existing GitHunt feed. Public, so it needs no sign-in. */
+/**
+ * The same feed the website's home page shows (GET /api/feed/default).
+ * Public, so it needs no sign-in. It is page-numbered: page 0 is the top of the
+ * feed, and each later page goes further down.
+ */
 interface FeedApi {
 
-    /** No cursor = newest page. [before] pages further back (pass the previous next_seq_id). */
-    @GET("api/feed")
+    @GET("api/feed/default")
     suspend fun feed(
-        @Query("before") before: Long? = null,
+        @Query("page") page: Int = 0,
         @Query("limit") limit: Int = 20,
-    ): Response<FeedResponse>
+    ): Response<DefaultFeedResponse>
 }

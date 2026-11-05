@@ -9,22 +9,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * GET /api/feed. Ids come from Postgres bigint and may arrive as numbers OR
- * strings, so they are read as raw JSON and parsed by hand.
+ * GET /api/feed/default. Each entry in [repos] is a repo object exactly as the
+ * website's cards read it (full_name, owner, owner_avatar, stars, ...). They are
+ * kept as raw JSON and read by hand so one odd field can never break the page.
  */
 @Serializable
-data class FeedResponse(
-    val items: List<FeedItemDto> = emptyList(),
-    @SerialName("next_seq_id") val nextSeqId: JsonElement? = null,
-    @SerialName("latest_seq_id") val latestSeqId: JsonElement? = null,
+data class DefaultFeedResponse(
+    val repos: List<JsonElement> = emptyList(),
+    val page: Int = 0,
     @SerialName("has_more") val hasMore: Boolean = false,
-)
-
-@Serializable
-data class FeedItemDto(
-    val type: String = "",
-    @SerialName("seq_id") val seqId: JsonElement? = null,
-    val data: JsonElement? = null,
 )
 
 /** What the UI draws. */
@@ -45,7 +38,7 @@ data class RepoItem(
     val language: String?,
     val topics: List<String>,
 ) : FeedItem {
-    override val key: String get() = "repo-$seqId"
+    override val key: String get() = "repo-$fullName"
 }
 
 data class PostItem(
@@ -59,14 +52,12 @@ data class PostItem(
     override val key: String get() = "post-$seqId"
 }
 
+/** [nextCursor] is the next page number to ask for. */
 data class FeedPage(
     val items: List<FeedItem>,
     val nextCursor: Long?,
     val hasMore: Boolean,
 )
-
-private fun JsonElement?.asLong(): Long? =
-    (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.toLongOrNull()
 
 private fun JsonObject.text(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.takeIf { it.isNotBlank() }
@@ -79,42 +70,27 @@ private fun JsonObject.textList(key: String): List<String> =
         ?.mapNotNull { el -> (el as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content }
         ?: emptyList()
 
-private fun FeedItemDto.toItem(): FeedItem? {
-    val seq = seqId.asLong() ?: return null
-    val obj = data as? JsonObject ?: return null
-    return when (type) {
-        "repo" -> {
-            val fullName = obj.text("full_name") ?: return null
-            RepoItem(
-                seqId = seq,
-                fullName = fullName,
-                owner = obj.text("owner") ?: fullName.substringBefore('/'),
-                avatarUrl = obj.text("owner_avatar"),
-                description = obj.text("description"),
-                url = obj.text("html_url"),
-                stars = obj.number("stars"),
-                forks = obj.number("forks"),
-                language = obj.text("language"),
-                topics = obj.textList("topics"),
-            )
-        }
-        "post" -> PostItem(
-            seqId = seq,
-            author = obj.text("author_name") ?: "someone",
-            avatarUrl = obj.text("author_avatar"),
-            body = obj.text("body") ?: "",
-            likes = obj.number("likes"),
-            comments = obj.number("comment_count"),
-        )
-        else -> null
-    }
+private fun JsonObject.toRepoItem(): RepoItem? {
+    val fullName = text("full_name") ?: return null
+    return RepoItem(
+        seqId = text("id")?.toLongOrNull() ?: fullName.hashCode().toLong(),
+        fullName = fullName,
+        owner = text("owner") ?: fullName.substringBefore('/'),
+        avatarUrl = text("owner_avatar"),
+        description = text("description"),
+        url = text("html_url"),
+        stars = number("stars"),
+        forks = number("forks"),
+        language = text("language"),
+        topics = textList("topics"),
+    )
 }
 
-fun FeedResponse.toPage(): FeedPage {
-    val cursor = nextSeqId.asLong()
+fun DefaultFeedResponse.toPage(requestedPage: Int): FeedPage {
+    val items = repos.mapNotNull { (it as? JsonObject)?.toRepoItem() }
     return FeedPage(
-        items = items.mapNotNull { it.toItem() },
-        nextCursor = cursor,
-        hasMore = hasMore && cursor != null,
+        items = items,
+        nextCursor = (requestedPage + 1).toLong(),
+        hasMore = hasMore && items.isNotEmpty(),
     )
 }
