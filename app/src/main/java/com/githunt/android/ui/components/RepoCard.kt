@@ -2,7 +2,11 @@ package com.githunt.android.ui.components
 
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
+import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,17 +14,21 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,31 +49,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
+import com.githunt.android.ui.theme.LocalGhMono
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.Locale
 
-/** The website uses a monospace face for stats, times, topic chips and pill buttons. */
-private val Mono = FontFamily.Monospace
-
 /**
- * One repo, as the website draws it. Used by Discover and the profile tabs.
+ * One repo, as the website draws it. Used by Home (the feed), Discover and the profile tabs, so
+ * all of them render identically.
  * Pass [onClipToggle] to show the bookmark; [clipped] says whether it is filled.
+ *
+ * Text uses the website's two faces: Plus Jakarta Sans for normal text and Inter (the site's
+ * `font-mono` class) for stats, times, topic chips and pill buttons.
  *
  * "Show README" expands the README inside the card, like the website. If the app container
  * isn't available (previews, tests) it opens the repo's README on GitHub instead.
@@ -77,6 +94,7 @@ fun RepoCard(
     onClipToggle: (() -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val mono = LocalGhMono.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val shape = RoundedCornerShape(16.dp)
@@ -116,13 +134,16 @@ fun RepoCard(
             .background(scheme.surface)
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
     ) {
-        // The website's full-bleed README media preview. Shows a shimmer while it loads
-        // and disappears completely if the image can't be loaded, like the website.
-        item.readmeImages.firstOrNull()?.let { preview ->
-            RepoPreview(
-                url = preview,
+        // The website's full-bleed README media preview. One picture, or a swipeable carousel with
+        // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
+        // image loads and drops images that can't be loaded, like the website.
+        if (item.readmeImages.isNotEmpty()) {
+            RepoImageCarousel(
+                images = item.readmeImages,
                 contentDescription = "${item.fullName} README preview",
-                onClick = { runCatching { uriHandler.openUri(githubUrl ?: preview) } },
+                onClick = {
+                    runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
+                },
             )
         }
 
@@ -132,30 +153,38 @@ fun RepoCard(
                 RepoAvatar(url = item.avatarUrl, size = 36.dp)
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
+                    // Web: font-semibold text-[15px] leading-snug
                     Text(
                         text = repoName,
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = 15.sp,
+                        lineHeight = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = scheme.onBackground,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Web: text-[12.5px] text-dim (regular weight, Plus Jakarta Sans)
                         Text(
                             text = item.owner,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             fontSize = 12.5.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.Normal,
                             color = scheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         val ago = relativeTime(item.updatedAt)
                         if (ago.isNotEmpty()) {
+                            // Web: text-[12px] font-mono (Inter)
                             Text(
                                 text = " \u00B7 $ago",
-                                fontFamily = Mono,
+                                fontFamily = mono,
                                 fontSize = 12.sp,
+                                lineHeight = 17.sp,
                                 color = scheme.onSurfaceVariant,
                                 maxLines = 1,
                             )
@@ -204,14 +233,15 @@ fun RepoCard(
                     item.topics.take(3).forEach { topic ->
                         Text(
                             text = topic,
-                            fontFamily = Mono,
+                            fontFamily = mono,
                             fontSize = 10.sp,
+                            lineHeight = 15.sp,
                             color = scheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .border(1.dp, scheme.outline.copy(alpha = 0.65f), CircleShape)
-                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
                 }
@@ -257,7 +287,7 @@ fun RepoCard(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = message,
-                    fontFamily = Mono,
+                    fontFamily = mono,
                     fontSize = 12.sp,
                     color = scheme.onSurfaceVariant,
                 )
@@ -312,7 +342,7 @@ fun RepoCard(
                         }
                         Text(
                             text = language,
-                            fontFamily = Mono,
+                            fontFamily = mono,
                             fontSize = 12.sp,
                             color = scheme.onSurfaceVariant,
                         )
@@ -362,7 +392,7 @@ private fun StatChip(icon: String, value: String, tint: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         PathIcon(pathData = icon, tint = tint, iconSize = 14.dp, strokeWidth = 1.8f)
         Spacer(Modifier.width(4.dp))
-        Text(text = value, fontFamily = Mono, fontSize = 12.sp, color = tint)
+        Text(text = value, fontFamily = LocalGhMono.current, fontSize = 12.sp, color = tint)
     }
 }
 
@@ -385,14 +415,17 @@ private fun CardAction(
         Spacer(Modifier.width(6.dp))
         Text(
             text = label,
-            fontFamily = Mono,
+            fontFamily = LocalGhMono.current,
             fontSize = 12.sp,
             color = tint,
         )
     }
 }
 
-/** [chevronUp] null = no chevron; false = pointing down; true = pointing up (open). */
+/**
+ * Web: `px-3.5 py-1.5 rounded-full border text-[11.5px] font-mono font-medium`.
+ * [chevronUp] null = no chevron; false = pointing down; true = pointing up (open).
+ */
 @Composable
 private fun ActionPill(
     text: String,
@@ -409,14 +442,15 @@ private fun ActionPill(
             .background(scheme.surfaceVariant.copy(alpha = 0.55f))
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = text,
-                fontFamily = Mono,
+                fontFamily = LocalGhMono.current,
                 fontSize = 11.5.sp,
+                lineHeight = 17.sp,
                 fontWeight = FontWeight.Medium,
                 color = scheme.onSurface,
                 maxLines = 1,
@@ -455,34 +489,135 @@ private fun proxiedImageUrl(src: String): String {
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
 }
 
+// Same timings as the website's ImageCarousel: a slide stays up for 2.2s, and auto-scroll holds
+// off for 4s after the person swipes so it never fights an in-progress browse.
+private const val AUTOPLAY_INTERVAL_MS = 2200L
+private const val RESUME_AFTER_INTERACTION_MS = 4000L
+
 /**
- * The card's 16:9 README picture. README images are often SVG, so the SVG decoder is on.
- * The 16:9 box is reserved up front, so nothing jumps when the image arrives: a shimmer fills it
- * while loading and fades out as the picture fades in. If loading fails the whole block is
- * removed so the card never carries a big empty box (the website's SmartImage does the same).
+ * The card's README picture area: the website's ImageCarousel.
+ *
+ * - One image: a plain 16:9 picture. Several: swipe sideways, with a small dot pager pill at the
+ *   bottom (the active dot stretches into a bar).
+ * - With several images it auto-advances every 2.2s (looping back to the first), but only while
+ *   the card is mostly on screen (60%+), the app is in the foreground, and the system's
+ *   animations aren't switched off. Touching the carousel pauses it for 4s.
+ * - README images are often SVG, so the SVG decoder is on.
+ * - The 16:9 box is reserved up front so nothing jumps; a shimmer fills each image while it loads.
+ *   An image that can't be loaded is dropped from the carousel, and if none load the whole
+ *   block disappears (the website's SmartImage does the same).
  */
 @Composable
-private fun RepoPreview(url: String, contentDescription: String, onClick: () -> Unit) {
-    var failed by remember(url) { mutableStateOf(false) }
-    if (!failed) {
-        val context = LocalContext.current
-        val request = remember(url) {
-            ImageRequest.Builder(context)
-                .data(proxiedImageUrl(url))
-                .decoderFactory(SvgDecoder.Factory())
-                .crossfade(350)
-                .build()
+private fun RepoImageCarousel(
+    images: List<String>,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    var failed by remember(images) { mutableStateOf(setOf<String>()) }
+    val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    val pagerState = rememberPagerState(pageCount = { slides.size })
+
+    var onScreen by remember { mutableStateOf(false) }
+    var pausedUntil by remember { mutableLongStateOf(0L) }
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }
+
+    // A finger on the carousel pauses auto-scroll for a few seconds.
+    LaunchedEffect(pagerState) {
+        pagerState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) {
+                pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
+            }
         }
-        ShimmerImage(
-            model = request,
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            onFailed = { failed = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clickable(onClick = onClick),
-        )
+    }
+
+    // Auto-advance. Restarts whenever the slide count, on-screen state or motion setting changes,
+    // and stops while the app is in the background.
+    LaunchedEffect(slides.size, onScreen, reduceMotion) {
+        if (slides.size <= 1 || !onScreen || reduceMotion) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(AUTOPLAY_INTERVAL_MS)
+                if (SystemClock.elapsedRealtime() < pausedUntil || pagerState.isScrollInProgress) continue
+                pagerState.animateScrollToPage((pagerState.currentPage + 1) % slides.size)
+            }
+        }
+    }
+
+    if (slides.isEmpty()) return
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .onGloballyPositioned { coordinates ->
+                // "On screen" = at least 60% of the carousel is inside the window.
+                val bounds = coordinates.boundsInWindow()
+                val total = bounds.height
+                val visible = minOf(bounds.bottom, view.height.toFloat()) - maxOf(bounds.top, 0f)
+                onScreen = total > 0f && visible / total >= 0.6f
+            },
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
+            userScrollEnabled = slides.size > 1,
+            modifier = Modifier.matchParentSize(),
+        ) { page ->
+            val url = slides[page]
+            val request = remember(url) {
+                ImageRequest.Builder(context)
+                    .data(proxiedImageUrl(url))
+                    .decoderFactory(SvgDecoder.Factory())
+                    .crossfade(350)
+                    .build()
+            }
+            ShimmerImage(
+                model = request,
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                onFailed = { failed = failed + url },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onClick),
+            )
+        }
+
+        if (slides.size > 1) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val current = pagerState.currentPage
+                repeat(slides.size) { index ->
+                    val selected = index == current
+                    val dotWidth by animateDpAsState(
+                        targetValue = if (selected) 14.dp else 6.dp,
+                        animationSpec = tween(durationMillis = 150),
+                        label = "carousel-dot",
+                    )
+                    Box(
+                        Modifier
+                            .width(dotWidth)
+                            .height(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = if (selected) 1f else 0.5f)),
+                    )
+                }
+            }
+        }
     }
 }
 

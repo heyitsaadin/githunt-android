@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -32,9 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -43,23 +39,23 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.githunt.android.data.auth.User
-import com.githunt.android.data.feed.FeedItem
 import com.githunt.android.data.feed.PostItem
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
+import com.githunt.android.ui.components.RepoCard
+import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.Wordmark
 import java.util.Locale
-import java.time.Instant
-import java.time.Duration
-import java.time.format.DateTimeParseException
-import android.content.Intent
 
 /**
  * The signed-in home: the GitHunt feed. If the email is not confirmed yet, a
  * confirm banner sits on top of it instead of blocking the whole app.
  * Grey top bar, grey bottom nav (Home + Sign out) around the feed.
+ *
+ * Repo cards here are the very same [RepoCard] Discover uses (shared README carousel, fonts,
+ * in-card README), so the two screens can never drift apart again.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,15 +120,9 @@ fun FeedScreen(
                 }
 
                 if (feed.loading && feed.items.isEmpty()) {
-                    item(key = "loading") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 48.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(strokeWidth = 2.dp, color = scheme.onSurfaceVariant)
-                        }
+                    // Same placeholder cards Discover shows while it loads.
+                    items(3, key = { index -> "skeleton-$index" }) {
+                        RepoCardSkeleton()
                     }
                 } else if (feed.items.isEmpty()) {
                     item(key = "empty") {
@@ -155,7 +145,7 @@ fun FeedScreen(
 
                 items(feed.items, key = { it.key }) { item ->
                     when (item) {
-                        is RepoItem -> RepoCard(item)
+                        is RepoItem -> RepoCard(item = item)
                         is PostItem -> PostCard(item)
                     }
                 }
@@ -248,235 +238,6 @@ private fun ConfirmEmailBanner(
                 color = scheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun RepoCard(item: RepoItem) {
-    val scheme = MaterialTheme.colorScheme
-    val uriHandler = LocalUriHandler.current
-    val context = LocalContext.current
-    val shape = RoundedCornerShape(20.dp)
-    val githubUrl = item.url
-    val readmeUrl = githubUrl?.trimEnd('/')?.plus("#readme")
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
-            .clickable(enabled = githubUrl != null) {
-                githubUrl?.let { runCatching { uriHandler.openUri(it) } }
-            },
-    ) {
-        // Match the website's full-bleed README media preview.
-        item.readmeImages.firstOrNull()?.let { preview ->
-            AsyncImage(
-                model = preview,
-                contentDescription = "${item.fullName} README preview",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clickable { runCatching { uriHandler.openUri(githubUrl ?: preview) } },
-            )
-        }
-
-        Column(modifier = Modifier.padding(horizontal = 14.dp)) {
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Avatar(url = item.avatarUrl, size = 38.dp)
-                Spacer(Modifier.size(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.fullName.substringAfter('/'),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = scheme.onBackground,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = item.owner,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = scheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        item.updatedAt?.let { updated ->
-                            Text(
-                                text = "  ·  ${timeAgo(updated)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = scheme.onSurfaceVariant.copy(alpha = 0.8f),
-                            )
-                        }
-                    }
-                }
-            }
-
-            item.description?.takeIf { it.isNotBlank() }?.let { description ->
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onBackground.copy(alpha = 0.9f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
-                Spacer(Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            width = 0.5.dp,
-                            color = scheme.outline.copy(alpha = 0.35f),
-                            shape = RoundedCornerShape(0.dp),
-                        )
-                        .padding(top = 9.dp),
-                ) {
-                    Text(
-                        text = snippet,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
-                        lineHeight = 19.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            if (item.topics.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    item.topics.take(3).forEach { topic ->
-                        Text(
-                            text = topic,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = scheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .border(1.dp, scheme.outline.copy(alpha = 0.65f), CircleShape)
-                                .padding(horizontal = 9.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CardActionPill(
-                    text = "Show README",
-                    modifier = Modifier.weight(1f),
-                    onClick = { readmeUrl?.let { runCatching { uriHandler.openUri(it) } } },
-                )
-                CardActionPill(
-                    text = "Open GitHub  ↗",
-                    modifier = Modifier.weight(1f),
-                    onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } },
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                Text(
-                    text = "★ ${compact(item.stars)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "⑂ ${compact(item.forks)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
-                )
-                item.language?.let { language ->
-                    Text(
-                        text = language,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = scheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        width = 0.5.dp,
-                        color = scheme.outline.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(0.dp),
-                    )
-                    .padding(top = 10.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "↗  Share",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
-                    modifier = Modifier.clickable {
-                        githubUrl?.let { link ->
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, link)
-                            }
-                            context.startActivity(Intent.createChooser(send, "Share repository"))
-                        }
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CardActionPill(
-    text: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(scheme.surfaceVariant.copy(alpha = 0.55f))
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = scheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-private fun timeAgo(value: String): String {
-    return try {
-        val elapsed = Duration.between(Instant.parse(value), Instant.now())
-        when {
-            elapsed.toMinutes() < 1 -> "now"
-            elapsed.toHours() < 1 -> "${elapsed.toMinutes()}m"
-            elapsed.toDays() < 1 -> "${elapsed.toHours()}h"
-            elapsed.toDays() < 30 -> "${elapsed.toDays()}d"
-            else -> "${elapsed.toDays() / 30}mo"
-        }
-    } catch (_: DateTimeParseException) {
-        ""
     }
 }
 

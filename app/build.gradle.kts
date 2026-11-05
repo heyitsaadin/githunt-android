@@ -12,29 +12,43 @@ fun buildSetting(prop: String, env: String, fallback: String): String =
         ?: System.getenv(env)?.takeIf { it.isNotBlank() }
         ?: fallback
 
-// The app font is Figtree (res/font/figtree.ttf). It is downloaded once, the first time the
-// project builds. If the download fails the build carries on and the app uses the system font.
-val fetchFigtree by tasks.registering {
-    val target = layout.projectDirectory.file("src/main/res/font/figtree.ttf").asFile
-    val scratch = File(temporaryDir, "figtree.part")
+// The app fonts are the website's: Plus Jakarta Sans for text (res/font/plus_jakarta_sans.ttf)
+// and Inter for the small labels, times, topic chips and pills (res/font/inter.ttf), which is
+// what the site's `font-mono` class actually renders. Both are variable fonts from the Google
+// Fonts repo, downloaded once, the first time the project builds. If a download fails the build
+// carries on and the app uses the system font for that face.
+fun registerFontFetch(taskName: String, resName: String, url: String) = tasks.register(taskName) {
+    val target = layout.projectDirectory.file("src/main/res/font/$resName.ttf").asFile
+    val scratch = File(temporaryDir, "$resName.part")
     onlyIf { !target.exists() }
     doLast {
         try {
             target.parentFile.mkdirs()
-            URL("https://github.com/google/fonts/raw/main/ofl/figtree/Figtree%5Bwght%5D.ttf")
+            URL(url)
                 .openStream()
                 .use { input -> scratch.outputStream().use { out -> input.copyTo(out) } }
             if (scratch.length() > 50_000) {
                 scratch.copyTo(target, overwrite = true)
             }
         } catch (e: Exception) {
-            logger.warn("Figtree font not downloaded (${e.message}). The app will use the system font.")
+            logger.warn("Font $resName not downloaded (${e.message}). The app will use the system font.")
         } finally {
             scratch.delete()
         }
     }
 }
-tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchFigtree) }
+
+val fetchPlusJakartaSans = registerFontFetch(
+    "fetchPlusJakartaSans",
+    "plus_jakarta_sans",
+    "https://github.com/google/fonts/raw/main/ofl/plusjakartasans/PlusJakartaSans%5Bwght%5D.ttf",
+)
+val fetchInter = registerFontFetch(
+    "fetchInter",
+    "inter",
+    "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+)
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchPlusJakartaSans, fetchInter) }
 
 android {
     namespace = "com.githunt.android"
