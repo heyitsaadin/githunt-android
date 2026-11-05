@@ -245,7 +245,7 @@ fun FeedScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(top = MenuCardInset, end = MenuBarPadding - MenuCardInset + MenuCardInset),
+                .padding(top = 12.dp - MenuCardInset, end = MenuBarPadding - MenuCardInset),
         ) {
             Row(
                 modifier = Modifier
