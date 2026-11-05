@@ -6,7 +6,13 @@ import com.githunt.android.BuildConfig
 import com.githunt.android.data.auth.AuthApi
 import com.githunt.android.data.auth.AuthRepository
 import com.githunt.android.data.auth.GoogleSignIn
+import com.githunt.android.data.clips.ClipsApi
+import com.githunt.android.data.clips.ClipsRepository
+import com.githunt.android.data.discover.DiscoverApi
+import com.githunt.android.data.discover.DiscoverRepository
 import com.githunt.android.data.net.SessionCookieJar
+import com.githunt.android.data.profile.ProfileApi
+import com.githunt.android.data.profile.ProfileRepository
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -60,6 +66,12 @@ class AppContainer(context: Context) {
         retrofit.create(com.githunt.android.data.feed.FeedApi::class.java),
         json,
     )
+
+    val clipsRepository = ClipsRepository(retrofit.create(ClipsApi::class.java), json)
+
+    val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
+
+    val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 }
 
 private fun userAgent(): String {
