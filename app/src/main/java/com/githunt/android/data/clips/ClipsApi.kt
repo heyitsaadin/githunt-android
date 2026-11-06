@@ -18,9 +18,24 @@ interface ClipsApi {
     @GET("api/repos/clips")
     suspend fun among(@Query("repos") repos: String): Response<ClipsResponse>
 
+    /** Just the repos inside one collection. */
+    @GET("api/repos/clips")
+    suspend fun inCollection(@Query("collection") id: String): Response<ClipsResponse>
+
     @POST("api/repos/clips")
     suspend fun add(@Body body: ClipRequest): Response<Unit>
 
     @DELETE("api/repos/clips")
     suspend fun remove(@Query("repo") repo: String): Response<Unit>
+
+    /** The person's collections, "Watch Later" first, each with its repo count and cover previews. */
+    @GET("api/repos/collections")
+    suspend fun collections(): Response<CollectionsResponse>
+
+    @POST("api/repos/collections")
+    suspend fun createCollection(@Body body: CreateCollectionRequest): Response<CreateCollectionResponse>
+
+    /** Deleting a collection keeps its repos: the server moves them into Watch Later. */
+    @DELETE("api/repos/collections")
+    suspend fun deleteCollection(@Query("id") id: String): Response<Unit>
 }

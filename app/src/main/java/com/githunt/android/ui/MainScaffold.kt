@@ -51,6 +51,7 @@ import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.settings.ThemeMode
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.auth.HomeState
+import com.githunt.android.ui.clips.ClippedReposScreen
 import com.githunt.android.ui.components.AppBottomNav
 import com.githunt.android.ui.components.AppTab
 import com.githunt.android.ui.components.OutlineButton
@@ -128,7 +129,7 @@ fun MainScaffold(
                     onSignOut = onSignOut,
                 )
             } else if (quickPage == "clips") {
-                ClipsScreen(repository = clipsRepository, onBack = { quickPage = null })
+                ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
             } else if (quickPage == "notifications") {
                 NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
             } else stateHolder.SaveableStateProvider(tab.name) {
@@ -180,104 +181,6 @@ fun MainScaffold(
                 }
             },
         )
-    }
-}
-
-/**
- * Clipped repos: the same [RepoCard] the feed and Discover use (so images, README, stats and
- * buttons all match the website), each with its bookmark filled. Tapping the bookmark unclips it
- * and the card leaves the list straight away; if the server refuses, it comes back.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ClipsScreen(repository: ClipsRepository, onBack: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var items by remember { mutableStateOf<List<RepoItem>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var refreshing by remember { mutableStateOf(false) }
-    var reloadTick by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(repository, reloadTick) {
-        when (val result = repository.all()) {
-            is ApiResult.Ok -> {
-                items = result.value
-                error = null
-            }
-            is ApiResult.Err -> error = result.message
-        }
-        refreshing = false
-    }
-
-    fun unclip(repo: RepoItem) {
-        val before = items ?: return
-        items = before.filterNot { it.fullName == repo.fullName }
-        scope.launch {
-            if (repository.remove(repo.fullName) is ApiResult.Err) {
-                items = before
-                Toast.makeText(context, "Couldn't remove that clip. Try again.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    val list = items
-    Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
-        SubPageBar(
-            title = "Clipped repos",
-            onBack = onBack,
-            subtitle = list?.let { if (it.size == 1) "1 repo" else "${it.size} repos" },
-        )
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = {
-                refreshing = true
-                reloadTick++
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .navigationBarsPadding(),
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                when {
-                    list == null && error == null -> {
-                        items(3, key = { index -> "skeleton-$index" }) { RepoCardSkeleton() }
-                    }
-                    list == null -> item(key = "error") {
-                        PageMessage(
-                            title = "Couldn't load your clips",
-                            body = error.orEmpty(),
-                            actionLabel = "Try again",
-                            onAction = {
-                                error = null
-                                reloadTick++
-                            },
-                        )
-                    }
-                    list.isEmpty() -> item(key = "empty") {
-                        PageMessage(
-                            title = "Nothing clipped yet",
-                            body = "Tap the bookmark on a repo in Discover to save it here.",
-                        )
-                    }
-                    else -> {
-                        items(list, key = { it.fullName }) { repo ->
-                            RepoCard(
-                                item = repo,
-                                clipped = true,
-                                onClipToggle = { unclip(repo) },
-                            )
-                        }
-                        item(key = "footer") { Spacer(Modifier.height(8.dp)) }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -368,7 +271,7 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
 
 /** Centered title + message (and an optional button) for empty and error states on these pages. */
 @Composable
-private fun PageMessage(
+internal fun PageMessage(
     title: String,
     body: String,
     actionLabel: String? = null,
