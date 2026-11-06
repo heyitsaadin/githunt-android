@@ -55,7 +55,7 @@ fun SubPageBar(
             PathIcon(pathData = NavIcons.ArrowBack, tint = scheme.onBackground, iconSize = 24.dp)
         }
         Spacer(Modifier.width(8.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
