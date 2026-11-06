@@ -171,6 +171,10 @@ fun FeedScreen(
                         }
                     }
 
+                    // AI search: the box, then any repos its searches found, then the normal feed.
+                    item(key = "ai-search") { AiSearchPanel(state = aiSearch) }
+                    aiSearchResults(aiSearch)
+
                     if (feed.loading && feed.items.isEmpty()) {
                         // Same placeholder cards Discover shows while it loads.
                         items(3, key = { index -> "skeleton-$index" }) {
