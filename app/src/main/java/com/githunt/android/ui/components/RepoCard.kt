@@ -300,6 +300,18 @@ fun RepoCard(
             }
 
             Spacer(Modifier.height(12.dp))
+            // Ask AI opens here, above the buttons, the same place the README opens.
+            AnimatedVisibility(
+                visible = askOpen,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    RepoAskAiPanel(item = item)
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionPill(
                     text = when {
