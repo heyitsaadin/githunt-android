@@ -128,7 +128,7 @@ fun MainScaffold(
                     onSignOut = onSignOut,
                 )
             } else if (quickPage == "clips") {
-                ClipsScreen(repository = clipsRepository, onBack = { quickPage = null })
+                ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
             } else if (quickPage == "notifications") {
                 NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
             } else stateHolder.SaveableStateProvider(tab.name) {
