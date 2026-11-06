@@ -441,9 +441,8 @@ private fun CollectionCard(
 @Composable
 private fun CoverGrid(avatars: List<String?>) {
     val scheme = MaterialTheme.colorScheme
-    val urls = avatars.filterNotNull()
     when {
-        avatars.isEmpty() || urls.isEmpty() -> Box(
+        avatars.none { it != null } -> Box(
             modifier = Modifier.fillMaxSize().background(scheme.surface),
             contentAlignment = Alignment.Center,
         ) {
@@ -454,7 +453,6 @@ private fun CoverGrid(avatars: List<String?>) {
                 strokeWidth = 1.6f,
             )
         }
-        avatars.size == 1 -> AvatarCell(urls.first(), Modifier.fillMaxSize())
         else -> Column(
             modifier = Modifier.fillMaxSize().background(scheme.outline.copy(alpha = 0.55f)),
             verticalArrangement = Arrangement.spacedBy(1.dp),
@@ -475,7 +473,12 @@ private fun CoverGrid(avatars: List<String?>) {
 
 @Composable
 private fun AvatarCell(url: String?, modifier: Modifier) {
-    Box(modifier = modifier.background(MaterialTheme.colorScheme.surface)) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier.background(
+            if (url == null) scheme.surfaceVariant.copy(alpha = 0.72f) else scheme.surface,
+        ),
+    ) {
         if (url != null) {
             ShimmerImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize())
         }
