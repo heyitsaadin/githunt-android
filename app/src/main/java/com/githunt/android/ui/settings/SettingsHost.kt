@@ -78,12 +78,9 @@ fun SettingsHost(
     AnimatedContent(
         targetState = stackKey,
         transitionSpec = {
-            val forward = targetState.count { it == ',' } > initialState.count { it == ',' }
-            if (forward) {
-                (slideInHorizontally { it / 5 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 5 } + fadeOut())
-            } else {
-                (slideInHorizontally { -it / 5 } + fadeIn()) togetherWith (slideOutHorizontally { it / 5 } + fadeOut())
-            }
+            val from = initialState.count { it == ',' }
+            val to = targetState.count { it == ',' }
+            pageTransition(forward = to > from, targetDepth = to)
         },
         label = "settings-navigation",
         modifier = Modifier
