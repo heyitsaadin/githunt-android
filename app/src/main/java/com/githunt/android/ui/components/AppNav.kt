@@ -196,8 +196,13 @@ private fun RowScope.NavTab(
                         .border(1.5.dp, ringColor, CircleShape),
                 )
             } else {
+                val iconPath = when (tab) {
+                    AppTab.Home -> if (active) NavIcons.Home else NavIcons.HomeOutline
+                    AppTab.Discover -> if (active) NavIcons.SearchFilled else NavIcons.Search
+                    AppTab.Profile -> tab.icon
+                }
                 PathIcon(
-                    pathData = tab.icon,
+                    pathData = iconPath,
                     tint = tint,
                     iconSize = 24.dp,
                     modifier = Modifier.graphicsLayer {
