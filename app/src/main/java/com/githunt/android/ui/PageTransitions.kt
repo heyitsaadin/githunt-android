@@ -27,6 +27,41 @@ private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 private const val PageMillis = 450
 
+private const val TabMillis = 300
+private const val TabFadeOutMillis = 90
+private const val TabFadeInMillis = 210
+
+/**
+ * Switching between sibling tabs (Home, Discover, Profile): a short, light "shared axis" move.
+ *
+ * The page you leave fades out fast (90 ms) while drifting a little against the direction of
+ * travel, then the new page fades in while sliding the short distance from the side it came
+ * from. Moving to a tab further right slides left, and the reverse for tabs further left, so the
+ * motion matches the order of the dock. It is a small, fast move (300 ms, about 8% of the width)
+ * rather than a full-screen push, so it reads as a switch and never gets in the way.
+ */
+fun tabTransition(forward: Boolean): ContentTransform {
+    val direction = if (forward) 1 else -1
+    val enter = fadeIn(
+        animationSpec = tween(TabFadeInMillis, delayMillis = TabFadeOutMillis, easing = LinearOutSlowInEasing),
+    ) + slideInHorizontally(
+        animationSpec = tween(TabMillis, easing = FastOutSlowInEasing),
+        initialOffsetX = { (it * 0.08f).toInt() * direction },
+    )
+    val exit = fadeOut(
+        animationSpec = tween(TabFadeOutMillis, easing = FastOutLinearInEasing),
+    ) + slideOutHorizontally(
+        animationSpec = tween(TabMillis, easing = FastOutSlowInEasing),
+        targetOffsetX = { -(it * 0.08f).toInt() * direction },
+    )
+    // No size animation: both tabs fill the same area, so nothing should resize or clip.
+    return ContentTransform(
+        targetContentEnter = enter,
+        initialContentExit = exit,
+        sizeTransform = null,
+    )
+}
+
 /** Going deeper (Profile to Settings, Settings to a sub page). */
 private val forwardTransition = (
     slideInHorizontally(
