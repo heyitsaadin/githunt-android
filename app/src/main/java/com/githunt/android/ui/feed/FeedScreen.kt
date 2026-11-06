@@ -100,6 +100,7 @@ fun FeedScreen(
     val scheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
+    val aiSearch = rememberAiSearchState()
 
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
