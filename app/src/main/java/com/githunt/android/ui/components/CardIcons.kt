@@ -28,4 +28,16 @@ object CardIcons {
 
     /** Chevron on the Show README / Show less button. Rotate it 180 degrees when open. */
     const val ChevronDown = "M6 9L12 15L18 9"
+
+    /** The AI mark on the Ask AI action (Material "auto awesome"). */
+    const val Sparkles =
+        "M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9z " +
+            "M11.5 9.5L9 4L6.5 9.5L1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5z " +
+            "M19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"
+
+    const val Search = "M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M21 21l-4.35-4.35"
+
+    const val Close = "M6 6L18 18 M18 6L6 18"
+
+    const val ArrowUp = "M12 19V5 M5 12l7-7 7 7"
 }
