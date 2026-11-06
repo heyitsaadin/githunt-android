@@ -2,6 +2,7 @@ package com.githunt.android.ui
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -121,66 +122,98 @@ fun MainScaffold(
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
-            if (settingsOpen) {
-                SettingsHost(
-                    user = user,
-                    viewModel = settingsViewModel,
-                    onClose = { settingsOpen = false },
-                    onSignOut = onSignOut,
-                )
-            } else if (quickPage == "clips") {
-                ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
-            } else if (quickPage == "notifications") {
-                NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
-            } else stateHolder.SaveableStateProvider(tab.name) {
-                when (tab) {
-                    AppTab.Home -> FeedScreen(
+            // Settings, Clipped repos and Notifications sit one level above the tabs, like pages
+            // pushed onto a navigation stack: opening one slides it in, going back slides it out.
+            val page = if (settingsOpen) "settings" else quickPage ?: "tabs"
+            AnimatedContent(
+                targetState = page,
+                transitionSpec = {
+                    val from = if (initialState == "tabs") 0 else 1
+                    val to = if (targetState == "tabs") 0 else 1
+                    pageTransition(forward = to > from, targetDepth = to)
+                },
+                label = "main-pages",
+                modifier = Modifier.fillMaxSize(),
+            ) { shown ->
+                when (shown) {
+                    "settings" -> SettingsHost(
                         user = user,
-                        feed = feed,
-                        home = home,
-                        onRefreshFeed = onRefreshFeed,
-                        onLoadMore = onLoadMore,
-                        onRefreshUser = onRefreshUser,
-                        onResend = onResend,
+                        viewModel = settingsViewModel,
+                        onClose = { settingsOpen = false },
                         onSignOut = onSignOut,
-                        onOpenClips = { quickPage = "clips" },
-                        onOpenNotifications = { quickPage = "notifications" },
-                        onOpenSettings = { settingsOpen = true },
-                        darkTheme = darkTheme,
-                        onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
-                        scrollToTopTick = homeTap,
                     )
-                    AppTab.Discover -> DiscoverScreen(
-                        viewModel = discoverViewModel,
-                        userId = user.id,
-                        scrollToTopTick = discoverTap,
-                    )
-                    AppTab.Profile -> ProfileScreen(
-                        user = user,
-                        viewModel = profileViewModel,
-                        onRefreshUser = onRefreshUser,
-                        onOpenSettings = { settingsOpen = true },
-                        scrollToTopTick = profileTap,
-                    )
+                    "clips" -> ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
+                    "notifications" -> NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
+                    // The tabs page owns the bottom dock, so the dock slides and fades with the
+                    // page. Before, it popped in at the start of the back animation, which resized
+                    // the page mid-transition and made leaving Settings look like a sudden jump.
+                    else -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(scheme.background),
+                    ) {
+                        // Each tab keeps its own saved state (scroll position and so on) while it
+                        // slides in or out, and the dock below stays put.
+                        AnimatedContent(
+                            targetState = tab,
+                            transitionSpec = { tabTransition(forward = targetState.ordinal > initialState.ordinal) },
+                            label = "tabs",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        ) { shownTab ->
+                            stateHolder.SaveableStateProvider(shownTab.name) {
+                                when (shownTab) {
+                                    AppTab.Home -> FeedScreen(
+                                        user = user,
+                                        feed = feed,
+                                        home = home,
+                                        onRefreshFeed = onRefreshFeed,
+                                        onLoadMore = onLoadMore,
+                                        onRefreshUser = onRefreshUser,
+                                        onResend = onResend,
+                                        onSignOut = onSignOut,
+                                        onOpenClips = { quickPage = "clips" },
+                                        onOpenNotifications = { quickPage = "notifications" },
+                                        onOpenSettings = { settingsOpen = true },
+                                        darkTheme = darkTheme,
+                                        onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
+                                        scrollToTopTick = homeTap,
+                                    )
+                                    AppTab.Discover -> DiscoverScreen(
+                                        viewModel = discoverViewModel,
+                                        userId = user.id,
+                                        scrollToTopTick = discoverTap,
+                                    )
+                                    AppTab.Profile -> ProfileScreen(
+                                        user = user,
+                                        viewModel = profileViewModel,
+                                        onRefreshUser = onRefreshUser,
+                                        onOpenSettings = { settingsOpen = true },
+                                        scrollToTopTick = profileTap,
+                                    )
+                                }
+                            }
+                        }
+                        AppBottomNav(
+                            selected = tab,
+                            avatarUrl = user.avatarUrl,
+                            onSelect = { picked ->
+                                if (picked == tab) {
+                                    when (picked) {
+                                        AppTab.Home -> homeTap++
+                                        AppTab.Discover -> discoverTap++
+                                        AppTab.Profile -> profileTap++
+                                    }
+                                } else {
+                                    tab = picked
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
-
-        if (!settingsOpen && quickPage == null) AppBottomNav(
-            selected = tab,
-            avatarUrl = user.avatarUrl,
-            onSelect = { picked ->
-                if (picked == tab) {
-                    when (picked) {
-                        AppTab.Home -> homeTap++
-                        AppTab.Discover -> discoverTap++
-                        AppTab.Profile -> profileTap++
-                    }
-                } else {
-                    tab = picked
-                }
-            },
-        )
     }
 }
 
