@@ -1,6 +1,7 @@
 package com.githunt.android.data.clips
 
 import com.githunt.android.data.feed.RepoItem
+import com.githunt.android.data.feed.text
 import com.githunt.android.data.feed.toRepoItemOrNull
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.net.apiCall
