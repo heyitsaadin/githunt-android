@@ -3,14 +3,11 @@ package com.githunt.android.ui.clips
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -30,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,7 +63,6 @@ import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.ShimmerBlock
 import com.githunt.android.ui.components.ShimmerImage
 import com.githunt.android.ui.components.SubPageBar
-import com.githunt.android.ui.theme.LocalGhMono
 import kotlinx.coroutines.launch
 
 /** Stroke icons (24 x 24 viewport) for the collections page, matching the website's. */
@@ -212,30 +208,12 @@ private fun CollectionsPage(
     }
 
     val list = collections
-    Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+    Box(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+      Column(modifier = Modifier.fillMaxSize()) {
         SubPageBar(
             title = "Clipped repos",
             onBack = onBack,
             subtitle = list?.let { repoCountLabel(it.sumOf { c -> c.repoCount }) },
-            actions = {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable(onClickLabel = "New collection", role = Role.Button) {
-                            createError = null
-                            showCreate = true
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    PathIcon(
-                        pathData = CollectionIcons.Plus,
-                        tint = scheme.onBackground,
-                        iconSize = 22.dp,
-                        strokeWidth = 1.8f,
-                    )
-                }
-            },
         )
         PullToRefreshBox(
             isRefreshing = refreshing,
@@ -297,6 +275,28 @@ private fun CollectionsPage(
                 }
             }
         }
+      }
+      FloatingActionButton(
+          onClick = {
+              createError = null
+              showCreate = true
+          },
+          modifier = Modifier
+              .align(Alignment.BottomEnd)
+              .padding(end = 24.dp, bottom = 24.dp)
+              .navigationBarsPadding()
+              .size(68.dp),
+          shape = RoundedCornerShape(24.dp),
+          containerColor = scheme.primaryContainer,
+          contentColor = scheme.onPrimaryContainer,
+      ) {
+          PathIcon(
+              pathData = CollectionIcons.Plus,
+              tint = scheme.onPrimaryContainer,
+              iconSize = 28.dp,
+              strokeWidth = 2f,
+          )
+      }
     }
 
     if (showCreate) {
@@ -370,53 +370,42 @@ private fun CollectionCard(
     onDelete: (() -> Unit)?,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val mono = LocalGhMono.current
-    val shape = RoundedCornerShape(16.dp)
-    val line = scheme.outline.copy(alpha = 0.55f)
+    val shape = RoundedCornerShape(28.dp)
+    val coverShape = RoundedCornerShape(22.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(scheme.background)
-            .border(1.dp, line, shape),
+            .background(scheme.surface),
     ) {
-        Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-            Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(coverShape),
+            ) {
                 CoverGrid(collection.previewAvatars)
             }
-            Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = collection.name,
-                        modifier = Modifier.weight(1f, fill = false),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = scheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (collection.isDefault) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "Default",
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(scheme.surface)
-                                .border(1.dp, line, RoundedCornerShape(50))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontFamily = mono,
-                            fontSize = 9.5.sp,
-                            color = scheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                }
+            Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 10.dp)) {
+                Text(
+                    text = collection.name,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     text = repoCountLabel(collection.repoCount),
-                    modifier = Modifier.padding(top = 2.dp),
-                    fontFamily = mono,
-                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 3.dp),
+                    fontSize = 14.sp,
                     color = scheme.onSurfaceVariant,
                 )
             }
