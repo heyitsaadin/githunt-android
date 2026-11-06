@@ -152,13 +152,18 @@ fun MainScaffold(
                             .fillMaxSize()
                             .background(scheme.background),
                     ) {
-                        Box(
+                        // Each tab keeps its own saved state (scroll position and so on) while it
+                        // slides in or out, and the dock below stays put.
+                        AnimatedContent(
+                            targetState = tab,
+                            transitionSpec = { tabTransition(forward = targetState.ordinal > initialState.ordinal) },
+                            label = "tabs",
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth(),
-                        ) {
-                            stateHolder.SaveableStateProvider(tab.name) {
-                                when (tab) {
+                        ) { shownTab ->
+                            stateHolder.SaveableStateProvider(shownTab.name) {
+                                when (shownTab) {
                                     AppTab.Home -> FeedScreen(
                                         user = user,
                                         feed = feed,
