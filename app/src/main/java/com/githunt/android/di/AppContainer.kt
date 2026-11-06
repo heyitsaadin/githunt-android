@@ -73,6 +73,13 @@ class AppContainer(context: Context) {
 
     val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
 
+    /** Ask AI on repo cards and the AI search box on Home (/api/ai-chat and /api/ai-search). */
+    val aiRepository = com.githunt.android.data.ai.AiRepository(
+        retrofit.create(com.githunt.android.data.ai.AiApi::class.java),
+        discoverRepository,
+        json,
+    )
+
     /** Loads README markdown for the repo card's "Show README" button. */
     val readmeRepository = ReadmeRepository(retrofit.create(ReadmeApi::class.java))
 
