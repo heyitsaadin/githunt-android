@@ -51,6 +51,7 @@ import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.settings.ThemeMode
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.auth.HomeState
+import com.githunt.android.ui.clips.ClippedReposScreen
 import com.githunt.android.ui.components.AppBottomNav
 import com.githunt.android.ui.components.AppTab
 import com.githunt.android.ui.components.OutlineButton
