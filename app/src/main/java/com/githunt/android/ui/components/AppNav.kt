@@ -49,7 +49,7 @@ import coil.compose.AsyncImage
 /** The three places the signed-in app lives, same as the website's dock: Feed, Discover, Profile. */
 enum class AppTab(val label: String, val icon: String) {
     Home("Home", NavIcons.Home),
-    Discover("Discover", NavIcons.Discover),
+    Discover("Search", NavIcons.Search),
     Profile("Profile", NavIcons.Person),
 }
 
@@ -196,10 +196,17 @@ private fun RowScope.NavTab(
                         .border(1.5.dp, ringColor, CircleShape),
                 )
             } else {
+                val iconPath = when (tab) {
+                    AppTab.Home -> if (active) NavIcons.Home else NavIcons.HomeOutline
+                    AppTab.Discover -> if (active) NavIcons.SearchFilled else NavIcons.Search
+                    AppTab.Profile -> tab.icon
+                }
                 PathIcon(
-                    pathData = tab.icon,
+                    pathData = iconPath,
                     tint = tint,
                     iconSize = 24.dp,
+                    evenOdd = tab == AppTab.Discover && active,
+                    strokeWidth = if (active) null else 1.65f,
                     modifier = Modifier.graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale
