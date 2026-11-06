@@ -391,6 +391,13 @@ fun RepoCard(
                     },
                 )
                 Spacer(Modifier.weight(1f))
+                CardAction(
+                    icon = CardIcons.Sparkles,
+                    filled = askOpen,
+                    label = "Ask AI",
+                    tint = if (askOpen) scheme.onBackground else scheme.onSurfaceVariant,
+                    onClick = { askOpen = !askOpen },
+                )
                 if (onClipToggle != null) {
                     CardAction(
                         icon = CardIcons.Clip,
