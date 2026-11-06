@@ -330,7 +330,7 @@ internal fun LazyListScope.aiSearchResults(state: AiSearchState) {
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                 )
             }
-            else -> items(block.items, key = { "ai-res-${m.id}-${it.fullName}" }) { repo ->
+            else -> items(block.items.orEmpty(), key = { "ai-res-${m.id}-${it.fullName}" }) { repo ->
                 RepoCard(item = repo)
             }
         }
