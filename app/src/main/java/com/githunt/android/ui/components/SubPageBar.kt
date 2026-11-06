@@ -74,5 +74,6 @@ fun SubPageBar(
                 )
             }
         }
+        actions()
     }
 }
