@@ -2,11 +2,6 @@ package com.githunt.android.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +45,7 @@ import com.githunt.android.data.settings.TranslationLanguages
 import com.githunt.android.ui.components.AppIcons
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
+import com.githunt.android.ui.pageTransition
 import kotlinx.coroutines.launch
 
 /**
@@ -78,12 +74,9 @@ fun SettingsHost(
     AnimatedContent(
         targetState = stackKey,
         transitionSpec = {
-            val forward = targetState.count { it == ',' } > initialState.count { it == ',' }
-            if (forward) {
-                (slideInHorizontally { it / 5 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 5 } + fadeOut())
-            } else {
-                (slideInHorizontally { -it / 5 } + fadeIn()) togetherWith (slideOutHorizontally { it / 5 } + fadeOut())
-            }
+            val from = initialState.count { it == ',' }
+            val to = targetState.count { it == ',' }
+            pageTransition(forward = to > from, targetDepth = to)
         },
         label = "settings-navigation",
         modifier = Modifier
