@@ -49,7 +49,7 @@ import coil.compose.AsyncImage
 /** The three places the signed-in app lives, same as the website's dock: Feed, Discover, Profile. */
 enum class AppTab(val label: String, val icon: String) {
     Home("Home", NavIcons.Home),
-    Discover("Discover", NavIcons.Discover),
+    Discover("Search", NavIcons.Search),
     Profile("Profile", NavIcons.Person),
 }
 
