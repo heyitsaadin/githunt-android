@@ -45,6 +45,7 @@ import com.githunt.android.data.settings.TranslationLanguages
 import com.githunt.android.ui.components.AppIcons
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
+import com.githunt.android.ui.pageTransition
 import kotlinx.coroutines.launch
 
 /**
