@@ -108,7 +108,7 @@ fun ClippedReposScreen(repository: ClipsRepository, onBack: () -> Unit) {
     val currentId = openId
     if (currentId != null) {
         // Back from one collection returns to the grid (and refreshes its counts and covers).
-        val closeCollection = {
+        val closeCollection: () -> Unit = {
             openId = null
             reloadTick++
         }
