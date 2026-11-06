@@ -144,57 +144,71 @@ fun MainScaffold(
                     )
                     "clips" -> ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
                     "notifications" -> NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
-                    else -> stateHolder.SaveableStateProvider(tab.name) {
-                        when (tab) {
-                            AppTab.Home -> FeedScreen(
-                                user = user,
-                                feed = feed,
-                                home = home,
-                                onRefreshFeed = onRefreshFeed,
-                                onLoadMore = onLoadMore,
-                                onRefreshUser = onRefreshUser,
-                                onResend = onResend,
-                                onSignOut = onSignOut,
-                                onOpenClips = { quickPage = "clips" },
-                                onOpenNotifications = { quickPage = "notifications" },
-                                onOpenSettings = { settingsOpen = true },
-                                darkTheme = darkTheme,
-                                onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
-                                scrollToTopTick = homeTap,
-                            )
-                            AppTab.Discover -> DiscoverScreen(
-                                viewModel = discoverViewModel,
-                                userId = user.id,
-                                scrollToTopTick = discoverTap,
-                            )
-                            AppTab.Profile -> ProfileScreen(
-                                user = user,
-                                viewModel = profileViewModel,
-                                onRefreshUser = onRefreshUser,
-                                onOpenSettings = { settingsOpen = true },
-                                scrollToTopTick = profileTap,
-                            )
+                    // The tabs page owns the bottom dock, so the dock slides and fades with the
+                    // page. Before, it popped in at the start of the back animation, which resized
+                    // the page mid-transition and made leaving Settings look like a sudden jump.
+                    else -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(scheme.background),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        ) {
+                            stateHolder.SaveableStateProvider(tab.name) {
+                                when (tab) {
+                                    AppTab.Home -> FeedScreen(
+                                        user = user,
+                                        feed = feed,
+                                        home = home,
+                                        onRefreshFeed = onRefreshFeed,
+                                        onLoadMore = onLoadMore,
+                                        onRefreshUser = onRefreshUser,
+                                        onResend = onResend,
+                                        onSignOut = onSignOut,
+                                        onOpenClips = { quickPage = "clips" },
+                                        onOpenNotifications = { quickPage = "notifications" },
+                                        onOpenSettings = { settingsOpen = true },
+                                        darkTheme = darkTheme,
+                                        onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
+                                        scrollToTopTick = homeTap,
+                                    )
+                                    AppTab.Discover -> DiscoverScreen(
+                                        viewModel = discoverViewModel,
+                                        userId = user.id,
+                                        scrollToTopTick = discoverTap,
+                                    )
+                                    AppTab.Profile -> ProfileScreen(
+                                        user = user,
+                                        viewModel = profileViewModel,
+                                        onRefreshUser = onRefreshUser,
+                                        onOpenSettings = { settingsOpen = true },
+                                        scrollToTopTick = profileTap,
+                                    )
+                                }
+                            }
                         }
+                        AppBottomNav(
+                            selected = tab,
+                            avatarUrl = user.avatarUrl,
+                            onSelect = { picked ->
+                                if (picked == tab) {
+                                    when (picked) {
+                                        AppTab.Home -> homeTap++
+                                        AppTab.Discover -> discoverTap++
+                                        AppTab.Profile -> profileTap++
+                                    }
+                                } else {
+                                    tab = picked
+                                }
+                            },
+                        )
                     }
                 }
             }
         }
-
-        if (!settingsOpen && quickPage == null) AppBottomNav(
-            selected = tab,
-            avatarUrl = user.avatarUrl,
-            onSelect = { picked ->
-                if (picked == tab) {
-                    when (picked) {
-                        AppTab.Home -> homeTap++
-                        AppTab.Discover -> discoverTap++
-                        AppTab.Profile -> profileTap++
-                    }
-                } else {
-                    tab = picked
-                }
-            },
-        )
     }
 }
 
