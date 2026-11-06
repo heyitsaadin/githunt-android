@@ -114,6 +114,9 @@ fun RepoCard(
     var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
 
+    // "Ask AI" panel. Like the website, closing it throws the conversation away.
+    var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
+
     LaunchedEffect(expanded, item.fullName) {
         if (expanded && markdown == null && readmeRepository != null) {
             loadingReadme = true
