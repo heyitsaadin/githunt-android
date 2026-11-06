@@ -198,7 +198,7 @@ private fun RowScope.NavTab(
             } else {
                 val iconPath = when (tab) {
                     AppTab.Home -> if (active) NavIcons.Home else NavIcons.HomeOutline
-                    AppTab.Discover -> if (active) NavIcons.SearchFilled else NavIcons.Search
+                    AppTab.Discover -> NavIcons.Search
                     AppTab.Profile -> tab.icon
                 }
                 PathIcon(
