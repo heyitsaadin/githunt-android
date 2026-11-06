@@ -368,7 +368,7 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
 
 /** Centered title + message (and an optional button) for empty and error states on these pages. */
 @Composable
-private fun PageMessage(
+internal fun PageMessage(
     title: String,
     body: String,
     actionLabel: String? = null,
