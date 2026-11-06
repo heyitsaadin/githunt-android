@@ -60,4 +60,51 @@ class ClipsRepository(
             is ApiResult.Ok -> ApiResult.Ok(Unit)
             is ApiResult.Err -> result
         }
+
+    // ---- Collections ----
+
+    /** The person's collections, "Watch Later" first, like the website's Clipped page. */
+    suspend fun collections(): ApiResult<List<RepoCollection>> =
+        when (val result = apiCall(json) { api.collections() }) {
+            is ApiResult.Ok -> ApiResult.Ok(result.value.collections.mapNotNull { it.toCollection() })
+            is ApiResult.Err -> result
+        }
+
+    /** The repos inside one collection, newest first. */
+    suspend fun inCollection(id: String): ApiResult<CollectionContents> =
+        when (val result = apiCall(json) { api.inCollection(id) }) {
+            is ApiResult.Ok -> ApiResult.Ok(
+                CollectionContents(
+                    name = result.value.collection?.name.orEmpty(),
+                    items = result.value.clips
+                        .mapNotNull { it.repoData?.toRepoItemOrNull() }
+                        .distinctBy { it.fullName },
+                ),
+            )
+            is ApiResult.Err -> result
+        }
+
+    suspend fun createCollection(name: String): ApiResult<RepoCollection> =
+        when (val result = apiCall(json) { api.createCollection(CreateCollectionRequest(name.trim())) }) {
+            is ApiResult.Ok -> result.value.collection?.toCollection()?.let { ApiResult.Ok(it) }
+                ?: ApiResult.Err("GitHunt sent something unexpected. Please try again.", ApiResult.Kind.Server)
+            is ApiResult.Err -> result
+        }
+
+    suspend fun deleteCollection(id: String): ApiResult<Unit> =
+        when (val result = apiCall(json) { api.deleteCollection(id) }) {
+            is ApiResult.Ok -> ApiResult.Ok(Unit)
+            is ApiResult.Err -> result
+        }
+}
+
+private fun CollectionRow.toCollection(): RepoCollection? {
+    val key = id?.content?.takeIf { it.isNotBlank() && it != "null" } ?: return null
+    return RepoCollection(
+        id = key,
+        name = name,
+        isDefault = isDefault,
+        repoCount = repoCount,
+        previewAvatars = previewRepos.take(4).map { (it as? JsonObject)?.text("owner_avatar") },
+    )
 }
