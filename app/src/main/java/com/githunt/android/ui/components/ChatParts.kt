@@ -98,6 +98,7 @@ internal fun ChatBubble(
     isUser: Boolean,
     text: String,
     isError: Boolean = false,
+    animate: Boolean = false,
     extra: @Composable ColumnScope.() -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
