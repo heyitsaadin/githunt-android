@@ -388,9 +388,10 @@ private class Segmenter(private val defs: Set<String>) {
 }
 
 /** Cuts markdown into parts. Invariant: the parts' text, joined, is exactly [markdown]. */
-internal fun segmentMarkdown(markdown: String): List<MdPart> {
-    val defs = HashSet<String>()
-    for (m in REF_DEF_COLLECT.findAll(markdown)) defs.add(m.groupValues[1].trim().lowercase())
+internal fun segmentMarkdown(
+    markdown: String,
+    defs: Set<String> = collectReferenceLabels(markdown),
+): List<MdPart> {
 
     val lines = ArrayList<String>()
     val separators = ArrayList<String>()
