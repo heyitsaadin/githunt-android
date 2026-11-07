@@ -22,7 +22,7 @@ class AuthRepository(
 ) {
 
     suspend fun login(username: String, password: String): ApiResult<User> =
-        apiCall(json) { api.login(LoginRequest(username.trim().lowercase(), password)) }.toUserWithProfile()
+        apiCall(json) { api.login(LoginRequest(username.trim().lowercase(), password)) }.toUserWithProfile(api, json)
 
     suspend fun signup(username: String, email: String, password: String): ApiResult<User> =
         apiCall(json) {
@@ -99,7 +99,7 @@ class AuthRepository(
  * read /me so the first signed-in screen gets the complete canonical user.
  * Keep the authentication response as a fallback if this extra read fails.
  */
-private suspend fun ApiResult<UserEnvelope>.toUserWithProfile(): ApiResult<User> {
+private suspend fun ApiResult<UserEnvelope>.toUserWithProfile(api: AuthApi, json: Json): ApiResult<User> {
     val authenticated = when (this) {
         is ApiResult.Ok -> ApiResult.Ok(value.user)
         is ApiResult.Err -> return this
