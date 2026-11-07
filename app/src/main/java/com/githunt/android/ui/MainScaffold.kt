@@ -200,6 +200,11 @@ fun MainScaffold(
                                 }
                             }
                         }
+                        AnimatedVisibility(
+                            visible = tab != AppTab.Home || !homeBars.hidden,
+                            enter = expandVertically(tween(220)) + fadeIn(tween(220)),
+                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+                        ) {
                         AppBottomNav(
                             selected = tab,
                             avatarUrl = user.avatarUrl,
