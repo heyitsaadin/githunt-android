@@ -22,6 +22,7 @@ import com.githunt.android.data.settings.Interests
 import com.githunt.android.data.settings.InboxNotification
 import com.githunt.android.data.settings.SettingsRepository
 import com.githunt.android.di.AppContainer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
