@@ -499,7 +499,11 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 /**
  * The card's README picture area: the website's ImageCarousel.
  *
- * - One image: a plain 16:9 picture. Several: swipe sideways, with a small dot pager pill at the
+ * - Every picture is shown whole, never cropped or stretched, and the area takes the picture's own
+ *   shape (width / height), so the card is exactly as tall as the image needs. Very tall or very
+ *   wide pictures are limited to [MIN_IMAGE_RATIO]..[MAX_IMAGE_RATIO] and fit inside it.
+ * - Tapping a picture opens a full-screen preview (swipe, pinch to zoom); GitHub opens from there.
+ * - One image: just the picture. Several: swipe sideways, with a small dot pager pill at the
  *   bottom (the active dot stretches into a bar).
  * - With several images it auto-advances every 5s (looping back to the first), but only while
  *   the card is mostly on screen (60%+), the app is in the foreground, and the system's
