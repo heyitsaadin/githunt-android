@@ -342,7 +342,7 @@ fun RepoCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .clickable { showOriginal = !showOriginal }
+                        .clickable(enabled = !readmeBusy) { showOriginal = !showOriginal }
                         .padding(vertical = 2.dp),
                 )
             }
