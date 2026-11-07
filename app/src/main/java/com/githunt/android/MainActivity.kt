@@ -64,8 +64,34 @@ class MainActivity : ComponentActivity() {
         SettingsViewModelFactory((application as GitHuntApp).container)
     }
 
+    /** The "Confirm email" link in the verification email: https://<host>/api/auth/verify-email?token=... */
+    private fun handleVerificationLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (intent.action != Intent.ACTION_VIEW || uri.path != "/api/auth/verify-email") return
+        val token = uri.getQueryParameter("token")?.takeIf { it.isNotBlank() } ?: return
+        authViewModel.confirmEmailFromLink(token)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleVerificationLink(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Toasts such as "Email confirmed" from the view model.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                authViewModel.messages.collect { message ->
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        // Only on a fresh launch: after a recreate Android hands us the same intent again.
+        if (savedInstanceState == null) handleVerificationLink(intent)
 
         // Ask Android to run this window at the fastest refresh rate supported
         // by the device. The system can still apply user/battery policies.
