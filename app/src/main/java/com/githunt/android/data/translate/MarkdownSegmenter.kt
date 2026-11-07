@@ -334,6 +334,7 @@ private class Segmenter(private val defs: Set<String>) {
         }
 
         if (line.isBlank()) {
+            plainBlank = true
             lit(line)
             inTable = false
             return
