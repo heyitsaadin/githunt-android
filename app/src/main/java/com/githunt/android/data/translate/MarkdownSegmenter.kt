@@ -228,6 +228,13 @@ private class Segmenter(private val defs: Set<String>) {
     private var prevBlank = true
     private var indentCode = false
 
+    /** True when the last line processed was a blank line outside any code, comment or HTML block. */
+    var plainBlank = false
+        private set
+
+    /** True while the last line processed belongs to a list (a blank line after it may be inside it). */
+    val listOpen: Boolean get() = inList
+
     fun literal(text: String) = lit(text)
 
     private fun lit(text: String) {
