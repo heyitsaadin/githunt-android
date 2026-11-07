@@ -515,6 +515,36 @@ private fun ActionPill(
     }
 }
 
+/** Small "GitHub ›" pill at the right end of the stats row (replaces the old Open GitHub button). */
+@Composable
+private fun GitHubPill(onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
+            .clickable(onClick = onClick)
+            .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "GitHub",
+            fontFamily = LocalGhMono.current,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = scheme.onSurface,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(2.dp))
+        PathIcon(
+            pathData = CardIcons.ChevronRight,
+            tint = scheme.onSurfaceVariant,
+            iconSize = 12.dp,
+            strokeWidth = 2f,
+        )
+    }
+}
+
 /** Hosts the website's /api/img-proxy accepts. Anything else is loaded directly. */
 private val ProxyHosts = setOf(
     "raw.githubusercontent.com",
