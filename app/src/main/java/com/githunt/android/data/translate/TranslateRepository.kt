@@ -1,5 +1,6 @@
 package com.githunt.android.data.translate
 
+import android.os.SystemClock
 import android.util.LruCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
