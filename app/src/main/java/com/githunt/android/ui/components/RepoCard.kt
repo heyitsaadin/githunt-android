@@ -681,7 +681,8 @@ private fun RepoImageCarousel(
             )
         }
 
-        if (slides.size > 1) {
+        // Hidden while a video plays so the dots never sit on top of its controls.
+        if (slides.size > 1 && !videoPlaying) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
