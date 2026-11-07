@@ -35,7 +35,13 @@ fun ReadmeView(
 }
 
 /** Cuts very long READMEs and turns relative image paths into raw.githubusercontent.com links. */
-internal fun prepareReadme(markdown: String, owner: String, repo: String, branch: String?): String {
+internal fun prepareReadme(
+    markdown: String,
+    owner: String,
+    repo: String,
+    branch: String?,
+    maxChars: Int = MaxReadmeChars,
+): String {
     val base = "https://raw.githubusercontent.com/$owner/$repo/${branch ?: "HEAD"}/"
 
     fun resolve(src: String): String = when {
