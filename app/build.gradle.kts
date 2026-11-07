@@ -58,7 +58,9 @@ android {
         applicationId = "com.githunt.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
+        // CI passes its run number (-PappVersionCode=N) so each published build upgrades the last.
+        // Local builds fall back to 2.
+        versionCode = buildSetting("appVersionCode", "GITHUNT_VERSION_CODE", "2").toInt()
         versionName = "2.0.0-alpha1"
 
         // Where the GitHunt backend (the Next.js app on Vercel) lives.
