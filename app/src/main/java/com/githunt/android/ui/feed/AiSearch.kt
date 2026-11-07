@@ -220,6 +220,13 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(16.dp)
     var focused by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
+    // The website's focus-within:border-blue-500. The theme's own "primary" is white in dark mode,
+    // which is why the outline used to turn white.
+    val borderColor by animateColorAsState(
+        targetValue = if (focused) FocusBlue else scheme.outline.copy(alpha = 0.7f),
+        animationSpec = tween(durationMillis = 150),
+        label = "ai-search-border",
+    )
 
     // Keep the newest message in view as the conversation grows.
     LaunchedEffect(state.messages.size, state.loading) {
