@@ -252,6 +252,7 @@ private class Segmenter(private val defs: Set<String>) {
     }
 
     fun process(line: String, nextLine: String?) {
+        plainBlank = false
         val wasBlank = prevBlank
         prevBlank = line.isBlank()
 
