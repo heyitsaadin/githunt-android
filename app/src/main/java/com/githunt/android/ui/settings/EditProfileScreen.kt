@@ -664,6 +664,10 @@ private fun TextBox(
                     }
                 },
             )
+            if (trailing != null) {
+                Spacer(Modifier.width(10.dp))
+                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) { trailing() }
+            }
         }
         if (counter != null) {
             Text(
