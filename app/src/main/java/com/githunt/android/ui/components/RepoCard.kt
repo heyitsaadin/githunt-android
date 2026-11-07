@@ -382,6 +382,7 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
+                            if (!expanded) markEngaged(EngagementEvent.Readme)
                             expanded = !expanded
                         }
                     },
