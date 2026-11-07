@@ -372,20 +372,66 @@ fun EditProfileScreen(
                     )
                 }
 
+                val usernameHelper: String
+                val usernameHelperColor: Color?
+                when {
+                    !usernameValid -> {
+                        usernameHelper = "3 to 20 characters: lowercase letters, numbers and underscores."
+                        usernameHelperColor = if (state.username.isEmpty()) null else scheme.error
+                    }
+                    check == UsernameCheck.Checking -> {
+                        usernameHelper = "Checking availability\u2026"
+                        usernameHelperColor = null
+                    }
+                    check == UsernameCheck.Available -> {
+                        usernameHelper = "@${state.username} is available."
+                        usernameHelperColor = SuccessGreen
+                    }
+                    check == UsernameCheck.Taken -> {
+                        usernameHelper = "Username already exists."
+                        usernameHelperColor = scheme.error
+                    }
+                    check == UsernameCheck.Unknown -> {
+                        usernameHelper = "Couldn't check right now. We'll verify when you save."
+                        usernameHelperColor = null
+                    }
+                    else -> {
+                        usernameHelper = "People can find you at @${state.username}."
+                        usernameHelperColor = null
+                    }
+                }
+
                 FormField(
                     label = "Username",
-                    helper = if (state.username.isEmpty() || !usernameValid) {
-                        "3 to 20 characters: lowercase letters, numbers and underscores."
-                    } else {
-                        "People can find you at @${state.username}."
-                    },
-                    helperIsError = !usernameValid,
+                    helper = usernameHelper,
+                    helperColor = usernameHelperColor,
                 ) {
                     TextBox(
                         value = state.username,
                         onValueChange = vm::setEditUsername,
                         placeholder = "username",
                         enabled = !busy,
+                        isError = check == UsernameCheck.Taken || (state.username.isNotEmpty() && !usernameValid),
+                        trailing = {
+                            when (check) {
+                                UsernameCheck.Checking -> CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = scheme.onSurfaceVariant,
+                                )
+                                UsernameCheck.Available -> PathIcon(
+                                    pathData = NavIcons.Check,
+                                    tint = SuccessGreen,
+                                    iconSize = 22.dp,
+                                )
+                                UsernameCheck.Taken -> PathIcon(
+                                    pathData = NavIcons.Close,
+                                    tint = scheme.error,
+                                    iconSize = 22.dp,
+                                )
+                                else -> Unit
+                            }
+                        },
                         prefix = "@",
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Ascii,
