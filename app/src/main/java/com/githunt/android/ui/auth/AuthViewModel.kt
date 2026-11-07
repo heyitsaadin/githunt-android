@@ -87,7 +87,7 @@ class AuthViewModel(
                     val state = _session.first { it !is Session.Loading }
                     if (state is Session.SignedIn) refreshUser(manual = true)
                 }
-                is ApiResult.Err -> _messages.tryEmit(result.message)
+                is ApiResult.Err -> _messages.trySend(result.message)
             }
         }
     }
