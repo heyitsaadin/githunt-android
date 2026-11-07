@@ -92,6 +92,8 @@ const val MAX_INTERESTS = 8
 class SettingsViewModel(
     private val repo: SettingsRepository,
     val prefs: AppPreferences,
+    /** Told to forget its cached taste profile when Personalization is switched off or cleared. */
+    private val engagement: EngagementRepository? = null,
 ) : ViewModel() {
 
     // ---- Security ----
