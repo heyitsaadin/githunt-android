@@ -47,7 +47,13 @@ fun ShimmerImage(
             model = model,
             contentDescription = contentDescription,
             contentScale = contentScale,
-            onSuccess = { loaded = true },
+            onSuccess = { state ->
+                loaded = true
+                val size = state.painter.intrinsicSize
+                if (size.isSpecified && size.width > 0f && size.height > 0f) {
+                    onLoaded(size.width, size.height)
+                }
+            },
             onError = {
                 loaded = true
                 onFailed()
