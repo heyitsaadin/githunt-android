@@ -67,6 +67,16 @@ import kotlinx.coroutines.launch
 /** A repo search the model suggested but the person has not run yet (the MIXED case). */
 data class AiPendingSearch(val q: String, val language: String)
 
+/**
+ * The Repository / Users / Topic chips under the box. Like the website, this is only a visual
+ * selection for now: the AI search is repo search end to end, so only Repository does anything.
+ */
+enum class AiSearchFilter(val label: String, val icon: String) {
+    Repository("Repository", CardIcons.Folder),
+    Users("Users", CardIcons.User),
+    Topic("Topic", CardIcons.Tag),
+}
+
 /** Where one search stands: running, finished with repos, or failed. */
 data class AiSearchBlock(
     val loading: Boolean = false,
