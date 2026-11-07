@@ -43,6 +43,13 @@ data class SignupRequest(val username: String, val password: String, val email: 
 @Serializable
 data class GoogleTokenRequest(val idToken: String)
 
+/** /api/auth/verify-email with `Accept: application/json`. Failures come back as `{ ok: false, error }`. */
+@Serializable
+data class VerifyEmailResponse(
+    val ok: Boolean = false,
+    val username: String? = null,
+)
+
 @Serializable
 data class ResendResponse(
     val ok: Boolean = false,
