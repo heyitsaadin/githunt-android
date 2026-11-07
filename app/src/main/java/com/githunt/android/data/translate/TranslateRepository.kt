@@ -159,7 +159,19 @@ class TranslateRepository(private val api: TranslateApi) {
         }
         if (current.isNotEmpty()) batches.add(current)
 
-        if (results.isNotEmpty()) onProgress(assembleMarkdown(plan.slots, results)) // cached pieces show instantly
+        // Re-drawing a long README is heavy for the UI, so progress goes out at most every
+        // PROGRESS_INTERVAL_MS (the first one right away). The finished text is always returned.
+        // The text is put together on a background thread, never on the caller's (UI) thread.
+        var lastEmitAt = 0L
+        suspend fun emitProgress() {
+            val now = SystemClock.elapsedRealtime()
+            if (lastEmitAt != 0L && now - lastEmitAt < PROGRESS_INTERVAL_MS) return
+            val text = withContext(Dispatchers.Default) { assembleMarkdown(plan.slots, results) }
+            lastEmitAt = SystemClock.elapsedRealtime()
+            onProgress(text)
+        }
+
+        if (results.isNotEmpty()) emitProgress() // cached pieces show instantly
 
         var strikes = 0
         for (batch in batches) {
