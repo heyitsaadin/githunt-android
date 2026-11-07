@@ -171,6 +171,33 @@ fun RepoCard(
         }
     }
 
+    // README translation. Runs only while the README is open, top to bottom in small batches, and
+    // shows what it has so far after every batch. Closing the card cancels it; reopening is instant
+    // for everything already translated, because the repository caches each piece.
+    var readmeTranslated by remember(item.fullName, targetLanguage, markdown) { mutableStateOf<String?>(null) }
+    var readmeBusy by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    LaunchedEffect(expanded, markdown, targetLanguage) {
+        val source = markdown
+        if (!expanded || source == null || translateRepository == null || targetLanguage == "off") {
+            return@LaunchedEffect
+        }
+        readmeBusy = true
+        try {
+            val result = translateRepository.translateMarkdown(source, targetLanguage) { partial ->
+                if (partial != source) readmeTranslated = partial
+            }
+            readmeTranslated = if (result.changed) result.markdown else null
+        } finally {
+            readmeBusy = false
+        }
+    }
+
+    // Closing the README or Ask AI makes the card much shorter. If the list is scrolled deep inside
+    // the card at that moment, it ends up pointing past the card's end, in some other repo. So on
+    // close the list first scrolls back to this card's header, and only then does the card shrink.
+    val scope = rememberCoroutineScope()
+    val cardTop = remember { BringIntoViewRequester() }
+
     // No whole-card click: it would fight the README text and links. Like the website,
     // GitHub opens from the button and the preview image.
     Column(
