@@ -152,7 +152,7 @@ fun ProfileScreen(
                     selected = state.tab,
                     accent = accent,
                     onSelectTab = viewModel::selectTab,
-                    onEdit = { openWeb("profile/edit") },
+                    onEdit = onEditProfile,
                     onShare = { shareProfile() },
                     onGithub = {
                         user.githubUsername?.let { runCatching { uriHandler.openUri("https://github.com/$it") } }
