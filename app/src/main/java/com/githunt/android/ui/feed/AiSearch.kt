@@ -238,7 +238,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(shape)
             .background(scheme.surface)
-            .border(2.dp, if (focused) scheme.primary else scheme.outline.copy(alpha = 0.7f), shape),
+            .border(2.dp, borderColor, shape),
     ) {
         if (state.hasConversation) {
             Column(
