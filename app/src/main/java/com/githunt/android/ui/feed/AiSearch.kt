@@ -111,6 +111,7 @@ class AiSearchState(
 ) {
     val messages = mutableStateListOf<AiMessage>()
     var input by mutableStateOf("")
+    var filter by mutableStateOf(AiSearchFilter.Repository)
     var loading by mutableStateOf(false)
         private set
 
