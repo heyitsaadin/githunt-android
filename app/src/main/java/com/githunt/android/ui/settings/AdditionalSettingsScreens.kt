@@ -13,10 +13,12 @@ import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tasklist.TaskListPlugin
 import io.noties.markwon.html.HtmlPlugin
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.githunt.android.BuildConfig
 import com.githunt.android.ui.components.MarkdownBody
+import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
 
@@ -271,6 +274,20 @@ fun HowToUseScreen(onBack: () -> Unit) {
     }
 }
 
+private const val DeveloperGithubMark =
+    "M12 .5C5.65 .5.5 5.65.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2.1c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.6-1.3-1.6-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 .1.8 2.2 3.5 1.7.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.5-5.3 5.8.4.3.8 1 .8 2v3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.65 18.35.5 12 .5z"
+
+@Composable
+private fun InfoIconSlot(pathData: String) {
+    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        PathIcon(
+            pathData = pathData,
+            tint = MaterialTheme.colorScheme.onBackground,
+            iconSize = 22.dp,
+        )
+    }
+}
+
 @Composable
 fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     var message by remember { mutableStateOf("") }
@@ -282,18 +299,29 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             SettingsBody("Version ${BuildConfig.VERSION_NAME}")
         }
         SettingsSection(title = "How it works", description = "What you can do with GitHunt.") {
-            SettingsRow(title = "Share", subtitle = "Post images, files, and links to a feed with activity from people you follow.", icon = SettingsIcons.Image)
-            SettingsRow(title = "Discover", subtitle = "Browse trending and top GitHub repositories with stars, forks, and live stats.", icon = SettingsIcons.Info)
-            SettingsRow(title = "Translate", subtitle = "Translate repository descriptions and READMEs in the app.", icon = SettingsIcons.Translate)
-            SettingsRow(title = "Your account, your data", subtitle = "Your profile, posts, and follows stay tied to your account.", icon = SettingsIcons.Shield)
+            SettingsRow(title = "Share", subtitle = "Post images, files, and links to a feed with activity from people you follow.", leading = { InfoIconSlot(SettingsIcons.Image) })
+            SettingsRow(title = "Discover", subtitle = "Browse trending and top GitHub repositories with stars, forks, and live stats.", leading = { InfoIconSlot(SettingsIcons.Info) })
+            SettingsRow(title = "Translate", subtitle = "Translate repository descriptions and READMEs in the app.", leading = { InfoIconSlot(SettingsIcons.Translate) })
+            SettingsRow(title = "Your account, your data", subtitle = "Your profile, posts, and follows stay tied to your account.", leading = { InfoIconSlot(SettingsIcons.Shield) })
         }
         SettingsSection(title = "Powered by the GitHub API", description = "Repository discovery, stats, and profile data are fetched live from GitHub. You can connect your own token in API Connection.") {}
         SettingsSection(title = "Developer", description = "Get in touch or follow along.") {
-            SettingsRow(title = "Aadin Kc", subtitle = "Kerala, India")
-            SettingsRow(title = "GitHub", subtitle = "@heyitsaadin", icon = SettingsIcons.Info, onClick = { open("https://github.com/heyitsaadin") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "LinkedIn", subtitle = "Aadin Kc", icon = SettingsIcons.LinkedIn, onClick = { open("https://www.linkedin.com/in/aadin-kc-128bb3371") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "X (Twitter)", subtitle = "@its_aadin", icon = SettingsIcons.XMark, onClick = { open("https://x.com/its_aadin") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "Email", subtitle = "hey.itsaadin@gmail.com", icon = SettingsIcons.Mail, onClick = { open("mailto:hey.itsaadin@gmail.com") }, trailing = { OpenTrailing() })
+            SettingsRow(
+                title = "Aadin Kc",
+                subtitle = "Kerala, India",
+                leading = {
+                    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                        AvatarCircle(
+                            url = "https://avatars.githubusercontent.com/u/256625064?v=4",
+                            size = 36.dp,
+                        )
+                    }
+                },
+            )
+            SettingsRow(title = "GitHub", subtitle = "@heyitsaadin", leading = { InfoIconSlot(DeveloperGithubMark) }, onClick = { open("https://github.com/heyitsaadin") }, trailing = { OpenTrailing() })
+            SettingsRow(title = "LinkedIn", subtitle = "Aadin Kc", leading = { InfoIconSlot(SettingsIcons.LinkedIn) }, onClick = { open("https://www.linkedin.com/in/aadin-kc-128bb3371") }, trailing = { OpenTrailing() })
+            SettingsRow(title = "X (Twitter)", subtitle = "@its_aadin", leading = { InfoIconSlot(SettingsIcons.XMark) }, onClick = { open("https://x.com/its_aadin") }, trailing = { OpenTrailing() })
+            SettingsRow(title = "Email", subtitle = "hey.itsaadin@gmail.com", leading = { InfoIconSlot(SettingsIcons.Mail) }, onClick = { open("mailto:hey.itsaadin@gmail.com") }, trailing = { OpenTrailing() })
         }
         SettingsSection(title = "Have an idea?", description = "Tell the developer what you'd like to see added or changed.") {
             SettingsField(label = "Your idea", value = message, onValueChange = { message = it }, singleLine = false, minLines = 4, maxLength = 2000, placeholder = "What would you like to see added or changed?")
