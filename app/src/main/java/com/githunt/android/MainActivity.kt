@@ -78,10 +78,49 @@ class MainActivity : ComponentActivity() {
         authViewModel.confirmEmailFromLink(token)
     }
 
+    private val devicePush: DevicePush
+        get() = (application as GitHuntApp).container.devicePush
+
+    // Bumped when a notification is tapped; MainScaffold opens the Notifications page for it.
+    private var openNotificationsTick by mutableIntStateOf(0)
+
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) lifecycleScope.launch { devicePush.enable() }
+    }
+
+    /**
+     * Runs once someone is signed in. Keeps this phone's registration and background check in step
+     * with the saved choice, and on the very first run turns notifications on (asking for the
+     * Android 13+ permission first), like the website's automatic prompt. Turning it off in
+     * Settings is remembered and never overridden.
+     */
+    private suspend fun prepareDeviceNotifications() {
+        val push = devicePush
+        push.onSignedIn()
+        if (!push.shouldAutoEnable()) return
+        if (push.needsPermission()) {
+            push.markPrompted()
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (push.enable() is ApiResult.Ok) {
+            push.markPrompted()
+        }
+    }
+
+    /** Tapping a GitHunt notification opens the app on the Notifications page. */
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent?.getStringExtra(DevicePush.EXTRA_OPEN) == DevicePush.OPEN_NOTIFICATIONS) {
+            intent.removeExtra(DevicePush.EXTRA_OPEN)
+            openNotificationsTick++
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleVerificationLink(intent)
+        handleNotificationIntent(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
