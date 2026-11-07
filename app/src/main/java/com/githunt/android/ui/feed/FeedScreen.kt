@@ -74,7 +74,9 @@ import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
+import com.githunt.android.ui.components.ScrollBarsState
 import com.githunt.android.ui.components.Wordmark
+import com.githunt.android.ui.components.rememberScrollBarsState
 import java.util.Locale
 
 /**
