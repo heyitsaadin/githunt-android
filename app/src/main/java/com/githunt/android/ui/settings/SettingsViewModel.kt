@@ -281,6 +281,8 @@ class SettingsViewModel(
     /** Opens a fresh draft filled in from the signed-in account. */
     fun beginEditProfile(user: User) {
         editSession++
+        usernameJob?.cancel()
+        originalUsername = user.username
         _edit.value = EditProfileUi(
             displayName = user.displayName.orEmpty(),
             username = user.username,
