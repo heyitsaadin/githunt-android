@@ -51,7 +51,7 @@ internal fun prepareReadme(
     }
 
     var text = markdown
-    if (text.length > MaxReadmeChars) {
+    if (text.length > maxChars) {
         text = text.take(MaxReadmeChars).substringBeforeLast("\n\n") + "\n\n\u2026"
     }
     text = MarkdownImage.replace(text) { m ->
