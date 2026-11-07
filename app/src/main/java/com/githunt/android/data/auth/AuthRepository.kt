@@ -19,6 +19,7 @@ class AuthRepository(
     private val api: AuthApi,
     private val cookieJar: SessionCookieJar,
     private val json: Json,
+    private val beforeLogout: suspend () -> Unit = {},
 ) {
 
     suspend fun login(username: String, password: String): ApiResult<User> =
