@@ -154,8 +154,12 @@ fun SettingsScaffold(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = scheme.background,
-                    titleContentColor = scheme.onBackground,
+                    // Give every settings screen the same subtle charcoal header.
+                    // Use the theme surface so light mode gets its matching panel tone.
+                    containerColor = scheme.surface,
+                    scrolledContainerColor = scheme.surface,
+                    titleContentColor = scheme.onSurface,
+                    navigationIconContentColor = scheme.onSurface,
                 ),
             )
         },
