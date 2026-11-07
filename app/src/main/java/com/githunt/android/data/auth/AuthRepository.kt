@@ -3,6 +3,7 @@ package com.githunt.android.data.auth
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.net.SessionCookieJar
 import com.githunt.android.data.net.apiCall
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 
