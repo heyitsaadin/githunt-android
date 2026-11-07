@@ -640,13 +640,22 @@ private fun PhotoChip(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CameraBadge(modifier: Modifier = Modifier, size: Dp = 32.dp) {
+private fun CameraBadge(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     val scheme = MaterialTheme.colorScheme
+    // A ring in the page colour separates the badge from the photo behind it.
     Box(
         modifier = modifier
-            .size(size)
+            .size(38.dp)
             .clip(CircleShape)
-            .background(scheme.onBackground),
+            .background(scheme.background)
+            .padding(3.dp)
+            .clip(CircleShape)
+            .background(scheme.onBackground)
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         PathIcon(pathData = CameraPath, tint = scheme.background, iconSize = 17.dp)
