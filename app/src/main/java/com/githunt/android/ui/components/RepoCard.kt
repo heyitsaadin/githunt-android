@@ -99,6 +99,7 @@ fun RepoCard(
     modifier: Modifier = Modifier,
     clipped: Boolean = false,
     onClipToggle: (() -> Unit)? = null,
+    showNotInterested: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
