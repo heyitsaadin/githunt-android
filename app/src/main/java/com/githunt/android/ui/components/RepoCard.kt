@@ -486,7 +486,7 @@ private val ProxyHosts = setOf(
  * Routes GitHub-hosted images through the backend's /api/img-proxy, the same as the website,
  * so they come from one cached origin instead of hotlinking GitHub on every view.
  */
-private fun proxiedImageUrl(src: String): String {
+internal fun proxiedImageUrl(src: String): String {
     val host = runCatching { Uri.parse(src).host }.getOrNull()
     if (host == null || host !in ProxyHosts) return src
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
