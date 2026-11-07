@@ -293,11 +293,17 @@ fun EditProfileScreen(
                     if (state.coverBusy) BusyOverlay()
                 }
 
+                // The outer box is not clipped, so the camera badge can sit on the avatar's edge
+                // without having its corner cut off by the circle.
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 16.dp)
-                        .size(AvatarSize + AvatarRing * 2)
+                        .size(AvatarSize + AvatarRing * 2),
+                ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
                         .clip(CircleShape)
                         .background(scheme.background)
                         .clickable(enabled = !busy && !state.avatarBusy) { photoTapped(PhotoTarget.Avatar) }
