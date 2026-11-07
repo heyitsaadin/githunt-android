@@ -12,9 +12,13 @@ import com.githunt.android.data.auth.User
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.di.AppContainer
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -60,8 +64,32 @@ class AuthViewModel(
     private val _home = MutableStateFlow(HomeState())
     val home: StateFlow<HomeState> = _home.asStateFlow()
 
+    /** One-off messages for the activity to show as a toast (for example "Email confirmed"). */
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    val messages: Flow<String> = _messages.receiveAsFlow()
+
     init {
         restore()
+    }
+
+    /**
+     * The person tapped the "Confirm email" link in their inbox and Android opened the app instead of
+     * the browser. Confirm the token, then, if they're signed in, re-read the account so the
+     * "confirm your email" screen goes away on its own.
+     */
+    fun confirmEmailFromLink(token: String) {
+        viewModelScope.launch {
+            when (val result = repo.verifyEmail(token)) {
+                is ApiResult.Ok -> {
+                    _messages.trySend("Email confirmed")
+                    // On a cold start the session check may still be running; wait for it so we don't
+                    // keep showing a stale "not confirmed" account.
+                    val state = _session.first { it !is Session.Loading }
+                    if (state is Session.SignedIn) refreshUser(manual = true)
+                }
+                is ApiResult.Err -> _messages.trySend(result.message)
+            }
+        }
     }
 
     /** Launch-time check: are we still signed in? Also the "Retry" button when the server is unreachable. */

@@ -80,6 +80,10 @@ class AuthRepository(
     suspend fun resendVerification(): ApiResult<ResendResponse> =
         apiCall(json) { api.resendVerification() }
 
+    /** Confirms the email using the token from the link the person tapped in their inbox. */
+    suspend fun verifyEmail(token: String): ApiResult<VerifyEmailResponse> =
+        apiCall(json) { api.verifyEmail(token) }
+
     /** Revokes the session on the server, then forgets the cookie even if that call failed. */
     suspend fun logout() {
         try {
