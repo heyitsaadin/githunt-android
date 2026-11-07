@@ -277,6 +277,27 @@ fun SecurityScreen(
     }
 }
 
+/**
+ * Name of this phone, e.g. "Samsung SM-A546E" or "Pixel 8". Some makers repeat the brand
+ * inside the model string, so we don't prefix it twice.
+ */
+private fun thisDeviceName(): String {
+    val brand = Build.MANUFACTURER.orEmpty().trim().replaceFirstChar { it.uppercase() }
+    val model = Build.MODEL.orEmpty().trim()
+    return when {
+        model.isEmpty() -> brand.ifEmpty { "Android device" }
+        brand.isEmpty() || model.startsWith(brand, ignoreCase = true) -> model
+        else -> "$brand $model"
+    }
+}
+
+/**
+ * The server only sees a User-Agent, so it labels the app's session "a browser on Android device".
+ * For the session running on this phone we already know better, so label it ourselves.
+ */
+private fun sessionTitle(session: DeviceSession): String =
+    if (session.isCurrent) "GitHunt app on ${thisDeviceName()}" else session.label
+
 @Composable
 fun ManageAccountScreen(
     user: User,
