@@ -44,6 +44,7 @@ data class DiscoverUiState(
 class DiscoverViewModel(
     private val repo: DiscoverRepository,
     private val clips: ClipsRepository,
+    private val engagement: EngagementRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DiscoverUiState())
@@ -52,6 +53,17 @@ class DiscoverViewModel(
     private var job: Job? = null
     private var started = false
     private var boundUser: Long? = null
+
+    init {
+        // "Not interested" on a card takes it off the screen straight away.
+        viewModelScope.launch {
+            engagement.hidden.collect { hidden ->
+                if (hidden.isNotEmpty()) {
+                    _state.update { st -> st.copy(items = st.items.filter { item -> item.fullName !in hidden }) }
+                }
+            }
+        }
+    }
 
     /** Discover hits GitHub through the server, so it only loads once the tab is first opened. */
     fun ensureLoaded() {
