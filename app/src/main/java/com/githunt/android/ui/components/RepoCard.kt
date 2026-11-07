@@ -74,8 +74,12 @@ import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
+import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.translate.TranslatedCard
 import com.githunt.android.ui.theme.LocalGhMono
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
