@@ -492,6 +492,16 @@ internal fun proxiedImageUrl(src: String): String {
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
 }
 
+// Shape of the picture area before a picture has loaded, and the limits it is kept within after:
+// at most 1/0.6 (about 1.7x) as tall as wide, and at most 3x as wide as tall. A picture outside
+// that range still shows whole, it just has a little empty space beside or above it.
+private const val DEFAULT_IMAGE_RATIO = 16f / 9f
+private const val MIN_IMAGE_RATIO = 0.6f
+private const val MAX_IMAGE_RATIO = 3f
+
+/** Picture url -> width / height, for the whole session. Only touched from the main thread. */
+private val ImageRatioCache = HashMap<String, Float>()
+
 // A calmer slide interval, with a longer pause after direct touch so browsing never feels rushed.
 private const val AUTOPLAY_INTERVAL_MS = 5000L
 private const val RESUME_AFTER_INTERACTION_MS = 8000L
