@@ -7,13 +7,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +18,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -32,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -50,23 +47,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -87,12 +82,18 @@ private const val CameraPath =
         "m3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" +
         "M12 8.8a3.2 3.2 0 1 0 0 6.4a3.2 3.2 0 1 0 0-6.4z"
 
+private val CoverHeight = 150.dp
+private val AvatarSize = 104.dp
+private val AvatarRing = 4.dp
+private val UsernameRule = Regex("^[a-z0-9_]{3,20}$")
+
 /**
- * Edit profile, inside the app. It mirrors the website's page: the cover and avatar sit exactly
- * where they do on the profile, and name, username and bio are edited in place.
+ * Edit profile, inside the app.
  *
- * Everything goes through the same `PATCH /api/auth/me` call the website uses. Connecting GitHub
- * is the one thing that stays on the website, because it needs GitHub's own sign-in page.
+ * A plain top-to-bottom form with one left edge: a top bar (Close, title, Save), the cover and
+ * avatar, then labelled Name, Username and Bio fields and the GitHub connection. Everything goes
+ * through the same `PATCH /api/auth/me` call the website uses. Connecting GitHub is the one thing
+ * that stays on the website, because it needs GitHub's own sign-in page.
  */
 @Composable
 fun EditProfileScreen(
@@ -131,8 +132,8 @@ fun EditProfileScreen(
         }
     }
 
-    // After "Connect with GitHub" sends the person to the website, re-read the account when they
-    // come back so the connected account shows up here.
+    // After "Connect GitHub" sends the person to the website, re-read the account when they come
+    // back so the connected account shows up here.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -183,6 +184,8 @@ fun EditProfileScreen(
         state.cover !is PhotoEdit.Unchanged
     val busy = state.saving || state.disconnecting
     val photoBusy = state.avatarBusy || state.coverBusy
+    val usernameValid = UsernameRule.matches(state.username)
+    val canSave = hasChanges && usernameValid && !busy && !photoBusy
 
     fun requestClose() {
         if (state.saving) return
@@ -191,369 +194,280 @@ fun EditProfileScreen(
 
     BackHandler { requestClose() }
 
-    // Same geometry as the profile page, so the editor lines up with what you'll see afterwards.
-    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val coverHeight = 210.dp + statusTop
-    val sheetTop = coverHeight - 24.dp
-    val avatarTop = sheetTop - 84.dp
     val fieldShape = RoundedCornerShape(12.dp)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(scheme.background)
-            .imePadding()
-            .verticalScroll(rememberScrollState()),
+            .imePadding(),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Cover: the whole thing is the tap target.
+        // ---- Top bar ----
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(scheme.background)
+                .statusBarsPadding()
+                .height(60.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(coverHeight)
-                    .background(Brush.linearGradient(listOf(scheme.outline, scheme.surface)))
-                    .clickable(enabled = !busy && !state.coverBusy) { photoTapped(PhotoTarget.Cover) }
-                    .semantics { contentDescription = "Change cover photo" },
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = !state.saving) { requestClose() }
+                    .semantics { contentDescription = "Close" },
+                contentAlignment = Alignment.Center,
             ) {
-                if (coverImage != null) {
-                    AsyncImage(
-                        model = coverImage,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+                PathIcon(pathData = NavIcons.Close, tint = scheme.onBackground, iconSize = 22.dp)
+            }
+            Text(
+                text = "Edit profile",
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp),
+                fontSize = 19.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onBackground,
+            )
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .clip(CircleShape)
+                    .background(scheme.onBackground.copy(alpha = if (canSave || state.saving) 1f else 0.22f))
+                    .clickable(enabled = canSave) { vm.saveProfile() }
+                    .padding(horizontal = 22.dp)
+                    .semantics { contentDescription = "Save profile" },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.saving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = scheme.background,
                     )
                 } else {
                     Text(
-                        text = "Tap to add a cover photo",
-                        modifier = Modifier.align(Alignment.Center),
-                        fontSize = 12.sp,
-                        color = scheme.onSurfaceVariant,
+                        text = "Save",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.background,
                     )
                 }
+            }
+        }
+        HorizontalDivider(color = scheme.outline.copy(alpha = 0.5f))
+
+        // ---- Scrolling form ----
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            // Cover with the avatar overlapping its bottom-left corner.
+            Box(modifier = Modifier.fillMaxWidth().height(CoverHeight + AvatarSize / 2 + AvatarRing)) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(statusTop + 72.dp)
-                        .background(Brush.verticalGradient(listOf(Color(0x73000000), Color.Transparent))),
-                )
-                if (state.coverBusy) BusyOverlay()
-                CameraBadge(
+                        .height(CoverHeight)
+                        .background(Brush.linearGradient(listOf(scheme.outline, scheme.surface)))
+                        .clickable(enabled = !busy && !state.coverBusy) { photoTapped(PhotoTarget.Cover) }
+                        .semantics { contentDescription = "Change cover photo" },
+                ) {
+                    if (coverImage != null) {
+                        AsyncImage(
+                            model = coverImage,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    PhotoChip(
+                        text = if (coverImage != null) "Change cover" else "Add cover photo",
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp),
+                    )
+                    if (state.coverBusy) BusyOverlay()
+                }
+
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 12.dp, bottom = 36.dp),
+                        .align(Alignment.BottomStart)
+                        .padding(start = 16.dp)
+                        .size(AvatarSize + AvatarRing * 2)
+                        .clip(CircleShape)
+                        .background(scheme.background)
+                        .clickable(enabled = !busy && !state.avatarBusy) { photoTapped(PhotoTarget.Avatar) }
+                        .semantics { contentDescription = "Change profile photo" }
+                        .padding(AvatarRing),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(scheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (avatarImage != null) {
+                            AsyncImage(
+                                model = avatarImage,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            PathIcon(pathData = NavIcons.Person, tint = scheme.onSurfaceVariant, iconSize = 44.dp)
+                        }
+                        if (state.avatarBusy) BusyOverlay()
+                    }
+                    CameraBadge(modifier = Modifier.align(Alignment.BottomEnd))
+                }
+
+                Text(
+                    text = "Tap your photos to change them",
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 16.dp + AvatarSize + AvatarRing * 2 + 14.dp, end = 16.dp, bottom = 14.dp),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = scheme.onSurfaceVariant,
                 )
             }
 
-            // Sheet
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = sheetTop)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(scheme.background),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 24.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(22.dp),
             ) {
-                Spacer(Modifier.height(72.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    InlineField(
+                FormField(label = "Name") {
+                    TextBox(
                         value = state.displayName,
                         onValueChange = vm::setEditName,
-                        placeholder = user.username,
-                        textStyle = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 24.sp,
-                            lineHeight = 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.onBackground,
-                            textAlign = TextAlign.Center,
-                        ),
+                        placeholder = "Your name",
                         enabled = !busy,
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next,
                         ),
-                        modifier = Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 8.dp),
                     )
-                    Spacer(Modifier.height(6.dp))
+                }
+
+                FormField(
+                    label = "Username",
+                    helper = if (state.username.isEmpty() || !usernameValid) {
+                        "3 to 20 characters: lowercase letters, numbers and underscores."
+                    } else {
+                        "People can find you at @${state.username}."
+                    },
+                    helperIsError = !usernameValid,
+                ) {
+                    TextBox(
+                        value = state.username,
+                        onValueChange = vm::setEditUsername,
+                        placeholder = "username",
+                        enabled = !busy,
+                        prefix = "@",
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Ascii,
+                            imeAction = ImeAction.Next,
+                        ),
+                    )
+                }
+
+                FormField(label = "Bio") {
+                    TextBox(
+                        value = state.bio,
+                        onValueChange = vm::setEditBio,
+                        placeholder = "Say something about yourself",
+                        enabled = !busy,
+                        singleLine = false,
+                        minLines = 4,
+                        maxLines = 8,
+                        counter = "${state.bio.length}/160",
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    )
+                }
+
+                FormField(label = "GitHub") {
+                    val github = user.githubUsername
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(fieldShape)
+                            .background(scheme.surface.copy(alpha = 0.6f))
+                            .border(1.dp, scheme.outline, fieldShape)
+                            .clickable {
+                                if (github != null) {
+                                    openWeb("https://github.com/$github")
+                                } else {
+                                    awaitingGithub = true
+                                    openSite("profile/edit")
+                                }
+                            }
+                            .padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(text = "@", fontSize = 14.sp, color = scheme.onSurfaceVariant)
-                        InlineField(
-                            value = state.username,
-                            onValueChange = vm::setEditUsername,
-                            placeholder = "username",
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 14.sp,
-                                color = scheme.onBackground,
-                                textAlign = TextAlign.Center,
-                            ),
-                            enabled = !busy,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Ascii,
-                                imeAction = ImeAction.Next,
-                            ),
-                            modifier = Modifier.width(240.dp).height(28.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = "${user.followerCount} ${if (user.followerCount == 1) "follower" else "followers"}" +
-                            "  \u00B7  ${user.followingCount} following",
-                        fontSize = 14.sp,
-                        color = scheme.onSurfaceVariant,
-                    )
-                }
-
-                state.error?.let { message ->
-                    Text(
-                        text = message,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-                        fontSize = 13.sp,
-                        color = scheme.error,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-
-                // About
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 28.dp),
-                ) {
-                    Text(
-                        text = "About",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = scheme.onBackground,
-                    )
-                    Column(
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(scheme.surface.copy(alpha = 0.45f))
-                            .border(1.dp, scheme.outline.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                    ) {
-                        BasicTextField(
-                            value = state.bio,
-                            onValueChange = vm::setEditBio,
-                            enabled = !busy,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = 15.sp,
-                                lineHeight = 22.sp,
-                                color = scheme.onBackground,
-                            ),
-                            cursorBrush = SolidColor(scheme.onBackground),
-                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                            minLines = 3,
-                            maxLines = 8,
-                            modifier = Modifier.fillMaxWidth(),
-                            decorationBox = { inner ->
-                                Box {
-                                    if (state.bio.isEmpty()) {
-                                        Text(
-                                            text = "Say something about yourself",
-                                            fontSize = 15.sp,
-                                            lineHeight = 22.sp,
-                                            color = scheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    inner()
-                                }
-                            },
-                        )
-                        Text(
-                            text = "${state.bio.length}/160",
-                            modifier = Modifier.fillMaxWidth(),
-                            fontSize = 11.sp,
-                            color = scheme.onSurfaceVariant,
-                            textAlign = TextAlign.End,
-                        )
-                    }
-
-                    val github = user.githubUsername
-                    if (github != null) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(fieldShape)
-                                    .clickable { openWeb("https://github.com/$github") }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                PathIcon(pathData = NavIcons.Code, tint = scheme.onBackground, iconSize = 24.dp)
-                                Spacer(Modifier.width(16.dp))
-                                Text(
-                                    text = "@$github",
-                                    modifier = Modifier.weight(1f, fill = false),
-                                    fontSize = 16.sp,
-                                    color = scheme.onBackground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                PathIcon(
-                                    pathData = NavIcons.ChevronRight,
-                                    tint = scheme.onSurfaceVariant,
-                                    iconSize = 20.dp,
-                                )
-                            }
+                        PathIcon(pathData = NavIcons.Code, tint = scheme.onBackground, iconSize = 24.dp)
+                        Spacer(Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (state.disconnecting) "Disconnecting\u2026" else "Disconnect",
-                                modifier = Modifier
-                                    .clip(fieldShape)
-                                    .clickable(enabled = !busy) { vm.disconnectGithubFromProfile() }
-                                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = scheme.onSurfaceVariant,
+                                text = if (github != null) "@$github" else "Connect GitHub",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = scheme.onBackground,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                    } else {
-                        Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(fieldShape)
-                                    .clickable {
-                                        awaitingGithub = true
-                                        openSite("profile/edit")
-                                    }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                PathIcon(pathData = NavIcons.Code, tint = scheme.onBackground, iconSize = 24.dp)
-                                Spacer(Modifier.width(16.dp))
-                                Text(
-                                    text = "Connect with GitHub",
-                                    modifier = Modifier.weight(1f),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = scheme.onBackground,
-                                )
-                                PathIcon(
-                                    pathData = NavIcons.ChevronRight,
-                                    tint = scheme.onSurfaceVariant,
-                                    iconSize = 20.dp,
-                                )
-                            }
                             Text(
-                                text = "Connect your GitHub account so people can find your work. " +
-                                    "This opens the GitHunt website to finish connecting.",
-                                modifier = Modifier.padding(start = 40.dp, top = 4.dp),
+                                text = if (github != null) {
+                                    "Connected"
+                                } else {
+                                    "Opens the GitHunt website to finish connecting"
+                                },
                                 fontSize = 13.sp,
                                 lineHeight = 18.sp,
                                 color = scheme.onSurfaceVariant,
                             )
                         }
-                    }
-                }
-                Spacer(Modifier.navigationBarsPadding().height(32.dp))
-            }
-
-            // Avatar, straddling the seam between cover and sheet.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = avatarTop)
-                    .size(136.dp)
-                    .clip(CircleShape)
-                    .clickable(enabled = !busy && !state.avatarBusy) { photoTapped(PhotoTarget.Avatar) }
-                    .semantics { contentDescription = "Change profile photo" },
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(scheme.background)
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(scheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (avatarImage != null) {
-                        AsyncImage(
-                            model = avatarImage,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        PathIcon(pathData = NavIcons.Person, tint = scheme.onSurfaceVariant, iconSize = 56.dp)
-                    }
-                    if (state.avatarBusy) BusyOverlay()
-                }
-                CameraBadge(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 6.dp, bottom = 6.dp),
-                    small = true,
-                )
-            }
-
-            // Close and Done float on the cover.
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x66000000))
-                        .clickable(enabled = !state.saving) { requestClose() }
-                        .semantics { contentDescription = "Close" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    PathIcon(pathData = NavIcons.Close, tint = Color.White, iconSize = 20.dp)
-                }
-                Box(
-                    modifier = Modifier
-                        .height(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .clickable(enabled = !busy && !photoBusy) {
-                            if (hasChanges) vm.saveProfile() else onBack()
+                        if (github != null) {
+                            Text(
+                                text = if (state.disconnecting) "Disconnecting\u2026" else "Disconnect",
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable(enabled = !busy) { vm.disconnectGithubFromProfile() }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = scheme.error,
+                            )
+                        } else {
+                            Box(modifier = Modifier.padding(end = 8.dp)) {
+                                PathIcon(
+                                    pathData = NavIcons.ChevronRight,
+                                    tint = scheme.onSurfaceVariant,
+                                    iconSize = 20.dp,
+                                )
+                            }
                         }
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (state.saving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.Black,
-                        )
-                    } else {
-                        Text(
-                            text = "Done",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black,
-                        )
                     }
                 }
+
+                state.error?.let { message ->
+                    Text(
+                        text = message,
+                        modifier = Modifier.fillMaxWidth(),
+                        fontSize = 14.sp,
+                        color = scheme.error,
+                        textAlign = TextAlign.Start,
+                    )
+                }
             }
+            Spacer(Modifier.navigationBarsPadding().height(32.dp))
         }
     }
 
@@ -582,70 +496,149 @@ fun EditProfileScreen(
     }
 }
 
-/** A single-line text field that looks like plain text with a dashed underline, as on the website. */
+/** A small label above a field, with optional helper text below it. All fields share one left edge. */
 @Composable
-private fun InlineField(
+private fun FormField(
+    label: String,
+    modifier: Modifier = Modifier,
+    helper: String? = null,
+    helperIsError: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.onBackground,
+        )
+        Spacer(Modifier.height(8.dp))
+        content()
+        if (helper != null) {
+            Text(
+                text = helper,
+                modifier = Modifier.padding(top = 6.dp),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                color = if (helperIsError) scheme.error else scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The one text box style used by every field: rounded, bordered, with a darker border while focused. */
+@Composable
+private fun TextBox(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    textStyle: TextStyle,
     enabled: Boolean,
     keyboardOptions: KeyboardOptions,
     modifier: Modifier = Modifier,
+    prefix: String? = null,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = 1,
+    counter: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val line = scheme.outline
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        enabled = enabled,
-        singleLine = true,
-        textStyle = textStyle,
-        cursorBrush = SolidColor(scheme.onBackground),
-        keyboardOptions = keyboardOptions,
-        modifier = modifier
-            .drawBehind {
-                val y = size.height
-                drawLine(
-                    color = line,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())),
-                )
-            }
-            .padding(bottom = 4.dp),
-        decorationBox = { inner ->
-            Box(contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        style = textStyle.copy(color = scheme.onSurfaceVariant),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                inner()
-            }
-        },
+    val shape = RoundedCornerShape(12.dp)
+    var focused by remember { mutableStateOf(false) }
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        color = scheme.onBackground,
+        textAlign = TextAlign.Start,
     )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(scheme.surface.copy(alpha = 0.6f))
+            .border(
+                width = if (focused) 1.5.dp else 1.dp,
+                color = if (focused) scheme.onBackground.copy(alpha = 0.7f) else scheme.outline,
+                shape = shape,
+            )
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+    ) {
+        Row(verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top) {
+            if (prefix != null) {
+                Text(
+                    text = prefix,
+                    style = textStyle.copy(color = scheme.onSurfaceVariant),
+                )
+                Spacer(Modifier.width(2.dp))
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                enabled = enabled,
+                singleLine = singleLine,
+                minLines = minLines,
+                maxLines = maxLines,
+                textStyle = textStyle,
+                cursorBrush = SolidColor(scheme.onBackground),
+                keyboardOptions = keyboardOptions,
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focused = it.isFocused },
+                decorationBox = { inner ->
+                    Box {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = textStyle.copy(color = scheme.onSurfaceVariant),
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+        }
+        if (counter != null) {
+            Text(
+                text = counter,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                fontSize = 12.sp,
+                color = scheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+            )
+        }
+    }
+}
+
+/** Small pill on the cover that says what tapping it does. */
+@Composable
+private fun PhotoChip(text: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color(0x99000000))
+            .padding(start = 10.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PathIcon(pathData = CameraPath, tint = Color.White, iconSize = 16.dp)
+        Spacer(Modifier.width(6.dp))
+        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
+    }
 }
 
 @Composable
-private fun CameraBadge(modifier: Modifier = Modifier, small: Boolean = false) {
+private fun CameraBadge(modifier: Modifier = Modifier, size: Dp = 32.dp) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
-            .size(if (small) 36.dp else 36.dp)
+            .size(size)
             .clip(CircleShape)
-            .background(if (small) scheme.surface else Color.White.copy(alpha = 0.9f))
-            .then(if (small) Modifier.border(2.dp, scheme.background, CircleShape) else Modifier),
+            .background(scheme.onBackground),
         contentAlignment = Alignment.Center,
     ) {
-        PathIcon(
-            pathData = CameraPath,
-            tint = if (small) scheme.onSurface else Color.Black,
-            iconSize = 18.dp,
-        )
+        PathIcon(pathData = CameraPath, tint = scheme.background, iconSize = 17.dp)
     }
 }
 
