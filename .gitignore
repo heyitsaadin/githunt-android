@@ -1,0 +1,25 @@
+# Gradle / build output
+.gradle/
+build/
+/captures
+.externalNativeBuild/
+.cxx/
+
+# Local config and secrets (never commit these)
+local.properties
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pem
+google-services.json
+
+# The shared debug key is committed on purpose (fixed Google sign-in SHA-1).
+# Any other keystore stays ignored.
+!app/githunt-debug.keystore
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
