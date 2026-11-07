@@ -287,6 +287,28 @@ fun RepoCard(
                 }
             }
 
+            // Only when something was really translated. One tap flips between the two texts.
+            if (translated != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (showOriginal) {
+                        "Original \u00B7 Show translation"
+                    } else {
+                        "Translated to ${TranslationLanguages.label(targetLanguage)} \u00B7 Show original"
+                    },
+                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { showOriginal = !showOriginal }
+                        .padding(vertical = 2.dp),
+                )
+            }
+
             // While the README downloads, a skeleton holds its place so the card feels alive.
             AnimatedVisibility(
                 visible = loadingReadme,
