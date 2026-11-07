@@ -96,6 +96,7 @@ fun FeedScreen(
     darkTheme: Boolean,
     onToggleTheme: (Boolean) -> Unit,
     scrollToTopTick: Int,
+    bars: ScrollBarsState = rememberScrollBarsState(),
 ) {
     val scheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
