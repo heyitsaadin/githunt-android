@@ -1,5 +1,6 @@
 package com.githunt.android.ui.settings
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -218,7 +219,7 @@ fun SecurityScreen(
                 sessions.forEach { session ->
                     val ago = activeAgo(session.lastSeenAt)
                     SettingsRow(
-                        title = session.label,
+                        title = sessionTitle(session),
                         subtitle = listOf(if (session.isCurrent) "This device" else "", ago)
                             .filter { it.isNotEmpty() }
                             .joinToString(" \u00B7 ")
@@ -249,7 +250,7 @@ fun SecurityScreen(
 
     pending?.let { target ->
         ConfirmDialog(
-            title = if (target.isCurrent) "Log out this device?" else "Log out ${target.label}?",
+            title = if (target.isCurrent) "Log out this device?" else "Log out ${sessionTitle(target)}?",
             text = if (target.isCurrent) {
                 "You're revoking the session you're using right now. You'll be signed out immediately and need to log in again."
             } else {
@@ -275,6 +276,27 @@ fun SecurityScreen(
         )
     }
 }
+
+/**
+ * Name of this phone, e.g. "Samsung SM-A546E" or "Pixel 8". Some makers repeat the brand
+ * inside the model string, so we don't prefix it twice.
+ */
+private fun thisDeviceName(): String {
+    val brand = Build.MANUFACTURER.orEmpty().trim().replaceFirstChar { it.uppercase() }
+    val model = Build.MODEL.orEmpty().trim()
+    return when {
+        model.isEmpty() -> brand.ifEmpty { "Android device" }
+        brand.isEmpty() || model.startsWith(brand, ignoreCase = true) -> model
+        else -> "$brand $model"
+    }
+}
+
+/**
+ * The server only sees a User-Agent, so it labels the app's session "a browser on Android device".
+ * For the session running on this phone we already know better, so label it ourselves.
+ */
+private fun sessionTitle(session: DeviceSession): String =
+    if (session.isCurrent) "GitHunt app on ${thisDeviceName()}" else session.label
 
 @Composable
 fun ManageAccountScreen(
