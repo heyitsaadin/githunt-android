@@ -65,8 +65,8 @@ class AuthViewModel(
     val home: StateFlow<HomeState> = _home.asStateFlow()
 
     /** One-off messages for the activity to show as a toast (for example "Email confirmed"). */
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val messages: SharedFlow<String> = _messages.asSharedFlow()
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    val messages: Flow<String> = _messages.receiveAsFlow()
 
     init {
         restore()
