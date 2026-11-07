@@ -153,8 +153,14 @@ fun MainScaffold(
                     "settings" -> SettingsHost(
                         user = user,
                         viewModel = settingsViewModel,
-                        onClose = { settingsOpen = false },
+                        onClose = {
+                            settingsOpen = false
+                            settingsRoute = null
+                        },
                         onSignOut = onSignOut,
+                        onUserUpdated = onUserUpdated,
+                        onRefreshUser = { onRefreshUser(true) },
+                        initialRoute = settingsRoute,
                     )
                     "clips" -> ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
                     "notifications" -> NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
