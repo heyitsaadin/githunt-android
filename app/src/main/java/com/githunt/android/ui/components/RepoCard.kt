@@ -345,6 +345,7 @@ fun RepoCard(
 
             Spacer(Modifier.height(12.dp))
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
