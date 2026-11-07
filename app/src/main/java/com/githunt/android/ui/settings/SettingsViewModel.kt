@@ -3,6 +3,7 @@ package com.githunt.android.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.githunt.android.data.engagement.EngagementRepository
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.BuildLog
