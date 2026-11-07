@@ -7,6 +7,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Default for every job: read-only. Only the release job below asks for more.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,7 +35,7 @@ jobs:
         run: ./gradlew lint
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug -PappVersionCode=${{ github.run_number }}
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
@@ -41,3 +45,31 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
+
+  # Runs only if the build job (lint, build, tests) succeeded, and only for pushes
+  # to main, never for pull requests. This is the only job with write access.
+  # Obtainium watches these releases and installs the APK.
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv app-debug.apk githunt-debug.apk
+          gh release create "build-${{ github.run_number }}" githunt-debug.apk \
+            --repo "${{ github.repository }}" \
+            --title "Build ${{ github.run_number }}" \
+            --notes "Commit ${{ github.sha }}" \
+            --target "${{ github.sha }}" \
+            --latest
