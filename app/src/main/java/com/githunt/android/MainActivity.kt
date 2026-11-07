@@ -136,7 +136,10 @@ class MainActivity : ComponentActivity() {
         }
 
         // Only on a fresh launch: after a recreate Android hands us the same intent again.
-        if (savedInstanceState == null) handleVerificationLink(intent)
+        if (savedInstanceState == null) {
+            handleVerificationLink(intent)
+            handleNotificationIntent(intent)
+        }
 
         // Ask Android to run this window at the fastest refresh rate supported
         // by the device. The system can still apply user/battery policies.
