@@ -83,6 +83,11 @@ class AppContainer(context: Context) {
     /** Loads README markdown for the repo card's "Show README" button. */
     val readmeRepository = ReadmeRepository(retrofit.create(ReadmeApi::class.java))
 
+    /** Reports what happens on repo cards (dwell, README, clips, shares, Not interested) so Personalization can learn. */
+    val engagementTracker = com.githunt.android.data.engagement.EngagementTracker(
+        retrofit.create(com.githunt.android.data.engagement.EngagementApi::class.java),
+    )
+
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
     val settingsRepository = com.githunt.android.data.settings.SettingsRepository(
