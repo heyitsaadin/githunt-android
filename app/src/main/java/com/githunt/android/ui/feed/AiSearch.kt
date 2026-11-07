@@ -309,10 +309,56 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
                 ) {
                     PathIcon(pathData = CardIcons.Close, tint = scheme.onSurfaceVariant, iconSize = 16.dp, strokeWidth = 2f)
                 }
-                Spacer(Modifier.width(4.dp))
             }
+        }
+
+        // Second row, like the website: the Repository / Users / Topic chips in a soft tray, and
+        // the round send button at the end.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(scheme.onSurface.copy(alpha = 0.05f))
+                    .horizontalScroll(rememberScrollState())
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                AiSearchFilter.values().forEach { option ->
+                    SearchFilterChip(
+                        label = option.label,
+                        icon = option.icon,
+                        selected = state.filter == option,
+                        onClick = { state.filter = option },
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
             SendCircle(enabled = !state.loading && state.input.isNotBlank(), onClick = { state.submit() })
         }
+    }
+}
+
+/** One chip in the tray: the picked one is tinted blue (web: bg-blue-500/15 text-blue-400). */
+@Composable
+private fun SearchFilterChip(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
+    val tint = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) FocusBlue.copy(alpha = 0.15f) else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        PathIcon(pathData = icon, tint = tint, iconSize = 15.dp, strokeWidth = 1.8f)
+        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
     }
 }
 
