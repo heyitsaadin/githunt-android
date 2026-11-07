@@ -491,6 +491,46 @@ class SettingsViewModel(
         }
     }
 
+    /** Whether this phone is set up to receive notifications (the person's own choice). */
+    val deviceOn: StateFlow<Boolean> = devicePush.enabled
+
+    /** True on Android 13+ until the person allows notifications for GitHunt. */
+    fun needsNotificationPermission(): Boolean = devicePush.needsPermission()
+
+    /** True when notifications are switched off for GitHunt in the phone's own settings. */
+    fun notificationsBlockedBySystem(): Boolean = !devicePush.canShow()
+
+    fun enableDevice() {
+        if (_notifications.value.deviceBusy) return
+        _notifications.update { it.copy(deviceBusy = true, deviceError = null, deviceBlocked = false) }
+        viewModelScope.launch {
+            when (val result = devicePush.enable()) {
+                is ApiResult.Ok -> _notifications.update { it.copy(deviceBusy = false) }
+                is ApiResult.Err -> _notifications.update {
+                    it.copy(deviceBusy = false, deviceError = result.message)
+                }
+            }
+        }
+    }
+
+    fun disableDevice() {
+        if (_notifications.value.deviceBusy) return
+        _notifications.update { it.copy(deviceBusy = true, deviceError = null, deviceBlocked = false) }
+        viewModelScope.launch {
+            devicePush.disable()
+            _notifications.update { it.copy(deviceBusy = false) }
+        }
+    }
+
+    fun notificationPermissionDenied() {
+        _notifications.update {
+            it.copy(
+                deviceBlocked = true,
+                deviceError = "Notifications are blocked for GitHunt. Allow them in your phone's settings, then turn this on.",
+            )
+        }
+    }
+
     fun setHotAlerts(value: Boolean) {
         val previous = _notifications.value.hotAlerts
         _notifications.update { it.copy(hotAlerts = value, error = null) }
