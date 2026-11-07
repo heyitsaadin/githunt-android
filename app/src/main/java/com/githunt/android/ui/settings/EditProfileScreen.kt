@@ -602,6 +602,8 @@ private fun TextBox(
     minLines: Int = 1,
     maxLines: Int = 1,
     counter: String? = null,
+    isError: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(12.dp)
