@@ -254,6 +254,113 @@ class SettingsViewModel(
         }
     }
 
+    // ---- Edit profile ----
+
+    private val _edit = MutableStateFlow(EditProfileUi())
+    val edit: StateFlow<EditProfileUi> = _edit.asStateFlow()
+
+    private val _profileEvents = Channel<ProfileEvent>(Channel.BUFFERED)
+    val profileEvents: Flow<ProfileEvent> = _profileEvents.receiveAsFlow()
+
+    /** Bumped every time the editor opens, so a photo still being processed can't land in a newer draft. */
+    private var editSession = 0
+
+    /** Opens a fresh draft filled in from the signed-in account. */
+    fun beginEditProfile(user: User) {
+        editSession++
+        _edit.value = EditProfileUi(
+            displayName = user.displayName.orEmpty(),
+            username = user.username,
+            bio = user.bio.orEmpty(),
+        )
+    }
+
+    fun setEditName(value: String) {
+        _edit.update { it.copy(displayName = value.take(40), error = null) }
+    }
+
+    fun setEditUsername(value: String) {
+        val cleaned = value.lowercase().filter { it in 'a'..'z' || it in '0'..'9' || it == '_' }.take(20)
+        _edit.update { it.copy(username = cleaned, error = null) }
+    }
+
+    fun setEditBio(value: String) {
+        _edit.update { it.copy(bio = value.take(160), error = null) }
+    }
+
+    fun removeEditPhoto(target: PhotoTarget) {
+        _edit.update { it.withPhoto(target, PhotoEdit.Removed).copy(error = null) }
+    }
+
+    /** Shrinks the picked picture off the main thread, then puts it in the draft. */
+    fun pickEditPhoto(target: PhotoTarget, uri: Uri, resolver: ContentResolver) {
+        val session = editSession
+        _edit.update { it.withBusy(target, true).copy(error = null) }
+        viewModelScope.launch {
+            val jpeg = ProfileImages.encode(resolver, uri, square = target == PhotoTarget.Avatar)
+            if (session != editSession) return@launch
+            _edit.update {
+                if (jpeg == null) {
+                    it.withBusy(target, false).copy(error = "Couldn't read that image. Try a different one.")
+                } else {
+                    it.withBusy(target, false).withPhoto(target, PhotoEdit.Picked(jpeg))
+                }
+            }
+        }
+    }
+
+    fun saveProfile() {
+        val draft = _edit.value
+        if (draft.saving || draft.disconnecting || draft.avatarBusy || draft.coverBusy) return
+
+        val username = draft.username.trim()
+        if (!USERNAME_PATTERN.matches(username)) {
+            _edit.update {
+                it.copy(error = "Username must be 3-20 characters: lowercase letters, numbers, underscores.")
+            }
+            return
+        }
+
+        // Only the photos that changed are sent, so an untouched photo is never re-uploaded.
+        val body = buildJsonObject {
+            put("display_name", draft.displayName.trim())
+            put("username", username)
+            put("bio", draft.bio.trim())
+            putPhoto("avatar_url", draft.avatar)
+            putPhoto("background_url", draft.cover)
+        }
+
+        _edit.update { it.copy(saving = true, error = null) }
+        viewModelScope.launch {
+            when (val result = repo.updateProfile(body)) {
+                is ApiResult.Ok -> {
+                    _edit.update { it.copy(saving = false) }
+                    _profileEvents.trySend(ProfileEvent.Saved(result.value))
+                }
+                is ApiResult.Err -> _edit.update { it.copy(saving = false, error = result.message) }
+            }
+        }
+    }
+
+    /** The website only lets a profile disconnect GitHub from here; connecting needs its OAuth page. */
+    fun disconnectGithubFromProfile() {
+        val draft = _edit.value
+        if (draft.saving || draft.disconnecting) return
+        _edit.update { it.copy(disconnecting = true, error = null) }
+        viewModelScope.launch {
+            val body = buildJsonObject { put("github_username", "") }
+            when (val result = repo.updateProfile(body)) {
+                is ApiResult.Ok -> {
+                    _edit.update { it.copy(disconnecting = false) }
+                    _profileEvents.trySend(ProfileEvent.GithubDisconnected(result.value))
+                }
+                is ApiResult.Err -> _edit.update {
+                    it.copy(disconnecting = false, error = result.message)
+                }
+            }
+        }
+    }
+
     // ---- Personalization ----
 
     private val _personalization = MutableStateFlow(PersonalizationUi())
