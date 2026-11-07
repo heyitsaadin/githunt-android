@@ -357,6 +357,7 @@ class SettingsViewModel(
     fun saveProfile() {
         val draft = _edit.value
         if (draft.saving || draft.disconnecting || draft.avatarBusy || draft.coverBusy) return
+        if (draft.usernameCheck == UsernameCheck.Checking || draft.usernameCheck == UsernameCheck.Taken) return
 
         val username = draft.username.trim()
         if (!USERNAME_PATTERN.matches(username)) {
