@@ -68,7 +68,11 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.feed.PostItem
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
