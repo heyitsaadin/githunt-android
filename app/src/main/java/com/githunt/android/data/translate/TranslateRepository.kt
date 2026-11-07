@@ -46,6 +46,12 @@ data class TranslatedCard(
     val changed: Boolean,
 )
 
+/** A README after translation. [changed] is true only when some piece really was translated. */
+data class MarkdownTranslation(
+    val markdown: String,
+    val changed: Boolean,
+)
+
 /**
  * Translates the text on repo cards into the language chosen in Settings.
  *
