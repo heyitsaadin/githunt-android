@@ -73,3 +73,23 @@ jobs:
             --notes "Commit ${{ github.sha }}" \
             --target "${{ github.sha }}" \
             --latest
+
+      # Posts to the Discord channel behind the DISCORD_WEBHOOK_URL repo secret.
+      # If the secret isn't set, or Discord is down, this is skipped without
+      # failing the release.
+      - name: Notify Discord
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BUILD: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set, skipping Discord notification."
+            exit 0
+          fi
+          URL="https://github.com/$REPO/releases/tag/build-$BUILD"
+          MSG="GitHunt Build $BUILD is out (commit ${SHA:0:7}). Update it from Obtainium. $URL"
+          jq -n --arg content "$MSG" '{content: $content}' \
+            | curl -sSf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
