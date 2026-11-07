@@ -383,7 +383,14 @@ class SettingsViewModel(
                     _edit.update { it.copy(saving = false) }
                     _profileEvents.trySend(ProfileEvent.Saved(result.value))
                 }
-                is ApiResult.Err -> _edit.update { it.copy(saving = false, error = result.message) }
+                is ApiResult.Err -> _edit.update {
+                    // Somebody took the name between the check and the save.
+                    if (result.code == 409) {
+                        it.copy(saving = false, usernameCheck = UsernameCheck.Taken, error = null)
+                    } else {
+                        it.copy(saving = false, error = result.message)
+                    }
+                }
             }
         }
     }
