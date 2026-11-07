@@ -137,6 +137,7 @@ internal fun ChatBubble(
             delay(16)
             shown = minOf(total, shown + step)
         }
+        onAnimationDone()
     }
     val finished = shown >= rendered.length
     Box(
