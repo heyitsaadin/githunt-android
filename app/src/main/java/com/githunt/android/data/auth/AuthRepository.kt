@@ -27,10 +27,10 @@ class AuthRepository(
     suspend fun signup(username: String, email: String, password: String): ApiResult<User> =
         apiCall(json) {
             api.signup(SignupRequest(username.trim().lowercase(), password, email.trim().lowercase()))
-        }.toUserWithProfile()
+        }.toUserWithProfile(api, json)
 
     suspend fun signInWithGoogle(idToken: String): ApiResult<User> =
-        apiCall(json) { api.googleSignIn(GoogleTokenRequest(idToken)) }.toUserWithProfile()
+        apiCall(json) { api.googleSignIn(GoogleTokenRequest(idToken)) }.toUserWithProfile(api, json)
 
     /**
      * Called once at launch. No stored cookie means signed out with no network
