@@ -233,7 +233,7 @@ fun RepoCard(
                 }
             }
 
-            item.description?.takeIf { it.isNotBlank() }?.let { description ->
+            shownDescription?.takeIf { it.isNotBlank() }?.let { description ->
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = description,
