@@ -265,8 +265,8 @@ fun EditProfileScreen(
                         onValueChange = vm::setEditName,
                         placeholder = user.username,
                         textStyle = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 26.sp,
-                            lineHeight = 32.sp,
+                            fontSize = 24.sp,
+                            lineHeight = 30.sp,
                             fontWeight = FontWeight.Bold,
                             color = scheme.onBackground,
                             textAlign = TextAlign.Center,
@@ -276,10 +276,14 @@ fun EditProfileScreen(
                             capitalization = KeyboardCapitalization.Words,
                             imeAction = ImeAction.Next,
                         ),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(42.dp).padding(horizontal = 8.dp),
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(text = "@", fontSize = 14.sp, color = scheme.onSurfaceVariant)
                         InlineField(
                             value = state.username,
@@ -288,17 +292,17 @@ fun EditProfileScreen(
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = 14.sp,
                                 color = scheme.onBackground,
-                                textAlign = TextAlign.Start,
+                                textAlign = TextAlign.Center,
                             ),
                             enabled = !busy,
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Ascii,
                                 imeAction = ImeAction.Next,
                             ),
-                            modifier = Modifier.width((maxOf(state.username.length, 8) * 9).dp),
+                            modifier = Modifier.width(240.dp).height(28.dp),
                         )
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
                         text = "${user.followerCount} ${if (user.followerCount == 1) "follower" else "followers"}" +
                             "  \u00B7  ${user.followingCount} following",
@@ -333,12 +337,12 @@ fun EditProfileScreen(
                     )
                     Column(
                         modifier = Modifier
-                            .padding(top = 12.dp)
+                            .padding(top = 10.dp)
                             .fillMaxWidth()
-                            .clip(fieldShape)
-                            .background(scheme.surface.copy(alpha = 0.6f))
-                            .border(1.dp, scheme.outline, fieldShape)
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(scheme.surface.copy(alpha = 0.45f))
+                            .border(1.dp, scheme.outline.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                     ) {
                         BasicTextField(
                             value = state.bio,
