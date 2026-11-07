@@ -71,6 +71,7 @@ import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
+import com.githunt.android.data.engagement.EngagementEvent
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
 import com.githunt.android.ui.theme.LocalGhMono
@@ -97,6 +98,8 @@ fun RepoCard(
     modifier: Modifier = Modifier,
     clipped: Boolean = false,
     onClipToggle: (() -> Unit)? = null,
+    /** Shows the card's "..." menu with Not interested (Home feed). The card is hidden by the feed. */
+    notInterestedEnabled: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
@@ -115,6 +118,17 @@ fun RepoCard(
     var markdown by remember(item.fullName) { mutableStateOf<String?>(null) }
     var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
+
+    // What the person does with this card is reported to the backend (like the website's
+    // recordEngagement) so Personalization can learn from it. `dwell` times how long the card is
+    // in view; `track` reports one deliberate action and marks the look as engaged, so a quick
+    // "open the README, scroll on" is never counted as a skip.
+    val tracker = remember(context) { (context.applicationContext as? GitHuntApp)?.container?.engagementTracker }
+    val dwell = rememberCardDwell(item, tracker)
+    fun track(event: String) {
+        dwell.engaged = true
+        tracker?.record(item, event)
+    }
 
     // "Ask AI" panel. Like the website, closing it throws the conversation away.
     var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
@@ -140,7 +154,8 @@ fun RepoCard(
             .fillMaxWidth()
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .trackDwell(dwell),
     ) {
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
         // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
@@ -198,6 +213,9 @@ fun RepoCard(
                             )
                         }
                     }
+                }
+                if (notInterestedEnabled && tracker != null) {
+                    RepoMoreMenu(onNotInterested = { tracker.notInterested(item) })
                 }
             }
 
@@ -331,6 +349,7 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
+                            if (!expanded) track(EngagementEvent.README)
                             expanded = !expanded
                         }
                     },
@@ -341,7 +360,10 @@ fun RepoCard(
                     leadingIcon = CardIcons.Sparkles,
                     chevronUp = askOpen,
                     active = askOpen,
-                    onClick = { askOpen = !askOpen },
+                    onClick = {
+                        if (!askOpen) track(EngagementEvent.ASK_AI)
+                        askOpen = !askOpen
+                    },
                 )
             }
 
@@ -378,7 +400,12 @@ fun RepoCard(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                GitHubPill(onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } })
+                GitHubPill(
+                    onClick = {
+                        track(EngagementEvent.GITHUB_CLICK)
+                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+                    },
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -395,6 +422,7 @@ fun RepoCard(
                     tint = scheme.onSurfaceVariant,
                     onClick = {
                         githubUrl?.let { link ->
+                            track(EngagementEvent.SHARE)
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, link)
@@ -410,7 +438,10 @@ fun RepoCard(
                         filled = clipped,
                         label = if (clipped) "Clipped" else "Clip",
                         tint = if (clipped) scheme.onBackground else scheme.onSurfaceVariant,
-                        onClick = onClipToggle,
+                        onClick = {
+                            track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                            onClipToggle()
+                        },
                     )
                 }
             }
