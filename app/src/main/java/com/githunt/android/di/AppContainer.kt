@@ -90,6 +90,15 @@ class AppContainer(context: Context) {
         json,
     )
 
+    /**
+     * Personalization: logs what the person does with repo cards (POST /api/engagement) and reads
+     * their taste profile back (GET /api/engagement/interest) so the feed can rank with it.
+     */
+    val engagementRepository = com.githunt.android.data.engagement.EngagementRepository(
+        retrofit.create(com.githunt.android.data.engagement.EngagementApi::class.java),
+        json,
+    )
+
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
 }
