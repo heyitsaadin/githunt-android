@@ -7,9 +7,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# Needed so the job can create a GitHub Release (only used on pushes to main).
+# Default for every job: read-only. Only the release job below asks for more.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -46,15 +46,29 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
 
-      # Runs only after every step above succeeded, and only for pushes to main
-      # (not pull requests). Obtainium watches these releases and installs the APK.
+  # Runs only if the build job (lint, build, tests) succeeded, and only for pushes
+  # to main, never for pull requests. This is the only job with write access.
+  # Obtainium watches these releases and installs the APK.
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+
       - name: Publish GitHub Release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk githunt-debug.apk
+          mv app-debug.apk githunt-debug.apk
           gh release create "build-${{ github.run_number }}" githunt-debug.apk \
+            --repo "${{ github.repository }}" \
             --title "Build ${{ github.run_number }}" \
             --notes "Commit ${{ github.sha }}" \
             --target "${{ github.sha }}" \
