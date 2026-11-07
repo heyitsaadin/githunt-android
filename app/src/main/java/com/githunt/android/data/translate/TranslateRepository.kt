@@ -177,7 +177,7 @@ class TranslateRepository(private val api: TranslateApi) {
             // leave the rest in the original language.
             strikes = if (ok == 0) strikes + 1 else 0
             if (strikes >= 2) break
-            onProgress(assembleMarkdown(plan.slots, results))
+            emitProgress()
         }
 
         val changed = results.any { (text, translated) -> text != translated }
