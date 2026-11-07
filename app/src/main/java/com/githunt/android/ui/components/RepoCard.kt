@@ -360,7 +360,10 @@ fun RepoCard(
                     leadingIcon = CardIcons.Sparkles,
                     chevronUp = askOpen,
                     active = askOpen,
-                    onClick = { askOpen = !askOpen },
+                    onClick = {
+                        if (!askOpen) track(EngagementEvent.ASK_AI)
+                        askOpen = !askOpen
+                    },
                 )
             }
 
