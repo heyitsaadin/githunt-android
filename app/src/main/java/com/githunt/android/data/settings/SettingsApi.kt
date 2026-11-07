@@ -92,3 +92,6 @@ interface SettingsApi {
     @GET("api/build-logs")
     suspend fun buildLogs(): Response<BuildLogsResponse>
 }
+
+@Serializable
+data class UsernameAvailability(val available: Boolean = false)
