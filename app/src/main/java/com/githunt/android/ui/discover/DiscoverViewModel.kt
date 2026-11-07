@@ -238,5 +238,9 @@ class DiscoverViewModel(
 class DiscoverViewModelFactory(private val container: AppContainer) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        DiscoverViewModel(container.discoverRepository, container.clipsRepository) as T
+        DiscoverViewModel(
+            container.discoverRepository,
+            container.clipsRepository,
+            container.engagementRepository,
+        ) as T
 }
