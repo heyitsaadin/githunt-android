@@ -146,7 +146,10 @@ class DiscoverViewModel(
         job = viewModelScope.launch {
             when (val result = repo.load(snapshot.mode, snapshot.language, snapshot.search, page = 1, force = refresh)) {
                 is ApiResult.Ok -> {
-                    val items = result.value.items.distinctBy { item -> item.fullName }
+                    val hidden = engagement.hidden.value
+                    val items = result.value.items
+                        .distinctBy { item -> item.fullName }
+                        .filter { item -> item.fullName !in hidden }
                     _state.update {
                         it.copy(
                             items = items,
