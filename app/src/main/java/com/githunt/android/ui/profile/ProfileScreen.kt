@@ -91,6 +91,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     onRefreshUser: (manual: Boolean) -> Unit,
     onOpenSettings: () -> Unit,
+    onEditProfile: () -> Unit,
     scrollToTopTick: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
