@@ -164,8 +164,12 @@ fun RepoAskAiPanel(item: RepoItem, modifier: Modifier = Modifier) {
                 }
             }
 
-            messages.forEach { m ->
-                ChatBubble(isUser = m.role == "user", text = m.content)
+            messages.forEachIndexed { index, m ->
+                ChatBubble(
+                    isUser = m.role == "user",
+                    text = m.content,
+                    animate = index == animatedIndex,
+                )
             }
             if (sending) TypingBubble()
             error?.let { message ->
