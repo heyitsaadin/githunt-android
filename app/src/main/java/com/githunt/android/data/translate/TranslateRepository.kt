@@ -109,6 +109,80 @@ class TranslateRepository(private val api: TranslateApi) {
         )
     }
 
+    /**
+     * Translates a README in place: code, links, tables and other structure are never touched, only
+     * the readable words (see MarkdownSegmenter). Pieces go out top to bottom in small batches and
+     * [onProgress] gets the best markdown so far after each one, so the top of the README shows up
+     * quickly. Whatever could not be translated keeps its original text.
+     *
+     * Never throws (except for coroutine cancellation). Calling it again only re-requests what is
+     * missing, because every piece that did translate is cached.
+     */
+    suspend fun translateMarkdown(
+        markdown: String,
+        target: String,
+        onProgress: (String) -> Unit,
+    ): MarkdownTranslation {
+        val unchanged = MarkdownTranslation(markdown, changed = false)
+        if (target == OFF || markdown.isBlank()) return unchanged
+
+        val plan = withContext(Dispatchers.Default) { planMarkdown(markdown, target) }
+        val results = HashMap<String, String>()
+        for (text in plan.order) {
+            cache.get(key(target, text))?.let { results[text] = it.text }
+        }
+
+        // What still needs the network, in document order, within the character budget.
+        val todo = ArrayList<String>()
+        var budget = README_CHAR_BUDGET
+        for (text in plan.order) {
+            if (text in results) continue
+            if (budget - text.length < 0) break
+            budget -= text.length
+            todo.add(text)
+        }
+
+        // A small first batch so something shows up fast.
+        val batches = ArrayList<List<String>>()
+        var current = ArrayList<String>()
+        var currentChars = 0
+        for (text in todo) {
+            val limit = if (batches.isEmpty()) FIRST_BATCH_SIZE else BATCH_SIZE
+            if (current.isNotEmpty() && (current.size >= limit || currentChars + text.length > BATCH_CHAR_LIMIT)) {
+                batches.add(current)
+                current = ArrayList()
+                currentChars = 0
+            }
+            current.add(text)
+            currentChars += text.length
+        }
+        if (current.isNotEmpty()) batches.add(current)
+
+        if (results.isNotEmpty()) onProgress(assembleMarkdown(plan.slots, results)) // cached pieces show instantly
+
+        var strikes = 0
+        for (batch in batches) {
+            val fetched = fetch(batch, target)
+            var ok = 0
+            if (fetched != null) {
+                batch.forEachIndexed { i, text ->
+                    val entry = fetched[i] ?: return@forEachIndexed
+                    results[text] = entry.text
+                    cache.put(key(target, text), entry)
+                    ok++
+                }
+            }
+            // The backends refusing twice in a row means they're out of capacity: stop here and
+            // leave the rest in the original language.
+            strikes = if (ok == 0) strikes + 1 else 0
+            if (strikes >= 2) break
+            onProgress(assembleMarkdown(plan.slots, results))
+        }
+
+        val changed = results.any { (text, translated) -> text != translated }
+        return MarkdownTranslation(assembleMarkdown(plan.slots, results), changed)
+    }
+
     /** One entry per input string; null where it could not be translated. */
     private suspend fun translateAll(texts: List<String>, target: String): List<Entry?> {
         val out = arrayOfNulls<Entry>(texts.size)
