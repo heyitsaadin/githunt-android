@@ -193,7 +193,8 @@ class TranslateRepository(private val api: TranslateApi) {
         }
 
         val changed = results.any { (text, translated) -> text != translated }
-        return MarkdownTranslation(assembleMarkdown(plan.slots, results), changed)
+        val finalText = withContext(Dispatchers.Default) { assembleMarkdown(plan.slots, results) }
+        return MarkdownTranslation(finalText, changed)
     }
 
     /** One entry per input string; null where it could not be translated. */
