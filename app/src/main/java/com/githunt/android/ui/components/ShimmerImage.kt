@@ -30,6 +30,7 @@ fun ShimmerImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     onFailed: () -> Unit = {},
+    onLoaded: (width: Float, height: Float) -> Unit = { _, _ -> },
 ) {
     var loaded by remember(model) { mutableStateOf(false) }
     val shimmerAlpha by animateFloatAsState(
