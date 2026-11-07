@@ -184,7 +184,7 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     text = if (state.testSent) "Test sent" else "Send test notification",
                     onClick = vm::sendTestNotification,
                     loading = state.testing,
-                    enabled = !state.loading,
+                    enabled = !state.loading && deviceOn,
                     kind = ButtonKind.Outlined,
                 )
             }
