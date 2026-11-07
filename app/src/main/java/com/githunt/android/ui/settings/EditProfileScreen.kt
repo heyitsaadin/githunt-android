@@ -329,7 +329,12 @@ fun EditProfileScreen(
                         }
                         if (state.avatarBusy) BusyOverlay()
                     }
-                    CameraBadge(modifier = Modifier.align(Alignment.BottomEnd))
+                }
+                CameraBadge(
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    enabled = !busy && !state.avatarBusy,
+                    onClick = { photoTapped(PhotoTarget.Avatar) },
+                )
                 }
 
                 Text(
