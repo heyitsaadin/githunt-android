@@ -237,7 +237,7 @@ class TranslateRepository(private val api: TranslateApi) {
     private companion object {
         const val OFF = "off"
         const val SHOWN_TOPICS = 3
-        const val CACHE_SIZE = 1500
+        const val CACHE_SIZE = 5000
         const val MAX_CONCURRENT_REQUESTS = 3
         // Server limits (app/api/translate/route.js).
         const val MAX_STRINGS = 200
