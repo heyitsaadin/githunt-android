@@ -434,7 +434,12 @@ fun RepoCard(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                GitHubPill(onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } })
+                GitHubPill(
+                    onClick = {
+                        markEngaged(EngagementEvent.GithubClick)
+                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+                    },
+                )
             }
 
             Spacer(Modifier.height(12.dp))
