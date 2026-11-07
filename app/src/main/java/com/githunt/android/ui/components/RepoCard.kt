@@ -449,7 +449,20 @@ fun RepoCard(
                     leadingIcon = CardIcons.Sparkles,
                     chevronUp = askOpen,
                     active = askOpen,
-                    onClick = { askOpen = !askOpen },
+                    onClick = {
+                        if (askOpen) {
+                            // Closing: bring the card's header back into view first, then shrink.
+                            scope.launch {
+                                try {
+                                    cardTop.bringIntoView()
+                                } finally {
+                                    askOpen = false
+                                }
+                            }
+                        } else {
+                            askOpen = true
+                        }
+                    },
                 )
             }
 
