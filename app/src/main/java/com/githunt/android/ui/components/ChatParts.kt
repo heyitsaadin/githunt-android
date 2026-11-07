@@ -145,8 +145,13 @@ internal fun ChatBubble(
                 .then(if (isUser) Modifier.border(1.dp, scheme.outline.copy(alpha = 0.55f), shape) else Modifier)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
-            Text(text = rendered, fontSize = 14.sp, lineHeight = 20.sp, color = textColor)
-            extra()
+            Text(
+                text = if (finished) rendered else rendered.subSequence(0, shown),
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = textColor,
+            )
+            if (finished) extra()
         }
     }
 }
