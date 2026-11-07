@@ -207,10 +207,11 @@ fun MainScaffold(
                                 }
                             }
                         }
-                        AnimatedVisibility(
-                            visible = tab != AppTab.Home || !homeBars.hidden,
-                            enter = expandVertically(tween(220)) + fadeIn(tween(220)),
-                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+                        Box(
+                            modifier = homeBars.collapseModifier(
+                                slideUp = false,
+                                active = { tab == AppTab.Home },
+                            ),
                         ) {
                         AppBottomNav(
                             selected = tab,
