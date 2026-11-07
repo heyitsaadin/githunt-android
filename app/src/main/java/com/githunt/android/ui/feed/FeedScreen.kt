@@ -163,6 +163,7 @@ fun FeedScreen(
                     }
                 }
             }
+            }
 
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
