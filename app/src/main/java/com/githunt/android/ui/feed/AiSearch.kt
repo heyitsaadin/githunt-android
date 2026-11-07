@@ -238,6 +238,10 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
     LaunchedEffect(state.messages.size, state.loading) {
         scroll.animateScrollTo(Int.MAX_VALUE)
     }
+    // The bubble grows while a reply types in; follow it down.
+    LaunchedEffect(scroll.maxValue) {
+        if (state.messages.any { it.animate }) scroll.scrollTo(scroll.maxValue)
+    }
 
     Column(
         modifier = modifier
