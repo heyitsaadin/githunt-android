@@ -32,8 +32,11 @@ internal sealed class Slot {
 /** [slots] rebuild the markdown; [order] is each distinct unit to translate, top to bottom. */
 internal class MarkdownPlan(val slots: List<Slot>, val order: List<String>)
 
-internal fun planMarkdown(markdown: String, target: String): MarkdownPlan =
-    planSlots(segmentMarkdown(markdown), target)
+internal fun planMarkdown(
+    markdown: String,
+    target: String,
+    defs: Set<String> = collectReferenceLabels(markdown),
+): MarkdownPlan = planSlots(segmentMarkdown(markdown, defs), target)
 
 // ---------------------------------------------------------------------------------------------
 // 1. Segmentation
