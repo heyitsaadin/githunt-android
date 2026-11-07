@@ -284,7 +284,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 14.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+                .padding(start = 16.dp, end = 8.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PathIcon(pathData = CardIcons.Search, tint = scheme.onSurfaceVariant, iconSize = 18.dp, strokeWidth = 1.8f)
