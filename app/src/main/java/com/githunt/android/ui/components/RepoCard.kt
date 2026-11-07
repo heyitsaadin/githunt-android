@@ -264,7 +264,7 @@ fun RepoCard(
                 }
             }
 
-            if (item.topics.isNotEmpty()) {
+            if (shownTopics.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
