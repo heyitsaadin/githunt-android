@@ -122,7 +122,10 @@ fun MainScaffold(
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
 
-    BackHandler(enabled = settingsOpen) { settingsOpen = false }
+    BackHandler(enabled = settingsOpen) {
+        settingsOpen = false
+        settingsRoute = null
+    }
     BackHandler(enabled = !settingsOpen && quickPage != null) { quickPage = null }
     BackHandler(enabled = !settingsOpen && quickPage == null && tab != AppTab.Home) { tab = AppTab.Home }
 
