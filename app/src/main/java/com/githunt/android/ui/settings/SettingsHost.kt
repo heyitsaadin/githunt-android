@@ -58,8 +58,12 @@ fun SettingsHost(
     viewModel: SettingsViewModel,
     onClose: () -> Unit,
     onSignOut: () -> Unit,
+    onUserUpdated: (User) -> Unit,
+    onRefreshUser: () -> Unit,
+    /** Open straight onto this page (for example "edit-profile"). Back from it closes Settings. */
+    initialRoute: String? = null,
 ) {
-    var stackKey by rememberSaveable { mutableStateOf("root") }
+    var stackKey by rememberSaveable { mutableStateOf(initialRoute ?: "root") }
 
     fun pop() {
         if (stackKey.contains(',')) stackKey = stackKey.substringBeforeLast(',') else onClose()
