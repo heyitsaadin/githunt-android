@@ -221,7 +221,10 @@ class SettingsViewModel(
         _personalization.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             when (repo.setPersonalization(enabled)) {
-                is ApiResult.Ok -> _personalization.update { it.copy(saving = false, enabled = enabled) }
+                is ApiResult.Ok -> {
+                    engagement?.reset()
+                    _personalization.update { it.copy(saving = false, enabled = enabled) }
+                }
                 is ApiResult.Err -> _personalization.update {
                     it.copy(
                         saving = false,
