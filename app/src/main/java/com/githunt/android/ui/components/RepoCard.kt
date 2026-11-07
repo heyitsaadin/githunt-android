@@ -468,20 +468,29 @@ private fun ActionPill(
     modifier: Modifier = Modifier,
     chevronUp: Boolean? = null,
     enabled: Boolean = true,
+    leadingIcon: String? = null,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    // The web's Ask AI pill inverts (light fill, dark text) while its panel is open.
+    val container = if (active) scheme.onSurface else scheme.surfaceVariant.copy(alpha = 0.55f)
+    val content = if (active) scheme.surface else scheme.onSurface
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.6f)
             .clip(CircleShape)
-            .background(scheme.surfaceVariant.copy(alpha = 0.55f))
+            .background(container)
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (leadingIcon != null) {
+                PathIcon(pathData = leadingIcon, tint = content, iconSize = 13.dp, filled = true)
+                Spacer(Modifier.width(6.dp))
+            }
             Text(
                 text = text,
                 fontFamily = LocalGhMono.current,
