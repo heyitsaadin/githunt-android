@@ -180,7 +180,10 @@ class DiscoverViewModel(
                     var added: List<RepoItem> = emptyList()
                     _state.update { old ->
                         val seen = old.items.mapTo(HashSet()) { item -> item.fullName }
-                        added = result.value.items.filter { item -> item.fullName !in seen }
+                        val hidden = engagement.hidden.value
+                        added = result.value.items.filter { item ->
+                            item.fullName !in seen && item.fullName !in hidden
+                        }
                         old.copy(
                             items = old.items + added,
                             hasMore = result.value.hasMore,
