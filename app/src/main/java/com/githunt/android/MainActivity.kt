@@ -186,6 +186,7 @@ class MainActivity : ComponentActivity() {
                             Session.SignedOut -> AuthScreen(viewModel = authViewModel)
                             is Session.SignedIn -> {
                                 val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                                LaunchedEffect(current.user.id) { prepareDeviceNotifications() }
                                 MainScaffold(
                                     user = current.user,
                                     feed = feed,
