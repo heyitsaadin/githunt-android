@@ -456,6 +456,10 @@ fun RepoCard(
                     label = "Share",
                     tint = scheme.onSurfaceVariant,
                     onClick = {
+                        if (!shared) {
+                            shared = true
+                            markEngaged(EngagementEvent.Share)
+                        }
                         githubUrl?.let { link ->
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
