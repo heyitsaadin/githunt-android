@@ -597,7 +597,7 @@ private fun RepoImageCarousel(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(AUTOPLAY_INTERVAL_MS)
-                if (SystemClock.elapsedRealtime() < pausedUntil || pagerState.isScrollInProgress) continue
+                if (videoPlaying || SystemClock.elapsedRealtime() < pausedUntil || pagerState.isScrollInProgress) continue
                 pagerState.animateScrollToPage((pagerState.currentPage + 1) % slides.size)
             }
         }
