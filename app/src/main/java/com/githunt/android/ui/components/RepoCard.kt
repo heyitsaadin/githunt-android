@@ -201,6 +201,7 @@ fun RepoCard(
                 images = item.readmeImages,
                 contentDescription = "${item.fullName} README preview",
                 onOpenGithub = {
+                    markEngaged(EngagementEvent.GithubClick)
                     runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
                 },
             )
