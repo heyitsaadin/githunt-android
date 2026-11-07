@@ -643,6 +643,16 @@ internal fun proxiedImageUrl(src: String): String {
 // Shape of the picture area before a picture has loaded, and the limits it is kept within after:
 // at most 1/0.6 (about 1.7x) as tall as wide, and at most 3x as wide as tall. A picture outside
 // that range still shows whole, it just has a little empty space beside or above it.
+/** Per-card bookkeeping for dwell/skip signals. Plain fields on purpose: nothing here draws. */
+private class ViewTracker {
+    var visible = false
+    var visibleSince = 0L
+    var engaged = false
+    var muted = false
+}
+
+private const val DWELL_THRESHOLD_SECONDS = 4.0
+
 private const val DEFAULT_IMAGE_RATIO = 16f / 9f
 private const val MIN_IMAGE_RATIO = 0.6f
 private const val MAX_IMAGE_RATIO = 3f
