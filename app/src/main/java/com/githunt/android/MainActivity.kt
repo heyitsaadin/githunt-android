@@ -201,6 +201,7 @@ class MainActivity : ComponentActivity() {
                                     profileViewModel = profileViewModel,
                                     settingsViewModel = settingsViewModel,
                                     clipsRepository = (application as GitHuntApp).container.clipsRepository,
+                                    openNotificationsTick = openNotificationsTick,
                                 )
                             }
                             is Session.Unavailable -> UnavailableScreen(
