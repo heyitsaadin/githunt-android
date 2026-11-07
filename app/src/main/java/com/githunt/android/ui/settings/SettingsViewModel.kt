@@ -167,6 +167,7 @@ const val MAX_INTERESTS = 8
 class SettingsViewModel(
     private val repo: SettingsRepository,
     val prefs: AppPreferences,
+    private val devicePush: DevicePush,
 ) : ViewModel() {
 
     // ---- Security ----
