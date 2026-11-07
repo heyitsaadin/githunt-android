@@ -185,7 +185,11 @@ fun EditProfileScreen(
     val busy = state.saving || state.disconnecting
     val photoBusy = state.avatarBusy || state.coverBusy
     val usernameValid = UsernameRule.matches(state.username)
-    val canSave = hasChanges && usernameValid && !busy && !photoBusy
+    val check = state.usernameCheck
+    // Save only lights up once a changed username has been confirmed free (or the check couldn't
+    // run, in which case the server's own check on save still protects it).
+    val usernameOk = usernameValid && check != UsernameCheck.Checking && check != UsernameCheck.Taken
+    val canSave = hasChanges && usernameOk && !busy && !photoBusy
 
     fun requestClose() {
         if (state.saving) return
