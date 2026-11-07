@@ -666,7 +666,7 @@ private fun RepoImageCarousel(
 
         previewIndex?.let { start ->
             ImagePreviewDialog(
-                images = slides,
+                images = previewImages,
                 startIndex = start,
                 contentDescription = contentDescription,
                 onDismiss = {
