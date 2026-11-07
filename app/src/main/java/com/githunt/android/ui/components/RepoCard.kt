@@ -438,7 +438,10 @@ fun RepoCard(
                         filled = clipped,
                         label = if (clipped) "Clipped" else "Clip",
                         tint = if (clipped) scheme.onBackground else scheme.onSurfaceVariant,
-                        onClick = onClipToggle,
+                        onClick = {
+                            track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                            onClipToggle()
+                        },
                     )
                 }
             }
