@@ -7,6 +7,9 @@ import androidx.compose.ui.Modifier
 /** Past this many characters the README is cut, so one huge file can't make a card thousands of screens tall. */
 private const val MaxReadmeChars = 15_000
 
+/** A translation can run much longer than its source (CJK to English), so it gets more room. */
+internal const val TranslatedReadmeMaxChars = 40_000
+
 private val MarkdownImage = Regex("""(!\[[^\]]*]\()([^)\s]+)((?:\s+"[^"]*")?\))""")
 private val HtmlImage = Regex("""(<img[^>]*?\ssrc=["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
 
@@ -23,13 +26,22 @@ fun ReadmeView(
     repo: String,
     branch: String?,
     modifier: Modifier = Modifier,
+    maxChars: Int? = null,
 ) {
-    val prepared = remember(markdown, owner, repo, branch) { prepareReadme(markdown, owner, repo, branch) }
+    val prepared = remember(markdown, owner, repo, branch, maxChars) {
+        prepareReadme(markdown, owner, repo, branch, maxChars ?: MaxReadmeChars)
+    }
     MarkdownBody(markdown = prepared, modifier = modifier)
 }
 
 /** Cuts very long READMEs and turns relative image paths into raw.githubusercontent.com links. */
-internal fun prepareReadme(markdown: String, owner: String, repo: String, branch: String?): String {
+internal fun prepareReadme(
+    markdown: String,
+    owner: String,
+    repo: String,
+    branch: String?,
+    maxChars: Int = MaxReadmeChars,
+): String {
     val base = "https://raw.githubusercontent.com/$owner/$repo/${branch ?: "HEAD"}/"
 
     fun resolve(src: String): String = when {
@@ -39,8 +51,8 @@ internal fun prepareReadme(markdown: String, owner: String, repo: String, branch
     }
 
     var text = markdown
-    if (text.length > MaxReadmeChars) {
-        text = text.take(MaxReadmeChars).substringBeforeLast("\n\n") + "\n\n\u2026"
+    if (text.length > maxChars) {
+        text = text.take(maxChars).substringBeforeLast("\n\n") + "\n\n\u2026"
     }
     text = MarkdownImage.replace(text) { m ->
         m.groupValues[1] + resolve(m.groupValues[2]) + m.groupValues[3]

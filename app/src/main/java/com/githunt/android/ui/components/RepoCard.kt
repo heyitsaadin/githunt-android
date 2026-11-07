@@ -36,11 +36,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -73,8 +79,12 @@ import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
+import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.translate.TranslatedCard
 import com.githunt.android.ui.theme.LocalGhMono
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -91,6 +101,7 @@ import java.util.Locale
  * "Show README" expands the README inside the card, like the website. If the app container
  * isn't available (previews, tests) it opens the repo's README on GitHub instead.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RepoCard(
     item: RepoItem,
@@ -108,6 +119,33 @@ fun RepoCard(
     val readmeRepository = remember(context) {
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
+
+    // Translation. The language from Settings ("off" = show originals) decides the target. The
+    // text is translated for display only: `item` is untouched, so clipping still sends the repo
+    // exactly as the server gave it. Results are cached, so scrolling back is instant.
+    val appContainer = remember(context) { (context.applicationContext as? GitHuntApp)?.container }
+    val translateRepository = appContainer?.translateRepository
+    val targetLanguage by (appContainer?.appPreferences?.language ?: NoTranslation).collectAsState()
+    var translated by remember(item.fullName, item.description, item.readmeSnippet, targetLanguage) {
+        mutableStateOf<TranslatedCard?>(null)
+    }
+    var showOriginal by rememberSaveable(item.fullName + "#original") { mutableStateOf(false) }
+    LaunchedEffect(item.fullName, item.description, item.readmeSnippet, item.topics, targetLanguage) {
+        if (translateRepository == null || targetLanguage == "off") return@LaunchedEffect
+        val result = translateRepository.translateCard(
+            description = item.description,
+            snippet = item.readmeSnippet,
+            topics = item.topics,
+            target = targetLanguage,
+        )
+        // Only keep it when something really changed, so cards already in the target language
+        // don't show a "Translated" line.
+        if (result.changed) translated = result
+    }
+    val shownTranslation = if (showOriginal) null else translated
+    val shownDescription = shownTranslation?.description ?: item.description
+    val shownSnippet = shownTranslation?.snippet ?: item.readmeSnippet
+    val shownTopics = shownTranslation?.topics ?: item.topics
 
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
@@ -133,6 +171,33 @@ fun RepoCard(
         }
     }
 
+    // README translation. Runs only while the README is open, top to bottom in small batches, and
+    // shows what it has so far after every batch. Closing the card cancels it; reopening is instant
+    // for everything already translated, because the repository caches each piece.
+    var readmeTranslated by remember(item.fullName, targetLanguage, markdown) { mutableStateOf<String?>(null) }
+    var readmeBusy by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    LaunchedEffect(expanded, markdown, targetLanguage) {
+        val source = markdown
+        if (!expanded || source == null || translateRepository == null || targetLanguage == "off") {
+            return@LaunchedEffect
+        }
+        readmeBusy = true
+        try {
+            val result = translateRepository.translateMarkdown(source, targetLanguage) { partial ->
+                if (partial != source) readmeTranslated = partial
+            }
+            readmeTranslated = if (result.changed) result.markdown else null
+        } finally {
+            readmeBusy = false
+        }
+    }
+
+    // Closing the README or Ask AI makes the card much shorter. If the list is scrolled deep inside
+    // the card at that moment, it ends up pointing past the card's end, in some other repo. So on
+    // close the list first scrolls back to this card's header, and only then does the card shrink.
+    val scope = rememberCoroutineScope()
+    val cardTop = remember { BringIntoViewRequester() }
+
     // No whole-card click: it would fight the README text and links. Like the website,
     // GitHub opens from the button and the preview image.
     Column(
@@ -157,7 +222,10 @@ fun RepoCard(
 
         Column(modifier = Modifier.padding(horizontal = 14.dp)) {
             Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.bringIntoViewRequester(cardTop),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 RepoAvatar(url = item.avatarUrl, size = 36.dp)
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -201,7 +269,7 @@ fun RepoCard(
                 }
             }
 
-            item.description?.takeIf { it.isNotBlank() }?.let { description ->
+            shownDescription?.takeIf { it.isNotBlank() }?.let { description ->
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = description,
@@ -216,7 +284,7 @@ fun RepoCard(
 
             // The short README excerpt is replaced by the full README once it is open.
             if (!expanded) {
-                item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
+                shownSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
                     Spacer(Modifier.height(6.dp))
                     HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                     Spacer(Modifier.height(10.dp))
@@ -232,13 +300,13 @@ fun RepoCard(
                 }
             }
 
-            if (item.topics.isNotEmpty()) {
+            if (shownTopics.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item.topics.take(3).forEach { topic ->
+                    shownTopics.take(3).forEach { topic ->
                         Text(
                             text = topic,
                             fontFamily = mono,
@@ -253,6 +321,30 @@ fun RepoCard(
                         )
                     }
                 }
+            }
+
+            // Only when something was really translated. One tap flips between the two texts.
+            if (translated != null || (expanded && (readmeTranslated != null || readmeBusy))) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (readmeBusy && !showOriginal) {
+                        "Translating README\u2026"
+                    } else if (showOriginal) {
+                        "Original \u00B7 Show translation"
+                    } else {
+                        "Translated to ${TranslationLanguages.label(targetLanguage)} \u00B7 Show original"
+                    },
+                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(enabled = !readmeBusy) { showOriginal = !showOriginal }
+                        .padding(vertical = 2.dp),
+                )
             }
 
             // While the README downloads, a skeleton holds its place so the card feels alive.
@@ -282,7 +374,12 @@ fun RepoCard(
                         HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                         Spacer(Modifier.height(10.dp))
                         ReadmeView(
-                            markdown = readmeText,
+                            markdown = if (showOriginal) readmeText else (readmeTranslated ?: readmeText),
+                            maxChars = if (!showOriginal && readmeTranslated != null) {
+                                TranslatedReadmeMaxChars
+                            } else {
+                                null
+                            },
                             owner = item.owner,
                             repo = repoName,
                             branch = item.raw?.text("default_branch"),
@@ -331,7 +428,18 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
-                            expanded = !expanded
+                            if (expanded) {
+                                // Closing: bring the card's header back into view first, then shrink.
+                                scope.launch {
+                                    try {
+                                        cardTop.bringIntoView()
+                                    } finally {
+                                        expanded = false
+                                    }
+                                }
+                            } else {
+                                expanded = true
+                            }
                         }
                     },
                 )
@@ -341,7 +449,20 @@ fun RepoCard(
                     leadingIcon = CardIcons.Sparkles,
                     chevronUp = askOpen,
                     active = askOpen,
-                    onClick = { askOpen = !askOpen },
+                    onClick = {
+                        if (askOpen) {
+                            // Closing: bring the card's header back into view first, then shrink.
+                            scope.launch {
+                                try {
+                                    cardTop.bringIntoView()
+                                } finally {
+                                    askOpen = false
+                                }
+                            }
+                        } else {
+                            askOpen = true
+                        }
+                    },
                 )
             }
 
@@ -539,6 +660,9 @@ private fun GitHubPill(onClick: () -> Unit) {
         )
     }
 }
+
+/** Stands in for the language setting when no app container exists (previews, tests). */
+private val NoTranslation: StateFlow<String> = MutableStateFlow("off")
 
 /** Hosts the website's /api/img-proxy accepts. Anything else is loaded directly. */
 private val ProxyHosts = setOf(
