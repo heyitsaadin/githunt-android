@@ -43,6 +43,8 @@ data class RepoItem(
     val readmeImages: List<String>,
     /** The repo object as the server sent it. Clipping sends it back untouched, like the website does. */
     val raw: JsonObject? = null,
+    /** YouTube video ids found in the README (the server's `readme_videos`), playable in the card. */
+    val readmeVideos: List<String> = emptyList(),
 ) : FeedItem {
     override val key: String get() = "repo-$fullName"
 }
@@ -65,6 +67,9 @@ data class FeedPage(
     val hasMore: Boolean,
 )
 
+/** A YouTube video id: exactly 11 letters, digits, '-' or '_'. Anything else is never played. */
+internal val YouTubeIdRegex = Regex("^[A-Za-z0-9_-]{11}$")
+
 internal fun JsonObject.text(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content?.takeIf { it.isNotBlank() }
 
@@ -74,6 +79,23 @@ internal fun JsonObject.number(key: String): Int =
 internal fun JsonObject.textList(key: String): List<String> =
     (this[key] as? JsonArray)
         ?.mapNotNull { el -> (el as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content }
+        ?: emptyList()
+
+/**
+ * `readme_videos` is `[{ "id": "..." }]` on the website. A bare list of id strings is accepted too.
+ * Only well-formed YouTube ids are kept, in order and without repeats.
+ */
+internal fun JsonObject.videoIds(key: String): List<String> =
+    (this[key] as? JsonArray)
+        ?.mapNotNull { el ->
+            when (el) {
+                is JsonObject -> el.text("id")
+                is JsonPrimitive -> el.takeIf { it !is JsonNull }?.content
+                else -> null
+            }
+        }
+        ?.filter { YouTubeIdRegex.matches(it) }
+        ?.distinct()
         ?: emptyList()
 
 internal fun JsonObject.toRepoItem(): RepoItem? {
@@ -93,6 +115,7 @@ internal fun JsonObject.toRepoItem(): RepoItem? {
         readmeSnippet = text("readme_snippet"),
         readmeImages = textList("readme_images"),
         raw = this,
+        readmeVideos = videoIds("readme_videos"),
     )
 }
 
