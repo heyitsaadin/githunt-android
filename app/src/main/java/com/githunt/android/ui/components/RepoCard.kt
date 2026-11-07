@@ -324,7 +324,7 @@ fun RepoCard(
             }
 
             // Only when something was really translated. One tap flips between the two texts.
-            if (translated != null) {
+            if (translated != null || (expanded && (readmeTranslated != null || readmeBusy))) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = if (showOriginal) {
