@@ -26,6 +26,9 @@ class SettingsRepository(
             is ApiResult.Err -> result
         }
 
+    suspend fun usernameAvailable(username: String): ApiResult<UsernameAvailability> =
+        apiCall(json) { api.usernameAvailable(username) }
+
     suspend fun deleteAccount(): ApiResult<Unit> = apiCall(json) { api.deleteAccount() }
 
     suspend fun personalization(): ApiResult<PersonalizationState> = apiCall(json) { api.personalization() }
