@@ -248,7 +248,7 @@ fun RepoCard(
 
             // The short README excerpt is replaced by the full README once it is open.
             if (!expanded) {
-                item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
+                shownSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
                     Spacer(Modifier.height(6.dp))
                     HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                     Spacer(Modifier.height(10.dp))
