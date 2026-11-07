@@ -628,6 +628,9 @@ class SettingsViewModel(
 
     companion object {
         const val ALL_OTHERS = "all_others"
+
+        /** The same rule the server enforces on usernames. */
+        private val USERNAME_PATTERN = Regex("^[a-z0-9_]{3,20}$")
     }
 }
 
