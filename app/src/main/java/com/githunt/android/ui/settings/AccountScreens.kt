@@ -219,7 +219,7 @@ fun SecurityScreen(
                 sessions.forEach { session ->
                     val ago = activeAgo(session.lastSeenAt)
                     SettingsRow(
-                        title = session.label,
+                        title = sessionTitle(session),
                         subtitle = listOf(if (session.isCurrent) "This device" else "", ago)
                             .filter { it.isNotEmpty() }
                             .joinToString(" \u00B7 ")
