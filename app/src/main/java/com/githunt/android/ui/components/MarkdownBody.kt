@@ -66,7 +66,28 @@ fun MarkdownBody(
     val markwon = remember(context, textColor, headingColor, linkColor, ruleColor, codeBackground) {
         buildMarkdownRenderer(context, textColor, headingColor, linkColor, ruleColor, codeBackground, density)
     }
-    val rendered = remember(markdown, markwon) { markwon.toMarkdown(markdown) }
+    // The first text is parsed right here, exactly as before, so a card scrolled back into view
+    // has its README at full height straight away. When the text later CHANGES (a README being
+    // translated), the new text is parsed on a background thread and swapped in once ready, with
+    // the old text staying on screen meanwhile, so the UI never freezes while it works.
+    var rendered: Spanned by remember(markwon) { mutableStateOf(markwon.toMarkdown(markdown)) }
+    var renderedFor by remember(markwon) { mutableStateOf(markdown) }
+    val latestMarkdown by rememberUpdatedState(markdown)
+    // A Markwon instance isn't safe to run twice at once (its HTML plugin keeps state), so one
+    // render at a time per instance. When a newer text is already waiting, the older one is skipped.
+    val renderLock = remember(markwon) { Mutex() }
+    LaunchedEffect(markdown, markwon) {
+        if (markdown == renderedFor) return@LaunchedEffect
+        val next = renderLock.withLock {
+            if (markdown != latestMarkdown) {
+                null
+            } else {
+                withContext(Dispatchers.Default) { markwon.toMarkdown(markdown) }
+            }
+        } ?: return@LaunchedEffect
+        rendered = next
+        renderedFor = markdown
+    }
 
     AndroidView(
         modifier = modifier.fillMaxWidth(),
