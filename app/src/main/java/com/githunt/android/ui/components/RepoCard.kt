@@ -351,8 +351,10 @@ fun RepoCard(
             ) {
                 StatChip(icon = CardIcons.Star, value = formatCount(item.stars), tint = scheme.onSurfaceVariant)
                 StatChip(icon = CardIcons.Fork, value = formatCount(item.forks), tint = scheme.onSurfaceVariant)
-                item.language?.let { language ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                val language = item.language
+                if (language != null) {
+                    // Takes the free space, so the GitHub pill ends up flush right.
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         languageColor(language)?.let { dot ->
                             Box(
                                 Modifier
@@ -367,9 +369,14 @@ fun RepoCard(
                             fontFamily = mono,
                             fontSize = 12.sp,
                             color = scheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
+                } else {
+                    Spacer(Modifier.weight(1f))
                 }
+                GitHubPill(onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } })
             }
 
             Spacer(Modifier.height(12.dp))
