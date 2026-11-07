@@ -27,7 +27,8 @@ feed. No separate backend, no admin dashboard (by design; see scope below).
 
 ## Not yet included
 
-- Auto-translation of feed cards (`/api/translate` model exists, unused).
+- Translation of the expanded README body. Card text (description, README excerpt,
+  topics) is translated into the language chosen in Settings via `/api/translate`.
 - Personalization settings screen, feature-request submission, admin
   dashboard (out of scope per your earlier answer).
 - Replies/comments UI (models + repository methods exist; no screen yet).
