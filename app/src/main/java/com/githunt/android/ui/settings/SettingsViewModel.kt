@@ -241,6 +241,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (repo.clearPersonalization()) {
                 is ApiResult.Ok -> {
+                    engagement?.reset()
                     _personalization.update { it.copy(saving = false, cleared = true) }
                     delay(3000)
                     _personalization.update { it.copy(cleared = false) }
