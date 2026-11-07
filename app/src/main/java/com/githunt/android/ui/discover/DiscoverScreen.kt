@@ -262,6 +262,7 @@ fun DiscoverScreen(
                         item = item,
                         clipped = item.fullName in state.clipped,
                         onClipToggle = { viewModel.toggleClip(item) },
+                        showNotInterested = true,
                     )
                 }
 
