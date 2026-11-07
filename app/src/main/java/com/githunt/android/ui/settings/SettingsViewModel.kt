@@ -95,6 +95,52 @@ data class FeatureUi(
     val error: String? = null,
 )
 
+/** What the editor will do with a photo when saved. */
+sealed interface PhotoEdit {
+    data object Unchanged : PhotoEdit
+    data object Removed : PhotoEdit
+
+    /** [jpeg] is already resized; it is what gets uploaded and what the editor previews. */
+    class Picked(val jpeg: ByteArray) : PhotoEdit
+}
+
+enum class PhotoTarget { Avatar, Cover }
+
+/** The edit-profile draft. Lives in the view model so a half-finished edit survives the screen redrawing. */
+data class EditProfileUi(
+    val displayName: String = "",
+    val username: String = "",
+    val bio: String = "",
+    val avatar: PhotoEdit = PhotoEdit.Unchanged,
+    val cover: PhotoEdit = PhotoEdit.Unchanged,
+    val avatarBusy: Boolean = false,
+    val coverBusy: Boolean = false,
+    val saving: Boolean = false,
+    val disconnecting: Boolean = false,
+    val error: String? = null,
+) {
+    fun withBusy(target: PhotoTarget, busy: Boolean): EditProfileUi =
+        if (target == PhotoTarget.Avatar) copy(avatarBusy = busy) else copy(coverBusy = busy)
+
+    fun withPhoto(target: PhotoTarget, photo: PhotoEdit): EditProfileUi =
+        if (target == PhotoTarget.Avatar) copy(avatar = photo) else copy(cover = photo)
+}
+
+/** One-off results the editor screen reacts to. */
+sealed interface ProfileEvent {
+    data class Saved(val user: User) : ProfileEvent
+    data class GithubDisconnected(val user: User) : ProfileEvent
+}
+
+private fun JsonObjectBuilder.putPhoto(key: String, photo: PhotoEdit) {
+    when (photo) {
+        PhotoEdit.Unchanged -> Unit
+        // The server treats an empty string as "remove".
+        PhotoEdit.Removed -> put(key, "")
+        is PhotoEdit.Picked -> put(key, ProfileImages.toDataUrl(photo.jpeg))
+    }
+}
+
 const val MAX_INTERESTS = 8
 
 /** One view model for every Settings screen; each screen only watches the slice it needs. */
