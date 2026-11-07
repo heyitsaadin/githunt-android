@@ -210,8 +210,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             val result = repo.personalization()
             _personalization.update {
-                if (result is ApiResult.Ok) it.copy(loading = false, enabled = result.value.enabled)
-                else it.copy(loading = false)
+                if (result is ApiResult.Ok) it.copy(loading = false, enabled = result.value.enabled, error = null)
+                else it.copy(loading = false, error = "Could not load your personalization setting.")
             }
         }
     }
