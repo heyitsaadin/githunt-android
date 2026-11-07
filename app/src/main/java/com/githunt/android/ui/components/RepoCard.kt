@@ -72,6 +72,7 @@ import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
+import com.githunt.android.data.engagement.EngagementEvent
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
 import com.githunt.android.ui.theme.LocalGhMono
