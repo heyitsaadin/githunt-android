@@ -62,7 +62,6 @@ fun RepoAskAiPanel(item: RepoItem, modifier: Modifier = Modifier) {
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
-    var composerFocused by remember { mutableStateOf(false) }
 
     val repoName = item.fullName.substringAfter('/')
     val starters = remember(item.fullName, item.language) {
