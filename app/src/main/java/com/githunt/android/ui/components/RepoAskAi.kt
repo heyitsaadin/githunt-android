@@ -95,7 +95,10 @@ fun RepoAskAiPanel(item: RepoItem, modifier: Modifier = Modifier) {
         sending = true
         scope.launch {
             when (val result = repository.ask(item, earlier, question)) {
-                is ApiResult.Ok -> messages.add(AiChatMessage("assistant", result.value))
+                is ApiResult.Ok -> {
+                    messages.add(AiChatMessage("assistant", result.value))
+                    animatedIndex = messages.lastIndex
+                }
                 is ApiResult.Err -> error = result.message
             }
             sending = false
