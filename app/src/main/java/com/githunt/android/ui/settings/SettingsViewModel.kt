@@ -106,8 +106,21 @@ sealed interface PhotoEdit {
 
 enum class PhotoTarget { Avatar, Cover }
 
+/** Where the live "is this username free?" check stands for the name typed in the editor. */
+enum class UsernameCheck {
+    /** Nothing to check: unchanged, or not a valid username yet. */
+    Idle,
+    Checking,
+    Available,
+    Taken,
+
+    /** The check couldn't run (offline, or the server doesn't offer it). Saving still verifies. */
+    Unknown,
+}
+
 /** The edit-profile draft. Lives in the view model so a half-finished edit survives the screen redrawing. */
 data class EditProfileUi(
+    val usernameCheck: UsernameCheck = UsernameCheck.Idle,
     val displayName: String = "",
     val username: String = "",
     val bio: String = "",
