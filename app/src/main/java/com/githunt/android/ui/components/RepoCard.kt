@@ -428,7 +428,18 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
-                            expanded = !expanded
+                            if (expanded) {
+                                // Closing: bring the card's header back into view first, then shrink.
+                                scope.launch {
+                                    try {
+                                        cardTop.bringIntoView()
+                                    } finally {
+                                        expanded = false
+                                    }
+                                }
+                            } else {
+                                expanded = true
+                            }
                         }
                     },
                 )
