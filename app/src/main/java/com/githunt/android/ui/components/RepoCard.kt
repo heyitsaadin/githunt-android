@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -37,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -147,7 +149,7 @@ fun RepoCard(
             RepoImageCarousel(
                 images = item.readmeImages,
                 contentDescription = "${item.fullName} README preview",
-                onClick = {
+                onOpenGithub = {
                     runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
                 },
             )
@@ -551,11 +553,21 @@ private val ProxyHosts = setOf(
  * Routes GitHub-hosted images through the backend's /api/img-proxy, the same as the website,
  * so they come from one cached origin instead of hotlinking GitHub on every view.
  */
-private fun proxiedImageUrl(src: String): String {
+internal fun proxiedImageUrl(src: String): String {
     val host = runCatching { Uri.parse(src).host }.getOrNull()
     if (host == null || host !in ProxyHosts) return src
     return "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/img-proxy?src=${Uri.encode(src)}"
 }
+
+// Shape of the picture area before a picture has loaded, and the limits it is kept within after:
+// at most 1/0.6 (about 1.7x) as tall as wide, and at most 3x as wide as tall. A picture outside
+// that range still shows whole, it just has a little empty space beside or above it.
+private const val DEFAULT_IMAGE_RATIO = 16f / 9f
+private const val MIN_IMAGE_RATIO = 0.6f
+private const val MAX_IMAGE_RATIO = 3f
+
+/** Picture url -> width / height, for the whole session. Only touched from the main thread. */
+private val ImageRatioCache = HashMap<String, Float>()
 
 // A calmer slide interval, with a longer pause after direct touch so browsing never feels rushed.
 private const val AUTOPLAY_INTERVAL_MS = 5000L
@@ -564,7 +576,11 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 /**
  * The card's README picture area: the website's ImageCarousel.
  *
- * - One image: a plain 16:9 picture. Several: swipe sideways, with a small dot pager pill at the
+ * - Every picture is shown whole, never cropped or stretched, and the area takes the picture's own
+ *   shape (width / height), so the card is exactly as tall as the image needs. Very tall or very
+ *   wide pictures are limited to [MIN_IMAGE_RATIO]..[MAX_IMAGE_RATIO] and fit inside it.
+ * - Tapping a picture opens a full-screen preview (swipe, pinch to zoom); GitHub opens from there.
+ * - One image: just the picture. Several: swipe sideways, with a small dot pager pill at the
  *   bottom (the active dot stretches into a bar).
  * - With several images it auto-advances every 5s (looping back to the first), but only while
  *   the card is mostly on screen (60%+), the app is in the foreground, and the system's
@@ -579,7 +595,7 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 private fun RepoImageCarousel(
     images: List<String>,
     contentDescription: String,
-    onClick: () -> Unit,
+    onOpenGithub: () -> Unit,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -588,6 +604,25 @@ private fun RepoImageCarousel(
     var failed by remember(images) { mutableStateOf(setOf<String>()) }
     val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
     val pagerState = rememberPagerState(pageCount = { slides.size })
+
+    // Each picture's own width / height, learned as it loads. Also kept for the whole session,
+    // so a card scrolled back into view starts at the right height instead of jumping again.
+    val ratios = remember(images) {
+        mutableStateMapOf<String, Float>().apply {
+            images.forEach { url -> ImageRatioCache[url]?.let { put(url, it) } }
+        }
+    }
+    val currentUrl = slides.getOrNull(pagerState.currentPage)
+    val targetRatio = (currentUrl?.let { ratios[it] } ?: DEFAULT_IMAGE_RATIO)
+        .coerceIn(MIN_IMAGE_RATIO, MAX_IMAGE_RATIO)
+    val boxRatio by animateFloatAsState(
+        targetValue = targetRatio,
+        animationSpec = tween(durationMillis = 250),
+        label = "carousel-ratio",
+    )
+
+    // Index of the picture open in the full-screen preview, or null when it is closed.
+    var previewIndex by remember { mutableStateOf<Int?>(null) }
 
     var onScreen by remember { mutableStateOf(false) }
     var pausedUntil by remember { mutableLongStateOf(0L) }
@@ -626,7 +661,8 @@ private fun RepoImageCarousel(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .aspectRatio(boxRatio)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
             .then(touchPauseModifier)
             .onGloballyPositioned { coordinates ->
                 // "On screen" = at least 60% of the carousel is inside the window.
@@ -653,11 +689,38 @@ private fun RepoImageCarousel(
             ShimmerImage(
                 model = request,
                 contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
+                // Fit, not Crop: the whole picture is always visible.
+                contentScale = ContentScale.Fit,
                 onFailed = { failed = failed + url },
+                onLoaded = { width, height ->
+                    val ratio = width / height
+                    ImageRatioCache[url] = ratio
+                    ratios[url] = ratio
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(onClick = onClick),
+                    .clickable {
+                        previewIndex = page
+                        // Keep the carousel still behind the preview.
+                        pausedUntil = Long.MAX_VALUE
+                    },
+            )
+        }
+
+        previewIndex?.let { start ->
+            ImagePreviewDialog(
+                images = slides,
+                startIndex = start,
+                contentDescription = contentDescription,
+                onDismiss = {
+                    previewIndex = null
+                    pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
+                },
+                onOpenGithub = {
+                    previewIndex = null
+                    pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
+                    onOpenGithub()
+                },
             )
         }
 

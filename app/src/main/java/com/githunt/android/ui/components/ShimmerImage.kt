@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 
@@ -30,6 +31,7 @@ fun ShimmerImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     onFailed: () -> Unit = {},
+    onLoaded: (width: Float, height: Float) -> Unit = { _, _ -> },
 ) {
     var loaded by remember(model) { mutableStateOf(false) }
     val shimmerAlpha by animateFloatAsState(
@@ -46,7 +48,13 @@ fun ShimmerImage(
             model = model,
             contentDescription = contentDescription,
             contentScale = contentScale,
-            onSuccess = { loaded = true },
+            onSuccess = { state ->
+                loaded = true
+                val size = state.painter.intrinsicSize
+                if (size.isSpecified && size.width > 0f && size.height > 0f) {
+                    onLoaded(size.width, size.height)
+                }
+            },
             onError = {
                 loaded = true
                 onFailed()
