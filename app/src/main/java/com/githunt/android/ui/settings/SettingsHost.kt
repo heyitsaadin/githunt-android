@@ -89,6 +89,13 @@ fun SettingsHost(
     ) { current ->
         when (current.substringAfterLast(',')) {
             "account" -> AccountScreen(onBack = { pop() }, onNavigate = { push(it) })
+            "edit-profile" -> EditProfileScreen(
+                user = user,
+                vm = viewModel,
+                onBack = { pop() },
+                onUserUpdated = onUserUpdated,
+                onRefreshUser = onRefreshUser,
+            )
             "password" -> PasswordScreen(user = user, vm = viewModel, onBack = { pop() })
             "security" -> SecurityScreen(user = user, vm = viewModel, onBack = { pop() }, onSignOut = onSignOut)
             "manage" -> ManageAccountScreen(user = user, vm = viewModel, onBack = { pop() }, onSignOut = onSignOut)
