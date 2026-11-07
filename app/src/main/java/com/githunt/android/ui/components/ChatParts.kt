@@ -119,6 +119,20 @@ internal fun ChatBubble(
     val rendered = remember(text, isUser, mono, codeBackground) {
         if (isUser) AnnotatedString(text) else chatAnnotated(text, mono, codeBackground)
     }
+    // Typewriter: a fresh AI reply is revealed in a quick stream (about 2-3s at most) instead of
+    // appearing all at once. Old messages (animate = false) render in full straight away.
+    val typewriter = animate && !isUser && !isError
+    var shown by remember(text, typewriter) { mutableIntStateOf(if (typewriter) 0 else rendered.length) }
+    LaunchedEffect(text, typewriter) {
+        if (!typewriter) return@LaunchedEffect
+        val total = rendered.length
+        val step = maxOf(2, total / 150)
+        while (shown < total) {
+            delay(16)
+            shown = minOf(total, shown + step)
+        }
+    }
+    val finished = shown >= rendered.length
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
