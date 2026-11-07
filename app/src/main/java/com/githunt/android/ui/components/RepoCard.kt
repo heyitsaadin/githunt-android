@@ -518,7 +518,7 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 private fun RepoImageCarousel(
     images: List<String>,
     contentDescription: String,
-    onClick: () -> Unit,
+    onOpenGithub: () -> Unit,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -527,6 +527,25 @@ private fun RepoImageCarousel(
     var failed by remember(images) { mutableStateOf(setOf<String>()) }
     val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
     val pagerState = rememberPagerState(pageCount = { slides.size })
+
+    // Each picture's own width / height, learned as it loads. Also kept for the whole session,
+    // so a card scrolled back into view starts at the right height instead of jumping again.
+    val ratios = remember(images) {
+        mutableStateMapOf<String, Float>().apply {
+            images.forEach { url -> ImageRatioCache[url]?.let { put(url, it) } }
+        }
+    }
+    val currentUrl = slides.getOrNull(pagerState.currentPage)
+    val targetRatio = (currentUrl?.let { ratios[it] } ?: DEFAULT_IMAGE_RATIO)
+        .coerceIn(MIN_IMAGE_RATIO, MAX_IMAGE_RATIO)
+    val boxRatio by animateFloatAsState(
+        targetValue = targetRatio,
+        animationSpec = tween(durationMillis = 250),
+        label = "carousel-ratio",
+    )
+
+    // Index of the picture open in the full-screen preview, or null when it is closed.
+    var previewIndex by remember { mutableStateOf<Int?>(null) }
 
     var onScreen by remember { mutableStateOf(false) }
     var pausedUntil by remember { mutableLongStateOf(0L) }
