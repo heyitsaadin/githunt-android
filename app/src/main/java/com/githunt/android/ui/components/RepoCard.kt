@@ -422,6 +422,7 @@ fun RepoCard(
                     tint = scheme.onSurfaceVariant,
                     onClick = {
                         githubUrl?.let { link ->
+                            track(EngagementEvent.SHARE)
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, link)
