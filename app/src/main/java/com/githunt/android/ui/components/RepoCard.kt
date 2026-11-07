@@ -114,6 +114,33 @@ fun RepoCard(
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
 
+    // Translation. The language from Settings ("off" = show originals) decides the target. The
+    // text is translated for display only: `item` is untouched, so clipping still sends the repo
+    // exactly as the server gave it. Results are cached, so scrolling back is instant.
+    val appContainer = remember(context) { (context.applicationContext as? GitHuntApp)?.container }
+    val translateRepository = appContainer?.translateRepository
+    val targetLanguage by (appContainer?.appPreferences?.language ?: NoTranslation).collectAsState()
+    var translated by remember(item.fullName, item.description, item.readmeSnippet, targetLanguage) {
+        mutableStateOf<TranslatedCard?>(null)
+    }
+    var showOriginal by rememberSaveable(item.fullName + "#original") { mutableStateOf(false) }
+    LaunchedEffect(item.fullName, item.description, item.readmeSnippet, item.topics, targetLanguage) {
+        if (translateRepository == null || targetLanguage == "off") return@LaunchedEffect
+        val result = translateRepository.translateCard(
+            description = item.description,
+            snippet = item.readmeSnippet,
+            topics = item.topics,
+            target = targetLanguage,
+        )
+        // Only keep it when something really changed, so cards already in the target language
+        // don't show a "Translated" line.
+        if (result.changed) translated = result
+    }
+    val shownTranslation = if (showOriginal) null else translated
+    val shownDescription = shownTranslation?.description ?: item.description
+    val shownSnippet = shownTranslation?.snippet ?: item.readmeSnippet
+    val shownTopics = shownTranslation?.topics ?: item.topics
+
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
     var expanded by rememberSaveable(item.fullName) { mutableStateOf(false) }
