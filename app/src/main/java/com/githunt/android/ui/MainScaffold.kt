@@ -183,6 +183,7 @@ fun MainScaffold(
                                         darkTheme = darkTheme,
                                         onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
                                         scrollToTopTick = homeTap,
+                                        bars = homeBars,
                                     )
                                     AppTab.Discover -> DiscoverScreen(
                                         viewModel = discoverViewModel,
