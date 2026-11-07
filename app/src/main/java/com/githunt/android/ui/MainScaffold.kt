@@ -93,6 +93,7 @@ fun MainScaffold(
     onRefreshFeed: () -> Unit,
     onLoadMore: () -> Unit,
     onRefreshUser: (manual: Boolean) -> Unit,
+    onUserUpdated: (User) -> Unit,
     onResend: () -> Unit,
     onSignOut: () -> Unit,
     discoverViewModel: DiscoverViewModel,
