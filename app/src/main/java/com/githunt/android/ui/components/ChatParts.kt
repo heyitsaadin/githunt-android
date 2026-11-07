@@ -195,7 +195,7 @@ internal fun ChatTextField(
                 lineHeight = 20.sp,
                 color = scheme.onSurface,
             ),
-            cursorBrush = SolidColor(scheme.primary),
+            cursorBrush = SolidColor(FocusBlue),
             maxLines = 5,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
