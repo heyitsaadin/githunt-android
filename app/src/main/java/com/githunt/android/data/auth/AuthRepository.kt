@@ -22,15 +22,15 @@ class AuthRepository(
 ) {
 
     suspend fun login(username: String, password: String): ApiResult<User> =
-        apiCall(json) { api.login(LoginRequest(username.trim().lowercase(), password)) }.toUser()
+        apiCall(json) { api.login(LoginRequest(username.trim().lowercase(), password)) }.toUserWithProfile()
 
     suspend fun signup(username: String, email: String, password: String): ApiResult<User> =
         apiCall(json) {
             api.signup(SignupRequest(username.trim().lowercase(), password, email.trim().lowercase()))
-        }.toUser()
+        }.toUserWithProfile()
 
     suspend fun signInWithGoogle(idToken: String): ApiResult<User> =
-        apiCall(json) { api.googleSignIn(GoogleTokenRequest(idToken)) }.toUser()
+        apiCall(json) { api.googleSignIn(GoogleTokenRequest(idToken)) }.toUserWithProfile()
 
     /**
      * Called once at launch. No stored cookie means signed out with no network
@@ -93,7 +93,20 @@ class AuthRepository(
     fun forgetSession() = cookieJar.clear()
 }
 
-private fun ApiResult<UserEnvelope>.toUser(): ApiResult<User> = when (this) {
-    is ApiResult.Ok -> ApiResult.Ok(this.value.user)
-    is ApiResult.Err -> this
+/**
+ * The login/signup/Google responses are intentionally small and may omit
+ * profile fields such as background_url. Once the session cookie is stored,
+ * read /me so the first signed-in screen gets the complete canonical user.
+ * Keep the authentication response as a fallback if this extra read fails.
+ */
+private suspend fun ApiResult<UserEnvelope>.toUserWithProfile(): ApiResult<User> {
+    val authenticated = when (this) {
+        is ApiResult.Ok -> ApiResult.Ok(value.user)
+        is ApiResult.Err -> return this
+    }
+
+    return when (val profile = apiCall(json) { api.me() }) {
+        is ApiResult.Ok -> profile.value.user?.let { ApiResult.Ok(it) } ?: authenticated
+        is ApiResult.Err -> authenticated
+    }
 }
