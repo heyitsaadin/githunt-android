@@ -372,7 +372,12 @@ fun RepoCard(
                         HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                         Spacer(Modifier.height(10.dp))
                         ReadmeView(
-                            markdown = readmeText,
+                            markdown = if (showOriginal) readmeText else (readmeTranslated ?: readmeText),
+                            maxChars = if (!showOriginal && readmeTranslated != null) {
+                                TranslatedReadmeMaxChars
+                            } else {
+                                null
+                            },
                             owner = item.owner,
                             repo = repoName,
                             branch = item.raw?.text("default_branch"),
