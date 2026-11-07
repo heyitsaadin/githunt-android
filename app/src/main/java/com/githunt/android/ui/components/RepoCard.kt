@@ -559,8 +559,9 @@ private fun RepoImageCarousel(
         }
     }
     val currentUrl = slides.getOrNull(pagerState.currentPage)
-    val targetRatio = (currentUrl?.let { ratios[it] } ?: DEFAULT_IMAGE_RATIO)
-        .coerceIn(MIN_IMAGE_RATIO, MAX_IMAGE_RATIO)
+    val targetRatio = (
+        currentUrl?.let { if (isVideoSlide(it)) VIDEO_RATIO else ratios[it] } ?: DEFAULT_IMAGE_RATIO
+        ).coerceIn(MIN_IMAGE_RATIO, MAX_IMAGE_RATIO)
     val boxRatio by animateFloatAsState(
         targetValue = targetRatio,
         animationSpec = tween(durationMillis = 250),
