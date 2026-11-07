@@ -1,30 +1,14 @@
 package com.githunt.android.ui.components
 
 import android.os.SystemClock
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.githunt.android.data.engagement.EngagementEvent
@@ -118,43 +102,5 @@ internal fun Modifier.trackDwell(dwell: CardDwell): Modifier {
         val inView = bounds.height > 0f && shown > 0f &&
             (shown / bounds.height >= 0.5f || shown >= windowHeight * 0.5f)
         dwell.onVisibility(inView)
-    }
-}
-
-/** The card's "..." button and its menu. Today the menu has one row: Not interested. */
-@Composable
-internal fun RepoMoreMenu(onNotInterested: () -> Unit, modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    var open by remember { mutableStateOf(false) }
-    Box(modifier) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .clickable(onClickLabel = "More options") { open = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            val dot = scheme.onSurfaceVariant
-            Canvas(Modifier.size(width = 16.dp, height = 4.dp)) {
-                val radius = size.height / 2f
-                listOf(radius, size.width / 2f, size.width - radius).forEach { x ->
-                    drawCircle(color = dot, radius = radius, center = Offset(x, radius))
-                }
-            }
-        }
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-            shape = RoundedCornerShape(14.dp),
-            containerColor = scheme.surface,
-        ) {
-            DropdownMenuItem(
-                text = { Text("Not interested") },
-                onClick = {
-                    open = false
-                    onNotInterested()
-                },
-            )
-        }
     }
 }
