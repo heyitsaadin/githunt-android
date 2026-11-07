@@ -218,7 +218,7 @@ fun FeedScreen(
 
                     items(feed.items, key = { it.key }) { item ->
                         when (item) {
-                            is RepoItem -> RepoCard(item = item)
+                            is RepoItem -> RepoCard(item = item, showNotInterested = true)
                             is PostItem -> PostCard(item)
                         }
                     }
