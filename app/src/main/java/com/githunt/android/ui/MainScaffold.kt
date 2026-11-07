@@ -214,6 +214,10 @@ fun MainScaffold(
                                         viewModel = profileViewModel,
                                         onRefreshUser = onRefreshUser,
                                         onOpenSettings = { settingsOpen = true },
+                                        onEditProfile = {
+                                            settingsRoute = "edit-profile"
+                                            settingsOpen = true
+                                        },
                                         scrollToTopTick = profileTap,
                                     )
                                 }
