@@ -1,8 +1,10 @@
 package com.githunt.android.data.settings
 
+import com.githunt.android.data.auth.User
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.net.apiCall
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 class SettingsRepository(
     private val api: SettingsApi,
