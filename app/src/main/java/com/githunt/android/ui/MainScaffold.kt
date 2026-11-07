@@ -268,7 +268,7 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
     val state by viewModel.inbox.collectAsState()
-    LaunchedEffect(Unit) { viewModel.loadNotificationInbox() }
+    LaunchedEffect(Unit) { viewModel.refreshNotificationInbox() }
     val shape = RoundedCornerShape(16.dp)
 
     Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
