@@ -19,6 +19,13 @@ class SettingsRepository(
     suspend fun changePassword(current: String, newPassword: String): ApiResult<Unit> =
         apiCall(json) { api.changePassword(ChangePasswordRequest(current, newPassword)) }
 
+    /** Saves profile fields and returns the account as the server now has it. */
+    suspend fun updateProfile(body: JsonObject): ApiResult<User> =
+        when (val result = apiCall(json) { api.updateProfile(body) }) {
+            is ApiResult.Ok -> ApiResult.Ok(result.value.user)
+            is ApiResult.Err -> result
+        }
+
     suspend fun deleteAccount(): ApiResult<Unit> = apiCall(json) { api.deleteAccount() }
 
     suspend fun personalization(): ApiResult<PersonalizationState> = apiCall(json) { api.personalization() }
