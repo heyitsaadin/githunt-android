@@ -108,6 +108,10 @@ fun MainScaffold(
     }
     val stateHolder = rememberSaveableStateHolder()
 
+    // Home's feed hides the top bar and this bottom dock while you scroll down it.
+    val homeBars = rememberScrollBarsState()
+    LaunchedEffect(tab) { homeBars.show() }
+
     BackHandler(enabled = settingsOpen) { settingsOpen = false }
     BackHandler(enabled = !settingsOpen && quickPage != null) { quickPage = null }
     BackHandler(enabled = !settingsOpen && quickPage == null && tab != AppTab.Home) { tab = AppTab.Home }
