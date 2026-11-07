@@ -7,6 +7,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Needed so the job can create a GitHub Release (only used on pushes to main).
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,7 +35,7 @@ jobs:
         run: ./gradlew lint
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug -PappVersionCode=${{ github.run_number }}
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
@@ -41,3 +45,17 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
+
+      # Runs only after every step above succeeded, and only for pushes to main
+      # (not pull requests). Obtainium watches these releases and installs the APK.
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk githunt-debug.apk
+          gh release create "build-${{ github.run_number }}" githunt-debug.apk \
+            --title "Build ${{ github.run_number }}" \
+            --notes "Commit ${{ github.sha }}" \
+            --target "${{ github.sha }}" \
+            --latest
