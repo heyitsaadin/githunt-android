@@ -144,7 +144,7 @@ fun RepoCard(
             RepoImageCarousel(
                 images = item.readmeImages,
                 contentDescription = "${item.fullName} README preview",
-                onClick = {
+                onOpenGithub = {
                     runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
                 },
             )
