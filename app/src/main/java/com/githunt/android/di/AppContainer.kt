@@ -104,11 +104,6 @@ class AppContainer(context: Context) {
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
-    val settingsRepository = com.githunt.android.data.settings.SettingsRepository(
-        retrofit.create(com.githunt.android.data.settings.SettingsApi::class.java),
-        json,
-    )
-
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
 }
