@@ -176,7 +176,22 @@ fun RepoCard(
             .fillMaxWidth()
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .onGloballyPositioned { coordinates ->
+                if (engagement == null) return@onGloballyPositioned
+                // "On screen" = half the card, or half the window for cards taller than that.
+                val bounds = coordinates.boundsInWindow()
+                val total = bounds.height
+                val visiblePx = minOf(bounds.bottom, view.height.toFloat()) - maxOf(bounds.top, 0f)
+                val nowVisible = total > 0f && visiblePx > 0f &&
+                    (visiblePx / total >= 0.5f || visiblePx >= view.height * 0.5f)
+                if (nowVisible && !tracker.visible) {
+                    tracker.visible = true
+                    tracker.visibleSince = SystemClock.elapsedRealtime()
+                } else if (!nowVisible && tracker.visible) {
+                    flushView()
+                }
+            },
     ) {
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
         // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
