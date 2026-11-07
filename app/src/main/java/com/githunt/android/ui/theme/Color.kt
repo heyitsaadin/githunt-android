@@ -20,6 +20,11 @@ val Carbon = Color(0xFF111113)
 val Slate = Color(0xFF6A6A72)
 val Brick = Color(0xFFC73A2E)
 
+// The one accent: the website's blue-500 / blue-400. Used for the focus outline of the AI
+// search box and the Ask AI composer, and for the selected search filter chip.
+val FocusBlue = Color(0xFF3B82F6)
+val SoftBlue = Color(0xFF60A5FA)
+
 // Login / sign-up screens. Fixed colours: the design looks the same in light and dark mode.
 val AuthBackdrop = Color(0xFFB4C6DE)
 val AuthBlob = Color(0x40FFFFFF)
