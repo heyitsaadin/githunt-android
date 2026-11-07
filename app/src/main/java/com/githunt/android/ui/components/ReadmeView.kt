@@ -26,8 +26,11 @@ fun ReadmeView(
     repo: String,
     branch: String?,
     modifier: Modifier = Modifier,
+    maxChars: Int? = null,
 ) {
-    val prepared = remember(markdown, owner, repo, branch) { prepareReadme(markdown, owner, repo, branch) }
+    val prepared = remember(markdown, owner, repo, branch, maxChars) {
+        prepareReadme(markdown, owner, repo, branch, maxChars ?: MaxReadmeChars)
+    }
     MarkdownBody(markdown = prepared, modifier = modifier)
 }
 
