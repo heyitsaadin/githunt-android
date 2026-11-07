@@ -65,6 +65,11 @@ data class NotificationsUi(
     val interestError: String? = null,
     val testing: Boolean = false,
     val testSent: Boolean = false,
+    /** Turning notifications on or off for this phone is in progress. */
+    val deviceBusy: Boolean = false,
+    val deviceError: String? = null,
+    /** The Android permission was refused, so only the phone's own settings can allow it now. */
+    val deviceBlocked: Boolean = false,
 )
 
 enum class InterestKind { Language, Topic }
