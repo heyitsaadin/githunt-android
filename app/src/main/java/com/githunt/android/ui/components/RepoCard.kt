@@ -594,6 +594,9 @@ private fun GitHubPill(onClick: () -> Unit) {
     }
 }
 
+/** Stands in for the language setting when no app container exists (previews, tests). */
+private val NoTranslation: StateFlow<String> = MutableStateFlow("off")
+
 /** Hosts the website's /api/img-proxy accepts. Anything else is loaded directly. */
 private val ProxyHosts = setOf(
     "raw.githubusercontent.com",
