@@ -119,6 +119,17 @@ fun RepoCard(
     var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
 
+    // What the person does with this card is reported to the backend (like the website's
+    // recordEngagement) so Personalization can learn from it. `dwell` times how long the card is
+    // in view; `track` reports one deliberate action and marks the look as engaged, so a quick
+    // "open the README, scroll on" is never counted as a skip.
+    val tracker = remember(context) { (context.applicationContext as? GitHuntApp)?.container?.engagementTracker }
+    val dwell = rememberCardDwell(item, tracker)
+    fun track(event: String) {
+        dwell.engaged = true
+        tracker?.record(item, event)
+    }
+
     // "Ask AI" panel. Like the website, closing it throws the conversation away.
     var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
 
