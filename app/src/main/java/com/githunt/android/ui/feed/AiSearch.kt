@@ -200,6 +200,9 @@ class AiSearchState(
         loading = false
     }
 
+    /** Called when a reply has finished typing in, so it never replays (e.g. after scrolling away). */
+    fun finishAnimation(id: Long) = update(id) { it.copy(animate = false) }
+
     private fun update(id: Long, change: (AiMessage) -> AiMessage) {
         val index = messages.indexOfFirst { it.id == id }
         if (index >= 0) messages[index] = change(messages[index])
