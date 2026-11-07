@@ -58,8 +58,12 @@ fun SettingsHost(
     viewModel: SettingsViewModel,
     onClose: () -> Unit,
     onSignOut: () -> Unit,
+    onUserUpdated: (User) -> Unit,
+    onRefreshUser: () -> Unit,
+    /** Open straight onto this page (for example "edit-profile"). Back from it closes Settings. */
+    initialRoute: String? = null,
 ) {
-    var stackKey by rememberSaveable { mutableStateOf("root") }
+    var stackKey by rememberSaveable { mutableStateOf(initialRoute ?: "root") }
 
     fun pop() {
         if (stackKey.contains(',')) stackKey = stackKey.substringBeforeLast(',') else onClose()
@@ -85,6 +89,13 @@ fun SettingsHost(
     ) { current ->
         when (current.substringAfterLast(',')) {
             "account" -> AccountScreen(onBack = { pop() }, onNavigate = { push(it) })
+            "edit-profile" -> EditProfileScreen(
+                user = user,
+                vm = viewModel,
+                onBack = { pop() },
+                onUserUpdated = onUserUpdated,
+                onRefreshUser = onRefreshUser,
+            )
             "password" -> PasswordScreen(user = user, vm = viewModel, onBack = { pop() })
             "security" -> SecurityScreen(user = user, vm = viewModel, onBack = { pop() }, onSignOut = onSignOut)
             "manage" -> ManageAccountScreen(user = user, vm = viewModel, onBack = { pop() }, onSignOut = onSignOut)

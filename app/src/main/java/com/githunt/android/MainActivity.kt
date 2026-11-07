@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
                                     onRefreshFeed = feedViewModel::refresh,
                                     onLoadMore = feedViewModel::loadMore,
                                     onRefreshUser = authViewModel::refreshUser,
+                                    onUserUpdated = authViewModel::updateUser,
                                     onResend = authViewModel::resendVerification,
                                     onSignOut = authViewModel::signOut,
                                     discoverViewModel = discoverViewModel,

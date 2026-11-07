@@ -93,6 +93,7 @@ fun MainScaffold(
     onRefreshFeed: () -> Unit,
     onLoadMore: () -> Unit,
     onRefreshUser: (manual: Boolean) -> Unit,
+    onUserUpdated: (User) -> Unit,
     onResend: () -> Unit,
     onSignOut: () -> Unit,
     discoverViewModel: DiscoverViewModel,
@@ -106,6 +107,8 @@ fun MainScaffold(
     var discoverTap by remember { mutableIntStateOf(0) }
     var profileTap by remember { mutableIntStateOf(0) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    // Which Settings page to land on (null = the main list). "Edit profile" buttons use "edit-profile".
+    var settingsRoute by rememberSaveable { mutableStateOf<String?>(null) }
     var quickPage by rememberSaveable { mutableStateOf<String?>(null) }
     val themeMode by settingsViewModel.prefs.theme.collectAsState()
     val darkTheme = when (themeMode) {
@@ -119,7 +122,10 @@ fun MainScaffold(
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
 
-    BackHandler(enabled = settingsOpen) { settingsOpen = false }
+    BackHandler(enabled = settingsOpen) {
+        settingsOpen = false
+        settingsRoute = null
+    }
     BackHandler(enabled = !settingsOpen && quickPage != null) { quickPage = null }
     BackHandler(enabled = !settingsOpen && quickPage == null && tab != AppTab.Home) { tab = AppTab.Home }
 
@@ -150,8 +156,14 @@ fun MainScaffold(
                     "settings" -> SettingsHost(
                         user = user,
                         viewModel = settingsViewModel,
-                        onClose = { settingsOpen = false },
+                        onClose = {
+                            settingsOpen = false
+                            settingsRoute = null
+                        },
                         onSignOut = onSignOut,
+                        onUserUpdated = onUserUpdated,
+                        onRefreshUser = { onRefreshUser(true) },
+                        initialRoute = settingsRoute,
                     )
                     "clips" -> ClippedReposScreen(repository = clipsRepository, onBack = { quickPage = null })
                     "notifications" -> NotificationInboxScreen(viewModel = settingsViewModel, onBack = { quickPage = null })
@@ -202,6 +214,10 @@ fun MainScaffold(
                                         viewModel = profileViewModel,
                                         onRefreshUser = onRefreshUser,
                                         onOpenSettings = { settingsOpen = true },
+                                        onEditProfile = {
+                                            settingsRoute = "edit-profile"
+                                            settingsOpen = true
+                                        },
                                         scrollToTopTick = profileTap,
                                     )
                                 }

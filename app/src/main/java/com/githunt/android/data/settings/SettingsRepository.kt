@@ -1,8 +1,10 @@
 package com.githunt.android.data.settings
 
+import com.githunt.android.data.auth.User
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.net.apiCall
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 class SettingsRepository(
     private val api: SettingsApi,
@@ -16,6 +18,16 @@ class SettingsRepository(
 
     suspend fun changePassword(current: String, newPassword: String): ApiResult<Unit> =
         apiCall(json) { api.changePassword(ChangePasswordRequest(current, newPassword)) }
+
+    /** Saves profile fields and returns the account as the server now has it. */
+    suspend fun updateProfile(body: JsonObject): ApiResult<User> =
+        when (val result = apiCall(json) { api.updateProfile(body) }) {
+            is ApiResult.Ok -> ApiResult.Ok(result.value.user)
+            is ApiResult.Err -> result
+        }
+
+    suspend fun usernameAvailable(username: String): ApiResult<UsernameAvailability> =
+        apiCall(json) { api.usernameAvailable(username) }
 
     suspend fun deleteAccount(): ApiResult<Unit> = apiCall(json) { api.deleteAccount() }
 

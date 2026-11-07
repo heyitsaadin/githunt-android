@@ -1,5 +1,8 @@
 package com.githunt.android.data.settings
 
+import com.githunt.android.data.auth.UserEnvelope
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -24,6 +27,18 @@ interface SettingsApi {
     // Account
     @POST("api/auth/change-password")
     suspend fun changePassword(@Body body: ChangePasswordRequest): Response<Unit>
+
+    /**
+     * The same call the website's edit-profile page makes. Only the keys present in [body] change:
+     * display_name, username, bio, avatar_url, background_url (a data URI, or "" to remove), and
+     * github_username (only "" is accepted, which disconnects GitHub).
+     */
+    @PATCH("api/auth/me")
+    suspend fun updateProfile(@Body body: JsonObject): Response<UserEnvelope>
+
+    /** `{ "available": true }` when nobody else has [username]; the person's own name counts as free. */
+    @GET("api/auth/username-available")
+    suspend fun usernameAvailable(@Query("username") username: String): Response<UsernameAvailability>
 
     @DELETE("api/auth/me")
     suspend fun deleteAccount(): Response<Unit>
@@ -77,3 +92,6 @@ interface SettingsApi {
     @GET("api/build-logs")
     suspend fun buildLogs(): Response<BuildLogsResponse>
 }
+
+@Serializable
+data class UsernameAvailability(val available: Boolean = false)

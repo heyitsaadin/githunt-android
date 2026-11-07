@@ -242,6 +242,11 @@ class AuthViewModel(
         }
     }
 
+    /** The profile editor saved (or disconnected GitHub): show the server's version everywhere at once. */
+    fun updateUser(user: User) {
+        if (_session.value is Session.SignedIn) _session.value = Session.SignedIn(user)
+    }
+
     fun resendVerification() {
         if (_home.value.resending) return
 

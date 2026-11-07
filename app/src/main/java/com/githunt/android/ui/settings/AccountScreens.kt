@@ -29,20 +29,18 @@ import com.githunt.android.ui.components.PathIcon
 
 @Composable
 fun AccountScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
-    val openSite = rememberSiteOpener()
     SettingsScaffold(title = "Account", onBack = onBack) {
         SettingsSection(
             title = "Account settings",
             description = "Manage your profile, password and security.",
             first = true,
         ) {
-            // There is no native profile editor yet, so this opens the website's.
             SettingsRow(
                 title = "Edit profile",
                 subtitle = "Name, username, bio, photos",
                 icon = NavIcons.Edit,
-                onClick = { openSite("profile/edit") },
-                trailing = { OpenTrailing() },
+                onClick = { onNavigate("edit-profile") },
+                trailing = { ChevronTrailing() },
             )
             SettingsRow(
                 title = "Change password",

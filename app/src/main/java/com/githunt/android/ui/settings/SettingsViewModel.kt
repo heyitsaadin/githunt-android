@@ -3,6 +3,16 @@ package com.githunt.android.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import android.content.ContentResolver
+import android.net.Uri
+import com.githunt.android.data.auth.User
+import com.githunt.android.data.profile.ProfileImages
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.BuildLog
@@ -12,6 +22,7 @@ import com.githunt.android.data.settings.Interests
 import com.githunt.android.data.settings.InboxNotification
 import com.githunt.android.data.settings.SettingsRepository
 import com.githunt.android.di.AppContainer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,6 +95,65 @@ data class FeatureUi(
     val sent: Boolean = false,
     val error: String? = null,
 )
+
+/** What the editor will do with a photo when saved. */
+sealed interface PhotoEdit {
+    data object Unchanged : PhotoEdit
+    data object Removed : PhotoEdit
+
+    /** [jpeg] is already resized; it is what gets uploaded and what the editor previews. */
+    class Picked(val jpeg: ByteArray) : PhotoEdit
+}
+
+enum class PhotoTarget { Avatar, Cover }
+
+/** Where the live "is this username free?" check stands for the name typed in the editor. */
+enum class UsernameCheck {
+    /** Nothing to check: unchanged, or not a valid username yet. */
+    Idle,
+    Checking,
+    Available,
+    Taken,
+
+    /** The check couldn't run (offline, or the server doesn't offer it). Saving still verifies. */
+    Unknown,
+}
+
+/** The edit-profile draft. Lives in the view model so a half-finished edit survives the screen redrawing. */
+data class EditProfileUi(
+    val usernameCheck: UsernameCheck = UsernameCheck.Idle,
+    val displayName: String = "",
+    val username: String = "",
+    val bio: String = "",
+    val avatar: PhotoEdit = PhotoEdit.Unchanged,
+    val cover: PhotoEdit = PhotoEdit.Unchanged,
+    val avatarBusy: Boolean = false,
+    val coverBusy: Boolean = false,
+    val saving: Boolean = false,
+    val disconnecting: Boolean = false,
+    val error: String? = null,
+) {
+    fun withBusy(target: PhotoTarget, busy: Boolean): EditProfileUi =
+        if (target == PhotoTarget.Avatar) copy(avatarBusy = busy) else copy(coverBusy = busy)
+
+    fun withPhoto(target: PhotoTarget, photo: PhotoEdit): EditProfileUi =
+        if (target == PhotoTarget.Avatar) copy(avatar = photo) else copy(cover = photo)
+}
+
+/** One-off results the editor screen reacts to. */
+sealed interface ProfileEvent {
+    data class Saved(val user: User) : ProfileEvent
+    data class GithubDisconnected(val user: User) : ProfileEvent
+}
+
+private fun JsonObjectBuilder.putPhoto(key: String, photo: PhotoEdit) {
+    when (photo) {
+        PhotoEdit.Unchanged -> Unit
+        // The server treats an empty string as "remove".
+        PhotoEdit.Removed -> put(key, "")
+        is PhotoEdit.Picked -> put(key, ProfileImages.toDataUrl(photo.jpeg))
+    }
+}
 
 const val MAX_INTERESTS = 8
 
@@ -194,6 +264,152 @@ class SettingsViewModel(
                     onDeleted()
                 }
                 is ApiResult.Err -> _delete.value = DeleteState(error = result.message)
+            }
+        }
+    }
+
+    // ---- Edit profile ----
+
+    private val _edit = MutableStateFlow(EditProfileUi())
+    val edit: StateFlow<EditProfileUi> = _edit.asStateFlow()
+
+    private val _profileEvents = Channel<ProfileEvent>(Channel.BUFFERED)
+    val profileEvents: Flow<ProfileEvent> = _profileEvents.receiveAsFlow()
+
+    /** Bumped every time the editor opens, so a photo still being processed can't land in a newer draft. */
+    private var editSession = 0
+
+    /** Opens a fresh draft filled in from the signed-in account. */
+    fun beginEditProfile(user: User) {
+        editSession++
+        usernameJob?.cancel()
+        originalUsername = user.username
+        _edit.value = EditProfileUi(
+            displayName = user.displayName.orEmpty(),
+            username = user.username,
+            bio = user.bio.orEmpty(),
+        )
+    }
+
+    fun setEditName(value: String) {
+        _edit.update { it.copy(displayName = value.take(40), error = null) }
+    }
+
+    /** The username on the account when the editor opened; keeping it needs no check. */
+    private var originalUsername: String = ""
+    private var usernameJob: Job? = null
+
+    fun setEditUsername(value: String) {
+        val cleaned = value.lowercase().filter { it in 'a'..'z' || it in '0'..'9' || it == '_' }.take(20)
+        if (cleaned == _edit.value.username) return
+
+        usernameJob?.cancel()
+        val needsCheck = cleaned != originalUsername && USERNAME_PATTERN.matches(cleaned)
+        // Mark "checking" straight away so Save can't be tapped in the gap before the request starts.
+        _edit.update {
+            it.copy(
+                username = cleaned,
+                error = null,
+                usernameCheck = if (needsCheck) UsernameCheck.Checking else UsernameCheck.Idle,
+            )
+        }
+        if (!needsCheck) return
+
+        val session = editSession
+        usernameJob = viewModelScope.launch {
+            // Wait for a pause in typing so we don't ask the server about every keystroke.
+            delay(450)
+            val result = repo.usernameAvailable(cleaned)
+            if (session != editSession || _edit.value.username != cleaned) return@launch
+            val check = when (result) {
+                is ApiResult.Ok -> if (result.value.available) UsernameCheck.Available else UsernameCheck.Taken
+                is ApiResult.Err -> UsernameCheck.Unknown
+            }
+            _edit.update { it.copy(usernameCheck = check) }
+        }
+    }
+
+    fun setEditBio(value: String) {
+        _edit.update { it.copy(bio = value.take(160), error = null) }
+    }
+
+    fun removeEditPhoto(target: PhotoTarget) {
+        _edit.update { it.withPhoto(target, PhotoEdit.Removed).copy(error = null) }
+    }
+
+    /** Shrinks the picked picture off the main thread, then puts it in the draft. */
+    fun pickEditPhoto(target: PhotoTarget, uri: Uri, resolver: ContentResolver) {
+        val session = editSession
+        _edit.update { it.withBusy(target, true).copy(error = null) }
+        viewModelScope.launch {
+            val jpeg = ProfileImages.encode(resolver, uri, square = target == PhotoTarget.Avatar)
+            if (session != editSession) return@launch
+            _edit.update {
+                if (jpeg == null) {
+                    it.withBusy(target, false).copy(error = "Couldn't read that image. Try a different one.")
+                } else {
+                    it.withBusy(target, false).withPhoto(target, PhotoEdit.Picked(jpeg))
+                }
+            }
+        }
+    }
+
+    fun saveProfile() {
+        val draft = _edit.value
+        if (draft.saving || draft.disconnecting || draft.avatarBusy || draft.coverBusy) return
+        if (draft.usernameCheck == UsernameCheck.Checking || draft.usernameCheck == UsernameCheck.Taken) return
+
+        val username = draft.username.trim()
+        if (!USERNAME_PATTERN.matches(username)) {
+            _edit.update {
+                it.copy(error = "Username must be 3-20 characters: lowercase letters, numbers, underscores.")
+            }
+            return
+        }
+
+        // Only the photos that changed are sent, so an untouched photo is never re-uploaded.
+        val body = buildJsonObject {
+            put("display_name", draft.displayName.trim())
+            put("username", username)
+            put("bio", draft.bio.trim())
+            putPhoto("avatar_url", draft.avatar)
+            putPhoto("background_url", draft.cover)
+        }
+
+        _edit.update { it.copy(saving = true, error = null) }
+        viewModelScope.launch {
+            when (val result = repo.updateProfile(body)) {
+                is ApiResult.Ok -> {
+                    _edit.update { it.copy(saving = false) }
+                    _profileEvents.trySend(ProfileEvent.Saved(result.value))
+                }
+                is ApiResult.Err -> _edit.update {
+                    // Somebody took the name between the check and the save.
+                    if (result.code == 409) {
+                        it.copy(saving = false, usernameCheck = UsernameCheck.Taken, error = null)
+                    } else {
+                        it.copy(saving = false, error = result.message)
+                    }
+                }
+            }
+        }
+    }
+
+    /** The website only lets a profile disconnect GitHub from here; connecting needs its OAuth page. */
+    fun disconnectGithubFromProfile() {
+        val draft = _edit.value
+        if (draft.saving || draft.disconnecting) return
+        _edit.update { it.copy(disconnecting = true, error = null) }
+        viewModelScope.launch {
+            val body = buildJsonObject { put("github_username", "") }
+            when (val result = repo.updateProfile(body)) {
+                is ApiResult.Ok -> {
+                    _edit.update { it.copy(disconnecting = false) }
+                    _profileEvents.trySend(ProfileEvent.GithubDisconnected(result.value))
+                }
+                is ApiResult.Err -> _edit.update {
+                    it.copy(disconnecting = false, error = result.message)
+                }
             }
         }
     }
@@ -465,6 +681,9 @@ class SettingsViewModel(
 
     companion object {
         const val ALL_OTHERS = "all_others"
+
+        /** The same rule the server enforces on usernames. */
+        private val USERNAME_PATTERN = Regex("^[a-z0-9_]{3,20}$")
     }
 }
 

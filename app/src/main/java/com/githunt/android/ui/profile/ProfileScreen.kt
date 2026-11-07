@@ -91,6 +91,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     onRefreshUser: (manual: Boolean) -> Unit,
     onOpenSettings: () -> Unit,
+    onEditProfile: () -> Unit,
     scrollToTopTick: Int = 0,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -151,7 +152,7 @@ fun ProfileScreen(
                     selected = state.tab,
                     accent = accent,
                     onSelectTab = viewModel::selectTab,
-                    onEdit = { openWeb("profile/edit") },
+                    onEdit = onEditProfile,
                     onShare = { shareProfile() },
                     onGithub = {
                         user.githubUsername?.let { runCatching { uriHandler.openUri("https://github.com/$it") } }
