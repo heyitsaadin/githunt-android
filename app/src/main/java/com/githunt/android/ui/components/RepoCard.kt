@@ -497,7 +497,7 @@ private fun ActionPill(
                 fontSize = 11.5.sp,
                 lineHeight = 17.sp,
                 fontWeight = FontWeight.Medium,
-                color = scheme.onSurface,
+                color = content,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -505,7 +505,7 @@ private fun ActionPill(
                 Spacer(Modifier.width(6.dp))
                 PathIcon(
                     pathData = CardIcons.ChevronDown,
-                    tint = scheme.onSurface,
+                    tint = content,
                     iconSize = 12.dp,
                     strokeWidth = 2f,
                     modifier = Modifier.rotate(if (chevronUp) 180f else 0f),
