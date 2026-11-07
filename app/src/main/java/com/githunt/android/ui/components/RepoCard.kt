@@ -222,7 +222,10 @@ fun RepoCard(
 
         Column(modifier = Modifier.padding(horizontal = 14.dp)) {
             Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.bringIntoViewRequester(cardTop),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 RepoAvatar(url = item.avatarUrl, size = 36.dp)
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
