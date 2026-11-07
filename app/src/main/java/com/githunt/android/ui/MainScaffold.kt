@@ -124,6 +124,15 @@ fun MainScaffold(
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
 
+    // Tapping a system notification asks for the Notifications page.
+    LaunchedEffect(openNotificationsTick) {
+        if (openNotificationsTick > 0) {
+            settingsOpen = false
+            settingsRoute = null
+            quickPage = "notifications"
+        }
+    }
+
     BackHandler(enabled = settingsOpen) {
         settingsOpen = false
         settingsRoute = null
