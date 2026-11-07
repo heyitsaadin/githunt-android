@@ -65,6 +65,7 @@ import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.SubPageBar
 import com.githunt.android.ui.components.relativeTime
+import com.githunt.android.ui.components.rememberScrollBarsState
 import com.githunt.android.ui.discover.DiscoverScreen
 import com.githunt.android.ui.discover.DiscoverViewModel
 import com.githunt.android.ui.feed.FeedScreen
