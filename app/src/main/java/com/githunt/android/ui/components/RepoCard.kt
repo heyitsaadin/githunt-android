@@ -101,6 +101,7 @@ import java.util.Locale
  * "Show README" expands the README inside the card, like the website. If the app container
  * isn't available (previews, tests) it opens the repo's README on GitHub instead.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RepoCard(
     item: RepoItem,
