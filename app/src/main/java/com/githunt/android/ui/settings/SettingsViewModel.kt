@@ -598,6 +598,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (val result = repo.pushTest()) {
                 is ApiResult.Ok -> {
+                    // The server saved it in the inbox; fetch it now rather than at the next 15-minute check.
+                    devicePush.checkNow()
                     _notifications.update { it.copy(testing = false, testSent = true) }
                     delay(4000)
                     _notifications.update { it.copy(testSent = false) }
