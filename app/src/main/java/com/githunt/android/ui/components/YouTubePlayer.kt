@@ -119,7 +119,9 @@ private fun YouTubePoster(
         )
     }
     var posterIndex by remember(videoId) { mutableIntStateOf(0) }
-    val nextPoster = { if (posterIndex < posters.lastIndex) posterIndex++ }
+    fun nextPoster() {
+        if (posterIndex < posters.lastIndex) posterIndex += 1
+    }
 
     Box(
         modifier = modifier.clickable(onClickLabel = "Play video", onClick = onPlay),
