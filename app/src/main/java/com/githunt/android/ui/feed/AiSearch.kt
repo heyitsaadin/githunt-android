@@ -260,7 +260,13 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
                     } else if (m.content.isNotBlank()) {
                         key(m.id) {
                             val pending = m.pending
-                            ChatBubble(isUser = false, text = m.content, isError = m.isError) {
+                            ChatBubble(
+                                isUser = false,
+                                text = m.content,
+                                isError = m.isError,
+                                animate = m.animate,
+                                onAnimationDone = { state.finishAnimation(m.id) },
+                            ) {
                                 if (pending != null) {
                                     val busy = m.block != null
                                     Text(
