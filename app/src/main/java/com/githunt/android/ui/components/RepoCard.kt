@@ -612,11 +612,38 @@ private fun RepoImageCarousel(
             ShimmerImage(
                 model = request,
                 contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
+                // Fit, not Crop: the whole picture is always visible.
+                contentScale = ContentScale.Fit,
                 onFailed = { failed = failed + url },
+                onLoaded = { width, height ->
+                    val ratio = width / height
+                    ImageRatioCache[url] = ratio
+                    ratios[url] = ratio
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(onClick = onClick),
+                    .clickable {
+                        previewIndex = page
+                        // Keep the carousel still behind the preview.
+                        pausedUntil = Long.MAX_VALUE
+                    },
+            )
+        }
+
+        previewIndex?.let { start ->
+            ImagePreviewDialog(
+                images = slides,
+                startIndex = start,
+                contentDescription = contentDescription,
+                onDismiss = {
+                    previewIndex = null
+                    pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
+                },
+                onOpenGithub = {
+                    previewIndex = null
+                    pausedUntil = SystemClock.elapsedRealtime() + RESUME_AFTER_INTERACTION_MS
+                    onOpenGithub()
+                },
             )
         }
 
