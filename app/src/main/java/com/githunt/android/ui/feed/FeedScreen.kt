@@ -1,6 +1,11 @@
 package com.githunt.android.ui.feed
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -49,6 +54,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +74,9 @@ import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
+import com.githunt.android.ui.components.ScrollBarsState
 import com.githunt.android.ui.components.Wordmark
+import com.githunt.android.ui.components.rememberScrollBarsState
 import java.util.Locale
 
 /**
@@ -96,10 +104,12 @@ fun FeedScreen(
     darkTheme: Boolean,
     onToggleTheme: (Boolean) -> Unit,
     scrollToTopTick: Int,
+    bars: ScrollBarsState = rememberScrollBarsState(),
 ) {
     val scheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
+    val aiSearch = rememberAiSearchState()
 
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
@@ -116,12 +126,19 @@ fun FeedScreen(
                 .fillMaxSize()
                 .background(scheme.background),
         ) {
-            // Top bar: grey, and it runs up behind the status bar.
+            // Top bar: grey, and it runs up behind the status bar. The status bar strip always
+            // stays; the bar itself slides away while scrolling down the feed (ScrollBars.kt).
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .background(scheme.surfaceVariant)
+                    .statusBarsPadding(),
+            )
+            Box(modifier = bars.collapseModifier(slideUp = true)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(scheme.surfaceVariant)
-                    .statusBarsPadding()
                     .padding(horizontal = MenuBarPadding, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -150,6 +167,7 @@ fun FeedScreen(
                     }
                 }
             }
+            }
 
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
@@ -160,8 +178,8 @@ fun FeedScreen(
             ) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxSize().nestedScroll(bars.connection),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (!user.emailVerified) {
@@ -169,6 +187,10 @@ fun FeedScreen(
                             ConfirmEmailBanner(home = home, onRefreshUser = onRefreshUser, onResend = onResend)
                         }
                     }
+
+                    // AI search: the box, then any repos its searches found, then the normal feed.
+                    item(key = "ai-search") { AiSearchPanel(state = aiSearch) }
+                    aiSearchResults(aiSearch)
 
                     if (feed.loading && feed.items.isEmpty()) {
                         // Same placeholder cards Discover shows while it loads.

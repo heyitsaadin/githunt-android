@@ -114,6 +114,9 @@ fun RepoCard(
     var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
 
+    // "Ask AI" panel. Like the website, closing it throws the conversation away.
+    var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
+
     LaunchedEffect(expanded, item.fullName) {
         if (expanded && markdown == null && readmeRepository != null) {
             loadingReadme = true
@@ -297,6 +300,18 @@ fun RepoCard(
             }
 
             Spacer(Modifier.height(12.dp))
+            // Ask AI opens here, above the buttons, the same place the README opens.
+            AnimatedVisibility(
+                visible = askOpen,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    RepoAskAiPanel(item = item)
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionPill(
                     text = when {
@@ -319,21 +334,27 @@ fun RepoCard(
                     },
                 )
                 ActionPill(
-                    text = "Open GitHub  \u2197",
+                    text = "Ask AI",
                     modifier = Modifier.weight(1f),
-                    onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } },
+                    leadingIcon = CardIcons.Sparkles,
+                    chevronUp = askOpen,
+                    active = askOpen,
+                    onClick = { askOpen = !askOpen },
                 )
             }
 
             Spacer(Modifier.height(12.dp))
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 StatChip(icon = CardIcons.Star, value = formatCount(item.stars), tint = scheme.onSurfaceVariant)
                 StatChip(icon = CardIcons.Fork, value = formatCount(item.forks), tint = scheme.onSurfaceVariant)
-                item.language?.let { language ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                val language = item.language
+                if (language != null) {
+                    // Takes the free space, so the GitHub pill ends up flush right.
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         languageColor(language)?.let { dot ->
                             Box(
                                 Modifier
@@ -348,9 +369,14 @@ fun RepoCard(
                             fontFamily = mono,
                             fontSize = 12.sp,
                             color = scheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
+                } else {
+                    Spacer(Modifier.weight(1f))
                 }
+                GitHubPill(onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } })
             }
 
             Spacer(Modifier.height(12.dp))
@@ -435,27 +461,36 @@ private fun ActionPill(
     modifier: Modifier = Modifier,
     chevronUp: Boolean? = null,
     enabled: Boolean = true,
+    leadingIcon: String? = null,
+    active: Boolean = false,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    // The web's Ask AI pill inverts (light fill, dark text) while its panel is open.
+    val container = if (active) scheme.onSurface else scheme.surfaceVariant.copy(alpha = 0.55f)
+    val content = if (active) scheme.surface else scheme.onSurface
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.6f)
             .clip(CircleShape)
-            .background(scheme.surfaceVariant.copy(alpha = 0.55f))
+            .background(container)
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (leadingIcon != null) {
+                PathIcon(pathData = leadingIcon, tint = content, iconSize = 13.dp, filled = true)
+                Spacer(Modifier.width(6.dp))
+            }
             Text(
                 text = text,
                 fontFamily = LocalGhMono.current,
                 fontSize = 11.5.sp,
                 lineHeight = 17.sp,
                 fontWeight = FontWeight.Medium,
-                color = scheme.onSurface,
+                color = content,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -463,13 +498,43 @@ private fun ActionPill(
                 Spacer(Modifier.width(6.dp))
                 PathIcon(
                     pathData = CardIcons.ChevronDown,
-                    tint = scheme.onSurface,
+                    tint = content,
                     iconSize = 12.dp,
                     strokeWidth = 2f,
                     modifier = Modifier.rotate(if (chevronUp) 180f else 0f),
                 )
             }
         }
+    }
+}
+
+/** Small "GitHub ›" pill at the right end of the stats row (replaces the old Open GitHub button). */
+@Composable
+private fun GitHubPill(onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
+            .clickable(onClick = onClick)
+            .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "GitHub",
+            fontFamily = LocalGhMono.current,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = scheme.onSurface,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(2.dp))
+        PathIcon(
+            pathData = CardIcons.ChevronRight,
+            tint = scheme.onSurfaceVariant,
+            iconSize = 12.dp,
+            strokeWidth = 2f,
+        )
     }
 }
 

@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.githunt.android.BuildConfig
+import com.githunt.android.ui.components.MarkdownBody
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
 
@@ -330,54 +331,12 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     ).joinToString(" · "),
                     first = index == 0,
                 ) {
-                    if (log.markdown.isNotBlank()) ChangelogMarkdown(log.markdown)
+                    if (log.markdown.isNotBlank()) {
+                        MarkdownBody(log.markdown, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-private fun ChangelogMarkdown(markdown: String) {
-    val context = LocalContext.current
-    val scheme = MaterialTheme.colorScheme
-    val textColor = scheme.onSurfaceVariant.toArgb()
-    val linkColor = scheme.primary.toArgb()
-    val codeBackground = scheme.surfaceVariant.toArgb()
-    val markwon = remember(context, textColor, linkColor, codeBackground) {
-        Markwon.builder(context)
-            .usePlugin(object : AbstractMarkwonPlugin() {
-                override fun configureTheme(builder: MarkwonTheme.Builder) {
-                    builder.linkColor(linkColor)
-                        .codeTextColor(textColor)
-                        .codeBackgroundColor(codeBackground)
-                        .codeBlockTextColor(textColor)
-                        .codeBlockBackgroundColor(codeBackground)
-                }
-            })
-            .usePlugin(StrikethroughPlugin.create())
-            .usePlugin(TablePlugin.create(context))
-            .usePlugin(TaskListPlugin.create(context))
-            .usePlugin(HtmlPlugin.create())
-            .build()
-    }
-    AndroidView(
-        modifier = Modifier.fillMaxWidth(),
-        factory = { ctx ->
-            TextView(ctx).apply {
-                textSize = 14f
-                setLineSpacing(0f, 1.2f)
-                movementMethod = LinkMovementMethod.getInstance()
-            }
-        },
-        update = { view ->
-            view.setTextColor(textColor)
-            view.setLinkTextColor(linkColor)
-            val key = markdown to markwon
-            if (view.tag != key) {
-                view.tag = key
-                markwon.setMarkdown(view, markdown)
-            }
-        },
-    )
-}

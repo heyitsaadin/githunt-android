@@ -1,24 +1,8 @@
 package com.githunt.android.ui.components
 
-import android.content.Context
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import io.noties.markwon.AbstractMarkwonPlugin
-import io.noties.markwon.Markwon
-import io.noties.markwon.core.MarkwonTheme
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.ext.tasklist.TaskListPlugin
-import io.noties.markwon.html.HtmlPlugin
-import io.noties.markwon.image.ImagesPlugin
 
 /** Past this many characters the README is cut, so one huge file can't make a card thousands of screens tall. */
 private const val MaxReadmeChars = 15_000
@@ -27,9 +11,10 @@ private val MarkdownImage = Regex("""(!\[[^\]]*]\()([^)\s]+)((?:\s+"[^"]*")?\))"
 private val HtmlImage = Regex("""(<img[^>]*?\ssrc=["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
 
 /**
- * Renders GitHub-flavoured README markdown (headings, tables, task lists, code, inline HTML)
- * the way the website's ReadmeBlocks does. Relative image paths are resolved against the repo,
- * like the website's resolveImageUrl.
+ * Renders a GitHub-flavoured README (headings, tables, task lists, code, inline HTML) the way the
+ * website's ReadmeBlocks does. The drawing itself is the shared [MarkdownBody], so READMEs and the
+ * Changelog look identical. Relative image paths are resolved against the repo, like the website's
+ * resolveImageUrl.
  */
 @Composable
 fun ReadmeView(
@@ -39,60 +24,9 @@ fun ReadmeView(
     branch: String?,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val scheme = MaterialTheme.colorScheme
-    val textColor = scheme.onSurfaceVariant.toArgb()
-    val linkColor = scheme.onBackground.toArgb()
-    val codeBg = scheme.surfaceVariant.toArgb()
-    val blockMargin = (14f * context.resources.displayMetrics.density).toInt()
-    val markwon = remember(context, textColor, linkColor, codeBg, blockMargin) {
-        buildMarkwon(context, textColor, linkColor, codeBg, blockMargin)
-    }
     val prepared = remember(markdown, owner, repo, branch) { prepareReadme(markdown, owner, repo, branch) }
-
-    AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { ctx ->
-            TextView(ctx).apply {
-                textSize = 13.5f
-                setLineSpacing(0f, 1.3f)
-                includeFontPadding = false
-                setPadding(0, (4f * resources.displayMetrics.density).toInt(), 0, (4f * resources.displayMetrics.density).toInt())
-                movementMethod = LinkMovementMethod.getInstance()
-            }
-        },
-        update = { view ->
-            view.setTextColor(textColor)
-            view.setLinkTextColor(linkColor)
-            // Re-parsing on every recomposition would be slow, so only do it when the text changed.
-            val key = prepared to markwon
-            if (view.tag != key) {
-                view.tag = key
-                markwon.setMarkdown(view, prepared)
-            }
-        },
-    )
+    MarkdownBody(markdown = prepared, modifier = modifier)
 }
-
-private fun buildMarkwon(context: Context, text: Int, link: Int, codeBg: Int, blockMargin: Int): Markwon =
-    Markwon.builder(context)
-        .usePlugin(object : AbstractMarkwonPlugin() {
-            override fun configureTheme(builder: MarkwonTheme.Builder) {
-                builder
-                    .linkColor(link)
-                    .blockMargin(blockMargin)
-                    .codeTextColor(text)
-                    .codeBackgroundColor(codeBg)
-                    .codeBlockTextColor(text)
-                    .codeBlockBackgroundColor(codeBg)
-            }
-        })
-        .usePlugin(StrikethroughPlugin.create())
-        .usePlugin(TablePlugin.create(context))
-        .usePlugin(TaskListPlugin.create(context))
-        .usePlugin(HtmlPlugin.create())
-        .usePlugin(ImagesPlugin.create())
-        .build()
 
 /** Cuts very long READMEs and turns relative image paths into raw.githubusercontent.com links. */
 internal fun prepareReadme(markdown: String, owner: String, repo: String, branch: String?): String {

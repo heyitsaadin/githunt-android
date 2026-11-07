@@ -3,6 +3,12 @@ package com.githunt.android.ui
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -59,6 +65,7 @@ import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.SubPageBar
 import com.githunt.android.ui.components.relativeTime
+import com.githunt.android.ui.components.rememberScrollBarsState
 import com.githunt.android.ui.discover.DiscoverScreen
 import com.githunt.android.ui.discover.DiscoverViewModel
 import com.githunt.android.ui.feed.FeedScreen
@@ -107,6 +114,10 @@ fun MainScaffold(
         ThemeMode.Dark -> true
     }
     val stateHolder = rememberSaveableStateHolder()
+
+    // Home's feed hides the top bar and this bottom dock while you scroll down it.
+    val homeBars = rememberScrollBarsState()
+    LaunchedEffect(tab) { homeBars.show() }
 
     BackHandler(enabled = settingsOpen) { settingsOpen = false }
     BackHandler(enabled = !settingsOpen && quickPage != null) { quickPage = null }
@@ -179,6 +190,7 @@ fun MainScaffold(
                                         darkTheme = darkTheme,
                                         onToggleTheme = { settingsViewModel.prefs.setTheme(if (it) ThemeMode.Dark else ThemeMode.Light) },
                                         scrollToTopTick = homeTap,
+                                        bars = homeBars,
                                     )
                                     AppTab.Discover -> DiscoverScreen(
                                         viewModel = discoverViewModel,
@@ -195,6 +207,12 @@ fun MainScaffold(
                                 }
                             }
                         }
+                        Box(
+                            modifier = homeBars.collapseModifier(
+                                slideUp = false,
+                                active = { tab == AppTab.Home },
+                            ),
+                        ) {
                         AppBottomNav(
                             selected = tab,
                             avatarUrl = user.avatarUrl,
@@ -210,6 +228,7 @@ fun MainScaffold(
                                 }
                             },
                         )
+                        }
                     }
                 }
             }
