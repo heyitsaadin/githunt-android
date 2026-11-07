@@ -294,9 +294,38 @@ class SettingsViewModel(
         _edit.update { it.copy(displayName = value.take(40), error = null) }
     }
 
+    /** The username on the account when the editor opened; keeping it needs no check. */
+    private var originalUsername: String = ""
+    private var usernameJob: Job? = null
+
     fun setEditUsername(value: String) {
         val cleaned = value.lowercase().filter { it in 'a'..'z' || it in '0'..'9' || it == '_' }.take(20)
-        _edit.update { it.copy(username = cleaned, error = null) }
+        if (cleaned == _edit.value.username) return
+
+        usernameJob?.cancel()
+        val needsCheck = cleaned != originalUsername && USERNAME_PATTERN.matches(cleaned)
+        // Mark "checking" straight away so Save can't be tapped in the gap before the request starts.
+        _edit.update {
+            it.copy(
+                username = cleaned,
+                error = null,
+                usernameCheck = if (needsCheck) UsernameCheck.Checking else UsernameCheck.Idle,
+            )
+        }
+        if (!needsCheck) return
+
+        val session = editSession
+        usernameJob = viewModelScope.launch {
+            // Wait for a pause in typing so we don't ask the server about every keystroke.
+            delay(450)
+            val result = repo.usernameAvailable(cleaned)
+            if (session != editSession || _edit.value.username != cleaned) return@launch
+            val check = when (result) {
+                is ApiResult.Ok -> if (result.value.available) UsernameCheck.Available else UsernameCheck.Taken
+                is ApiResult.Err -> UsernameCheck.Unknown
+            }
+            _edit.update { it.copy(usernameCheck = check) }
+        }
     }
 
     fun setEditBio(value: String) {
