@@ -584,7 +584,8 @@ private fun RepoImageCarousel(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+            .aspectRatio(boxRatio)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
             .then(touchPauseModifier)
             .onGloballyPositioned { coordinates ->
                 // "On screen" = at least 60% of the carousel is inside the window.
