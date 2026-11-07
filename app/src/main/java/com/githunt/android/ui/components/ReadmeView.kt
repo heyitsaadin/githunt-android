@@ -7,6 +7,9 @@ import androidx.compose.ui.Modifier
 /** Past this many characters the README is cut, so one huge file can't make a card thousands of screens tall. */
 private const val MaxReadmeChars = 15_000
 
+/** A translation can run much longer than its source (CJK to English), so it gets more room. */
+internal const val TranslatedReadmeMaxChars = 40_000
+
 private val MarkdownImage = Regex("""(!\[[^\]]*]\()([^)\s]+)((?:\s+"[^"]*")?\))""")
 private val HtmlImage = Regex("""(<img[^>]*?\ssrc=["'])([^"']+)(["'])""", RegexOption.IGNORE_CASE)
 
