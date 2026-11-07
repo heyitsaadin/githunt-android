@@ -242,5 +242,12 @@ class TranslateRepository(private val api: TranslateApi) {
         // Server limits (app/api/translate/route.js).
         const val MAX_STRINGS = 200
         const val MAX_STRING_CHARS = 4000
+
+        // README translation (lib/translate-markdown.js): how much of one README goes through the
+        // free translation backends, and how it is batched.
+        const val README_CHAR_BUDGET = 16_000
+        const val FIRST_BATCH_SIZE = 10
+        const val BATCH_SIZE = 24
+        const val BATCH_CHAR_LIMIT = 3_200
     }
 }
