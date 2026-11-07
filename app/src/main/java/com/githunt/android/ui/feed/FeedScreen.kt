@@ -134,11 +134,7 @@ fun FeedScreen(
                     .background(scheme.surfaceVariant)
                     .statusBarsPadding(),
             )
-            AnimatedVisibility(
-                visible = !bars.hidden,
-                enter = expandVertically(tween(220)) + fadeIn(tween(220)),
-                exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
-            ) {
+            Box(modifier = bars.collapseModifier(slideUp = true)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
