@@ -93,6 +93,8 @@ data class AiMessage(
     val query: String? = null,
     val pending: AiPendingSearch? = null,
     val block: AiSearchBlock? = null,
+    /** True while this reply is still typing in; cleared once it has finished. */
+    val animate: Boolean = false,
 )
 
 /**
