@@ -35,6 +35,10 @@ interface SettingsApi {
     @PATCH("api/auth/me")
     suspend fun updateProfile(@Body body: JsonObject): Response<UserEnvelope>
 
+    /** `{ "available": true }` when nobody else has [username]; the person's own name counts as free. */
+    @GET("api/auth/username-available")
+    suspend fun usernameAvailable(@Query("username") username: String): Response<UsernameAvailability>
+
     @DELETE("api/auth/me")
     suspend fun deleteAccount(): Response<Unit>
 
