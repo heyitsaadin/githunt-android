@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.githunt.android.ui.theme.FocusBlue
 import com.githunt.android.ui.theme.LocalGhMono
+import kotlinx.coroutines.delay
 
 // Pieces shared by the repo card's "Ask AI" panel and the Home AI search box, so both chats look
 // and behave the same.
