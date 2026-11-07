@@ -478,5 +478,9 @@ class SettingsViewModel(
 class SettingsViewModelFactory(private val container: AppContainer) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        SettingsViewModel(container.settingsRepository, container.appPreferences) as T
+        SettingsViewModel(
+            container.settingsRepository,
+            container.appPreferences,
+            container.engagementRepository,
+        ) as T
 }
