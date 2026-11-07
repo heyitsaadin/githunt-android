@@ -75,6 +75,17 @@ interface SettingsApi {
     @POST("api/push/test")
     suspend fun pushTest(): Response<Unit>
 
+    /** This phone becomes a "pull device": the server saves its alerts in the inbox for us to fetch. */
+    @POST("api/push/subscribe")
+    suspend fun registerDevice(@Body body: RegisterDeviceRequest): Response<Unit>
+
+    @HTTP(method = "DELETE", path = "api/push/subscribe", hasBody = true)
+    suspend fun unregisterDevice(@Body body: UnregisterDeviceRequest): Response<Unit>
+
+    /** Same list as [notifications], but identifies this phone so the server can mark it alive. */
+    @GET("api/notifications")
+    suspend fun pollNotifications(@Header("X-GitHunt-Device") device: String): Response<NotificationInboxResponse>
+
     // GitHub API connection
     @GET("api/settings/github-token")
     suspend fun githubToken(): Response<GithubTokenStatus>
