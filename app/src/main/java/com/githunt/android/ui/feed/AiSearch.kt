@@ -1,6 +1,11 @@
 package com.githunt.android.ui.feed
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import com.githunt.android.ui.theme.FocusBlue
+import com.githunt.android.ui.theme.SoftBlue
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
