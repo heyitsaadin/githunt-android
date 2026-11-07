@@ -563,7 +563,7 @@ private fun FormField(
     label: String,
     modifier: Modifier = Modifier,
     helper: String? = null,
-    helperIsError: Boolean = false,
+    helperColor: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
