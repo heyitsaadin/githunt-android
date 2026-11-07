@@ -263,5 +263,8 @@ class TranslateRepository(private val api: TranslateApi) {
         const val FIRST_BATCH_SIZE = 10
         const val BATCH_SIZE = 24
         const val BATCH_CHAR_LIMIT = 3_200
+
+        // At most one on-screen update of a translating README per this many milliseconds.
+        const val PROGRESS_INTERVAL_MS = 3_000L
     }
 }
