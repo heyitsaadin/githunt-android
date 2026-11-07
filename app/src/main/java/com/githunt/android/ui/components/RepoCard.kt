@@ -470,6 +470,18 @@ fun RepoCard(
                     },
                 )
                 Spacer(Modifier.weight(1f))
+                if (showNotInterested && engagement != null) {
+                    CardAction(
+                        icon = CardIcons.Close,
+                        label = "Not interested",
+                        tint = scheme.onSurfaceVariant,
+                        onClick = {
+                            // The card is about to disappear: don't also log that as a skip.
+                            tracker.muted = true
+                            engagement.notInterested(item)
+                        },
+                    )
+                }
                 if (onClipToggle != null) {
                     CardAction(
                         icon = CardIcons.Clip,
