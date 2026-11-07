@@ -163,6 +163,7 @@ class AiSearchState(
                             content = reply.reply,
                             query = text,
                             pending = if (intent == "MIXED" && wantsSearch) pending else null,
+                            animate = true,
                         ),
                     )
                     loading = false
