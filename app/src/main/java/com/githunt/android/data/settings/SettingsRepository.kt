@@ -64,6 +64,15 @@ class SettingsRepository(
     suspend fun notifications(): ApiResult<NotificationInboxResponse> =
         apiCall(json) { api.notifications() }
 
+    suspend fun registerDevice(deviceId: String, tzOffsetMin: Int): ApiResult<Unit> =
+        apiCall(json) { api.registerDevice(RegisterDeviceRequest(DeviceInfo(id = deviceId), tzOffsetMin)) }
+
+    suspend fun unregisterDevice(deviceId: String): ApiResult<Unit> =
+        apiCall(json) { api.unregisterDevice(UnregisterDeviceRequest(DeviceInfo(id = deviceId))) }
+
+    suspend fun pollNotifications(deviceId: String): ApiResult<NotificationInboxResponse> =
+        apiCall(json) { api.pollNotifications(deviceId) }
+
     suspend fun markNotificationsSeen(upTo: String?): ApiResult<Unit> =
         apiCall(json) { api.markNotificationsSeen(NotificationSeenRequest(upTo)) }
 
