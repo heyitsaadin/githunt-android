@@ -100,6 +100,8 @@ fun MainScaffold(
     profileViewModel: ProfileViewModel,
     settingsViewModel: SettingsViewModel,
     clipsRepository: ClipsRepository,
+    /** Goes up by one each time a system notification is tapped; opens the Notifications page. */
+    openNotificationsTick: Int = 0,
 ) {
     val scheme = MaterialTheme.colorScheme
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
