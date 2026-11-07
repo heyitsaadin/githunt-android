@@ -530,6 +530,7 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 @Composable
 private fun RepoImageCarousel(
     images: List<String>,
+    videos: List<String>,
     contentDescription: String,
     onOpenGithub: () -> Unit,
 ) {
@@ -537,9 +538,18 @@ private fun RepoImageCarousel(
     val view = LocalView.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    var failed by remember(images) { mutableStateOf(setOf<String>()) }
-    val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    var failed by remember(images, videos) { mutableStateOf(setOf<String>()) }
+    // Videos lead (a trailer is the headline), then the pictures. A video slide is "yt:<id>".
+    val slides = remember(images, videos, failed) {
+        (videos.map(::videoSlide) + images).distinct().filter { it !in failed }
+    }
+    // The full-screen preview is for pictures only; videos play in place.
+    val previewImages = remember(slides) { slides.filterNot(::isVideoSlide) }
     val pagerState = rememberPagerState(pageCount = { slides.size })
+
+    // True while a video is playing: the carousel then holds still (no auto-advance, no dots,
+    // no swiping) so nothing moves out from under someone watching.
+    var videoPlaying by remember { mutableStateOf(false) }
 
     // Each picture's own width / height, learned as it loads. Also kept for the whole session,
     // so a card scrolled back into view starts at the right height instead of jumping again.
