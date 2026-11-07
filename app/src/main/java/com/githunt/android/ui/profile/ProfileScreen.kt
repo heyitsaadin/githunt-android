@@ -1,6 +1,7 @@
 package com.githunt.android.ui.profile
 
 import android.content.Intent
+import android.util.Base64
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -59,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.githunt.android.BuildConfig
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.profile.FollowingPost
@@ -274,6 +278,18 @@ private fun ProfileHeader(
     val sheetTop = coverHeight - 24.dp
     val avatarTop = sheetTop - 84.dp
     val name = user.displayName?.takeIf { it.isNotBlank() } ?: user.username
+    // The web editor stores uploaded covers as data:image/...;base64,... in
+    // background_url. Browsers render that directly, but Coil's normal
+    // network model does not decode a data URI. Decode it to bytes off the
+    // main thread; keep ordinary HTTPS URLs unchanged.
+    val coverImageModel by produceState<Any?>(
+        initialValue = null,
+        key1 = user.backgroundUrl,
+    ) {
+        value = withContext(Dispatchers.IO) {
+            profileCoverImageModel(user.backgroundUrl)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         // Cover: the person's photo, or a soft grey gradient. Dark fade at the top keeps the status bar readable.
@@ -283,9 +299,9 @@ private fun ProfileHeader(
                 .height(coverHeight)
                 .background(Brush.linearGradient(listOf(scheme.outline, scheme.surface))),
         ) {
-            if (user.backgroundUrl != null) {
+            if (coverImageModel != null) {
                 AsyncImage(
-                    model = user.backgroundUrl,
+                    model = coverImageModel,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
@@ -647,4 +663,24 @@ private fun ProfilePostCard(post: ProfilePost) {
             }
         }
     }
+}
+
+
+/**
+ * Matches the web profile's cover-photo storage format.
+ * /profile/edit uses FileReader.readAsDataURL(), so background_url can be a
+ * base64 data URI rather than a normal HTTP URL.
+ */
+private fun profileCoverImageModel(backgroundUrl: String?): Any? {
+    val value = backgroundUrl?.takeIf { it.isNotBlank() } ?: return null
+    if (!value.startsWith("data:image/", ignoreCase = true)) return value
+
+    val comma = value.indexOf(',')
+    if (comma < 0 || !value.substring(0, comma).contains(";base64", ignoreCase = true)) {
+        return null
+    }
+
+    return runCatching {
+        Base64.decode(value.substring(comma + 1), Base64.DEFAULT)
+    }.getOrNull()
 }
