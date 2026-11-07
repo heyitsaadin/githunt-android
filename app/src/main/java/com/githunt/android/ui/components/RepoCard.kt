@@ -98,6 +98,8 @@ fun RepoCard(
     modifier: Modifier = Modifier,
     clipped: Boolean = false,
     onClipToggle: (() -> Unit)? = null,
+    /** Shows the card's "..." menu with Not interested (Home feed). The card is hidden by the feed. */
+    notInterestedEnabled: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
