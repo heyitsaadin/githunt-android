@@ -334,9 +334,12 @@ fun RepoCard(
                     },
                 )
                 ActionPill(
-                    text = "Open GitHub  \u2197",
+                    text = "Ask AI",
                     modifier = Modifier.weight(1f),
-                    onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } },
+                    leadingIcon = CardIcons.Sparkles,
+                    chevronUp = askOpen,
+                    active = askOpen,
+                    onClick = { askOpen = !askOpen },
                 )
             }
 
