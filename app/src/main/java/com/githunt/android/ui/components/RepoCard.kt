@@ -214,6 +214,9 @@ fun RepoCard(
                         }
                     }
                 }
+                if (notInterestedEnabled && tracker != null) {
+                    RepoMoreMenu(onNotInterested = { tracker.notInterested(item) })
+                }
             }
 
             item.description?.takeIf { it.isNotBlank() }?.let { description ->
