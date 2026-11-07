@@ -112,6 +112,39 @@ fun RepoCard(
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
 
+    // Personalization: what the person does with this card is reported to the same
+    // /api/engagement the website uses. Null in previews and tests, where nothing is sent.
+    val engagement = remember(context) {
+        (context.applicationContext as? GitHuntApp)?.container?.engagementRepository
+    }
+    val view = LocalView.current
+    val tracker = remember(item.fullName) { ViewTracker() }
+    var shared by rememberSaveable(item.fullName + "#shared") { mutableStateOf(false) }
+
+    /** A deliberate action: report it, and stop this viewing counting as a skip. */
+    fun markEngaged(event: String) {
+        tracker.engaged = true
+        engagement?.record(item, event)
+    }
+
+    /** The card left the screen: 4s or more on screen is a dwell, a quick scroll-past a skip. */
+    fun flushView() {
+        if (!tracker.visible) return
+        tracker.visible = false
+        val seconds = (SystemClock.elapsedRealtime() - tracker.visibleSince) / 1000.0
+        if (!tracker.muted) {
+            if (seconds >= DWELL_THRESHOLD_SECONDS) {
+                engagement?.record(item, EngagementEvent.Dwell, seconds)
+            } else if (!tracker.engaged) {
+                engagement?.record(item, EngagementEvent.Skip)
+            }
+        }
+        tracker.engaged = false
+    }
+
+    // Leaving composition (scrolled far away, tab switched) counts as leaving the screen.
+    DisposableEffect(item.fullName) { onDispose { flushView() } }
+
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
     var expanded by rememberSaveable(item.fullName) { mutableStateOf(false) }
