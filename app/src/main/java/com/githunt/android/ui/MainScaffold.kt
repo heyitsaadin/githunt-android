@@ -107,6 +107,8 @@ fun MainScaffold(
     var discoverTap by remember { mutableIntStateOf(0) }
     var profileTap by remember { mutableIntStateOf(0) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    // Which Settings page to land on (null = the main list). "Edit profile" buttons use "edit-profile".
+    var settingsRoute by rememberSaveable { mutableStateOf<String?>(null) }
     var quickPage by rememberSaveable { mutableStateOf<String?>(null) }
     val themeMode by settingsViewModel.prefs.theme.collectAsState()
     val darkTheme = when (themeMode) {
