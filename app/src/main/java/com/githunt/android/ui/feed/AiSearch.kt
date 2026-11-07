@@ -292,7 +292,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
             ChatTextField(
                 value = state.input,
                 onValueChange = { state.input = it },
-                placeholder = if (state.hasConversation) "Ask a follow-up\u2026" else "Search repos or ask GitHunt AI",
+                placeholder = if (state.hasConversation) "Ask a follow-up\u2026" else "Search repositories, users or ask GitHunt AI",
                 enabled = !state.loading,
                 onSend = { state.submit() },
                 modifier = Modifier.weight(1f),
