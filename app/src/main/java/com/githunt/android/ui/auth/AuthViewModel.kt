@@ -81,7 +81,7 @@ class AuthViewModel(
         viewModelScope.launch {
             when (val result = repo.verifyEmail(token)) {
                 is ApiResult.Ok -> {
-                    _messages.tryEmit("Email confirmed")
+                    _messages.trySend("Email confirmed")
                     // On a cold start the session check may still be running; wait for it so we don't
                     // keep showing a stale "not confirmed" account.
                     val state = _session.first { it !is Session.Loading }
