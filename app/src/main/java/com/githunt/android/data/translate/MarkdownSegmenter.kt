@@ -419,6 +419,88 @@ internal fun segmentMarkdown(
 // 2. Turning text parts into translation units
 // ---------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------
+// Blocks: the README cut into chunks that are translated and shown one at a time
+// ---------------------------------------------------------------------------------------------
+
+/** Labels of every `[label]: url` definition in the README, lower-cased. */
+internal fun collectReferenceLabels(markdown: String): Set<String> {
+    val labels = HashSet<String>()
+    for (m in REF_DEF_COLLECT.findAll(markdown)) labels.add(m.groupValues[1].trim().lowercase())
+    return labels
+}
+
+/** Neighbouring paragraphs are merged up to about this size, so a README is dozens of blocks, not hundreds. */
+private const val BLOCK_TARGET_CHARS = 400
+
+/**
+ * Cuts a README into blocks that each render correctly on their own.
+ *
+ * A block ends at a blank line, but never inside a code fence, an HTML comment or `<pre>`-like HTML
+ * block, and never between a list and its indented continuation. `[label]: url` definitions are
+ * copied onto every block that has a `[`, so reference links still work after the cut.
+ */
+internal fun splitMarkdownBlocks(markdown: String): List<String> {
+    val lines = markdown.split(NEWLINE)
+    val n = lines.size
+    val segmenter = Segmenter(collectReferenceLabels(markdown))
+    val blank = BooleanArray(n)
+    val listOpen = BooleanArray(n)
+    for (k in 0 until n) {
+        segmenter.process(lines[k], lines.getOrNull(k + 1))
+        blank[k] = segmenter.plainBlank
+        listOpen[k] = segmenter.listOpen
+    }
+
+    val chunks = ArrayList<String>()
+    var start = 0
+    var k = 0
+    while (k < n) {
+        if (!blank[k]) {
+            k++
+            continue
+        }
+        var j = k
+        while (j < n && blank[j]) j++ // a run of safe blank lines is [k, j)
+        if (j < n) {
+            val next = lines[j]
+            val continuesList = listOpen[k] &&
+                (INDENT2.containsMatchIn(next) || LIST_START.containsMatchIn(next))
+            if (!continuesList) {
+                if (k > start) chunks.add(lines.subList(start, k).joinToString("\n"))
+                start = j
+            }
+        }
+        k = j
+    }
+    if (start < n) {
+        val tail = lines.subList(start, n).joinToString("\n").trimEnd()
+        if (tail.isNotEmpty()) chunks.add(tail)
+    }
+
+    // Chunks made only of link definitions draw nothing; their lines are copied onto the others.
+    val definitionLines = lines.filter { REF_DEF.containsMatchIn(it) }
+    val content = chunks.filterNot { chunk ->
+        chunk.lineSequence().all { it.isBlank() || REF_DEF.containsMatchIn(it) }
+    }
+
+    val merged = ArrayList<String>()
+    val current = StringBuilder()
+    for (chunk in content) {
+        if (current.isNotEmpty() && current.length + chunk.length + 2 > BLOCK_TARGET_CHARS) {
+            merged.add(current.toString())
+            current.setLength(0)
+        }
+        if (current.isNotEmpty()) current.append("\n\n")
+        current.append(chunk)
+    }
+    if (current.isNotEmpty()) merged.add(current.toString())
+
+    if (definitionLines.isEmpty()) return merged
+    val definitions = definitionLines.joinToString("\n")
+    return merged.map { if (it.contains('[')) it + "\n\n" + definitions else it }
+}
+
 /** Longest single string sent to a backend (MyMemory caps at ~500 bytes). */
 private const val MAX_UNIT_CHARS = 420
 
