@@ -270,7 +270,7 @@ fun RepoCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item.topics.take(3).forEach { topic ->
+                    shownTopics.take(3).forEach { topic ->
                         Text(
                             text = topic,
                             fontFamily = mono,
