@@ -29,7 +29,6 @@ import com.githunt.android.ui.components.PathIcon
 
 @Composable
 fun AccountScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
-    val openSite = rememberSiteOpener()
     SettingsScaffold(title = "Account", onBack = onBack) {
         SettingsSection(
             title = "Account settings",
