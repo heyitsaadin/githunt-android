@@ -582,7 +582,7 @@ private fun FormField(
                 modifier = Modifier.padding(top = 6.dp),
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
-                color = if (helperIsError) scheme.error else scheme.onSurfaceVariant,
+                color = helperColor ?: scheme.onSurfaceVariant,
             )
         }
     }
