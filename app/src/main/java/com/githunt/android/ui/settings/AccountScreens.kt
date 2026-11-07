@@ -250,7 +250,7 @@ fun SecurityScreen(
 
     pending?.let { target ->
         ConfirmDialog(
-            title = if (target.isCurrent) "Log out this device?" else "Log out ${target.label}?",
+            title = if (target.isCurrent) "Log out this device?" else "Log out ${sessionTitle(target)}?",
             text = if (target.isCurrent) {
                 "You're revoking the session you're using right now. You'll be signed out immediately and need to log in again."
             } else {
