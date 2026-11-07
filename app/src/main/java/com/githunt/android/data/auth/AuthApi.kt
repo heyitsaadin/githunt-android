@@ -27,4 +27,9 @@ interface AuthApi {
 
     @POST("api/auth/resend-verification")
     suspend fun resendVerification(): Response<ResendResponse>
+
+    /** The same link the email contains. The Accept header makes the server answer JSON instead of its web page. */
+    @Headers("Accept: application/json")
+    @GET("api/auth/verify-email")
+    suspend fun verifyEmail(@Query("token") token: String): Response<VerifyEmailResponse>
 }
