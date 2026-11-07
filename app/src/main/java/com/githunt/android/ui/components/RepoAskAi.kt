@@ -61,6 +61,8 @@ fun RepoAskAiPanel(item: RepoItem, modifier: Modifier = Modifier) {
     var input by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Index of the reply that is typing in. Older replies show in full.
+    var animatedIndex by remember { mutableIntStateOf(-1) }
     val focusRequester = remember { FocusRequester() }
 
     val repoName = item.fullName.substringAfter('/')
