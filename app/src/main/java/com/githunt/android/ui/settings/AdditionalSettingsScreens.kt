@@ -330,7 +330,9 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     ).joinToString(" · "),
                     first = index == 0,
                 ) {
-                    if (log.markdown.isNotBlank()) ChangelogMarkdown(log.markdown)
+                    if (log.markdown.isNotBlank()) {
+                        MarkdownBody(log.markdown, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                    }
                 }
             }
         }
