@@ -393,7 +393,11 @@ fun RepoCard(
                     leadingIcon = CardIcons.Sparkles,
                     chevronUp = askOpen,
                     active = askOpen,
-                    onClick = { askOpen = !askOpen },
+                    onClick = {
+                        val next = !askOpen
+                        askOpen = next
+                        if (next) markEngaged(EngagementEvent.AskAi)
+                    },
                 )
             }
 
