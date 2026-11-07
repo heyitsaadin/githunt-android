@@ -327,7 +327,9 @@ fun RepoCard(
             if (translated != null || (expanded && (readmeTranslated != null || readmeBusy))) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (showOriginal) {
+                    text = if (readmeBusy && !showOriginal) {
+                        "Translating README\u2026"
+                    } else if (showOriginal) {
                         "Original \u00B7 Show translation"
                     } else {
                         "Translated to ${TranslationLanguages.label(targetLanguage)} \u00B7 Show original"
