@@ -118,12 +118,23 @@ fun FeedScreen(
                 .fillMaxSize()
                 .background(scheme.background),
         ) {
-            // Top bar: grey, and it runs up behind the status bar.
+            // Top bar: grey, and it runs up behind the status bar. The status bar strip always
+            // stays; the bar itself slides away while scrolling down the feed (ScrollBars.kt).
+            Spacer(
+                Modifier
+                    .fillMaxWidth()
+                    .background(scheme.surfaceVariant)
+                    .statusBarsPadding(),
+            )
+            AnimatedVisibility(
+                visible = !bars.hidden,
+                enter = expandVertically(tween(220)) + fadeIn(tween(220)),
+                exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+            ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(scheme.surfaceVariant)
-                    .statusBarsPadding()
                     .padding(horizontal = MenuBarPadding, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
