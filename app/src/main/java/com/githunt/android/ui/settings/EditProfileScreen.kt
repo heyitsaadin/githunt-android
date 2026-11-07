@@ -621,8 +621,12 @@ private fun TextBox(
             .clip(shape)
             .background(scheme.surface.copy(alpha = 0.6f))
             .border(
-                width = if (focused) 1.5.dp else 1.dp,
-                color = if (focused) scheme.onBackground.copy(alpha = 0.7f) else scheme.outline,
+                width = if (focused || isError) 1.5.dp else 1.dp,
+                color = when {
+                    isError -> scheme.error
+                    focused -> scheme.onBackground.copy(alpha = 0.7f)
+                    else -> scheme.outline
+                },
                 shape = shape,
             )
             .padding(horizontal = 14.dp, vertical = 13.dp),
