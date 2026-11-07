@@ -107,10 +107,11 @@ class TranslateRepository(private val api: TranslateApi) {
         val missing = LinkedHashMap<String, MutableList<Int>>()
         texts.forEachIndexed { i, text ->
             val hit = cache.get(key(target, text))
-            when {
-                hit != null -> out[i] = hit
-                text.length > MAX_STRING_CHARS -> Unit // the server would refuse it anyway
-                else -> missing.getOrPut(text) { mutableListOf() }.add(i)
+            if (hit != null) {
+                out[i] = hit
+            } else if (text.length <= MAX_STRING_CHARS) {
+                // Longer strings are skipped: the server would refuse them anyway.
+                missing.getOrPut(text) { mutableListOf() }.add(i)
             }
         }
 
