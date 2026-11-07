@@ -689,6 +689,25 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Reloads the list each time the page opens. [loadNotificationInbox] only ever loaded once, so
+     * alerts that arrived later (the whole point of notifications) never showed. The old list stays
+     * on screen while the new one loads, and a failed refresh doesn't replace it with an error.
+     */
+    fun refreshNotificationInbox() {
+        viewModelScope.launch {
+            when (val result = repo.notifications()) {
+                is ApiResult.Ok -> {
+                    _inbox.value = NotificationInboxUi(loading = false, items = result.value.notifications)
+                    repo.markNotificationsSeen(result.value.notifications.firstOrNull()?.createdAt)
+                }
+                is ApiResult.Err -> if (_inbox.value.items.isEmpty()) {
+                    _inbox.value = NotificationInboxUi(loading = false, error = result.message)
+                }
+            }
+        }
+    }
+
     fun retryNotificationInbox() {
         _inbox.value = NotificationInboxUi()
         loadNotificationInbox()
