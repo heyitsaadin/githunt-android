@@ -465,7 +465,7 @@ private fun ConfirmEmailBanner(
 @Composable
 private fun PostCard(item: PostItem) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     Column(
         modifier = Modifier
