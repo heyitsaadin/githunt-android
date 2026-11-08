@@ -276,10 +276,9 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
         Box(modifier = Modifier.fillMaxWidth().weight(1f).navigationBarsPadding()) {
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
+                    GhContainedLoadingIndicator(
                         modifier = Modifier.padding(16.dp),
-                        strokeWidth = 2.dp,
-                        color = scheme.onSurfaceVariant,
+                        diameter = 56.dp,
                     )
                 }
                 state.error != null -> PageMessage(
