@@ -83,7 +83,9 @@ import com.githunt.android.data.feed.text
 import com.githunt.android.data.settings.TranslationLanguages
 import com.githunt.android.data.translate.TranslatedCard
 import com.githunt.android.ui.theme.LocalGhMono
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Duration
