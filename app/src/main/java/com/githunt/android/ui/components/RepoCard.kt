@@ -349,13 +349,61 @@ fun RepoCard(
                 }
             }
 
-            // Only when something was really translated. One tap flips between the two texts.
-            if (translated != null || (expanded && (readmeTranslated != null || readmeBusy))) {
+            // While the README is open this line is its translate button: "Translate README to X",
+            // then the progress, then a switch between the translation and the original. Otherwise
+            // (and only when something was really translated) one tap flips the card text
+            // (description, excerpt, topics) between the two languages.
+            val readmeLine = expanded && translateRepository != null && targetLanguage != "off"
+            if (readmeLine) {
+                val readmeSource = markdown
+                if (readmeSource != null) {
+                    val languageLabel = TranslationLanguages.label(targetLanguage)
+                    val working = readmeBusy || (readmeTranslate && !readmeFinished)
+                    val alreadyInLanguage = readmeTranslate && readmeFinished && !readmeIncomplete && !readmeChanged
+                    val blocksState = readmeBlocks
+                    val label = when {
+                        working -> if (blocksState != null && blocksState.total > 0) {
+                            "Translating README\u2026 ${blocksState.finished}/${blocksState.total}"
+                        } else {
+                            "Translating README\u2026"
+                        }
+                        !readmeTranslate -> "Translate README to $languageLabel"
+                        readmeIncomplete -> "Some parts could not be translated \u00B7 Retry"
+                        alreadyInLanguage -> "README is already in $languageLabel"
+                        readmeShowOriginal -> "Original \u00B7 Show translation"
+                        else -> "Translated to $languageLabel \u00B7 Show original"
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = label,
+                        fontFamily = mono,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(enabled = !working && !alreadyInLanguage) {
+                                when {
+                                    !readmeTranslate -> {
+                                        readmeShowOriginal = false
+                                        readmeTranslate = true
+                                    }
+                                    readmeIncomplete -> {
+                                        readmeFinished = false
+                                        readmeAttempt++
+                                    }
+                                    else -> readmeShowOriginal = !readmeShowOriginal
+                                }
+                            }
+                            .padding(vertical = 2.dp),
+                    )
+                }
+            } else if (translated != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (readmeBusy && !showOriginal) {
-                        "Translating README\u2026"
-                    } else if (showOriginal) {
+                    text = if (showOriginal) {
                         "Original \u00B7 Show translation"
                     } else {
                         "Translated to ${TranslationLanguages.label(targetLanguage)} \u00B7 Show original"
@@ -368,7 +416,7 @@ fun RepoCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .clickable(enabled = !readmeBusy) { showOriginal = !showOriginal }
+                        .clickable { showOriginal = !showOriginal }
                         .padding(vertical = 2.dp),
                 )
             }
