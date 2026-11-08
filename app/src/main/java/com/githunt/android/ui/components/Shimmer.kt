@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
@@ -41,47 +40,6 @@ fun Modifier.shimmerSweep(durationMillis: Int = 1400): Modifier = composed {
         label = "shimmer-progress",
     )
     // A white sheen reads well on light grey; on dark surfaces it has to be much fainter.
-    val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val sheen = Color.White.copy(alpha = if (isLight) 0.65f else 0.10f)
-    val clear = sheen.copy(alpha = 0f)
-
-    this
-        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
-            val band = size.width * 0.55f
-            val start = -band + progress.value * (size.width + band)
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(clear, sheen, clear),
-                    startX = start,
-                    endX = start + band,
-                ),
-                blendMode = BlendMode.SrcAtop,
-            )
-        }
-}
-
-/**
- * One sweep position (0..1, repeating) to share between many [shimmerSweepWith] containers, so a
- * screen full of skeletons runs a single animation instead of one per skeleton.
- */
-@Composable
-fun rememberShimmerProgress(durationMillis: Int = 1400): State<Float> {
-    val transition = rememberInfiniteTransition(label = "shimmer-shared")
-    return transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = durationMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmer-shared-progress",
-    )
-}
-
-/** Same look as [shimmerSweep], but driven by a [progress] shared with other containers. */
-fun Modifier.shimmerSweepWith(progress: State<Float>): Modifier = composed {
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val sheen = Color.White.copy(alpha = if (isLight) 0.65f else 0.10f)
     val clear = sheen.copy(alpha = 0f)
