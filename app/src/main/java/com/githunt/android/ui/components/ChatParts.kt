@@ -176,11 +176,7 @@ internal fun TypingBubble() {
                 .background(scheme.surfaceVariant.copy(alpha = 0.7f))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(14.dp),
-                strokeWidth = 2.dp,
-                color = scheme.onSurfaceVariant,
-            )
+            GhLoadingIndicator(diameter = 22.dp, color = scheme.onSurfaceVariant)
         }
     }
 }
