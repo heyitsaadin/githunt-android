@@ -51,6 +51,20 @@ data class TranslatedCard(
     val changed: Boolean,
 )
 
+/**
+ * A README cut into blocks that are translated and shown one at a time. [needsTranslation] is true
+ * for each block that has words to translate; the others (code, images, badges) never need to wait.
+ */
+class ReadmeBlocks internal constructor(
+    val blocks: List<String>,
+    internal val plans: List<MarkdownPlan>,
+) {
+    val needsTranslation: List<Boolean> = plans.map { it.order.isNotEmpty() }
+}
+
+/** [changedBlocks] blocks really changed; [incomplete] is true when some words could not be translated. */
+class BlockTranslationResult(val changedBlocks: Int, val incomplete: Boolean)
+
 /** A README after translation. [changed] is true only when some piece really was translated. */
 data class MarkdownTranslation(
     val markdown: String,
