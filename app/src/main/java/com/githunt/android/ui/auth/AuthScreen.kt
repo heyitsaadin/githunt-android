@@ -440,7 +440,7 @@ private fun GoogleButton(enabled: Boolean, loading: Boolean, onClick: () -> Unit
         horizontalArrangement = Arrangement.Center,
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = LavInk)
+            GhLoadingIndicator(diameter = 26.dp, color = LavInk)
         } else {
             GoogleG(Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
