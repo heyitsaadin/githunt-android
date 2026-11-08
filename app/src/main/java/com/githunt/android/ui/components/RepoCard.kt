@@ -400,8 +400,12 @@ fun RepoCard(
                     chevronUp = askOpen,
                     active = askOpen,
                     onClick = {
-                        if (!askOpen) track(EngagementEvent.ASK_AI)
-                        askOpen = !askOpen
+                        if (!askOpen) {
+                            track(EngagementEvent.ASK_AI)
+                            askOpen = true
+                        } else {
+                            closeKeepingCardInView { askOpen = false }
+                        }
                     },
                 )
             }
