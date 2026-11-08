@@ -395,7 +395,7 @@ private fun ExpandingMenu(
                 }
             },
         color = scheme.surface,
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(28.dp),
         tonalElevation = 6.dp,
         shadowElevation = 10.dp,
     ) {
