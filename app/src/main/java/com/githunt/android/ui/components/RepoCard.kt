@@ -214,9 +214,20 @@ fun RepoCard(
                         }
                     }
                 }
-                if (notInterestedEnabled && tracker != null) {
-                    RepoMoreMenu(onNotInterested = { tracker.notInterested(item) })
-                }
+                RepoMoreMenu(
+                    onOpenRepo = {
+                        track(EngagementEvent.GITHUB_CLICK)
+                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+                    },
+                    onOpenOwner = {
+                        runCatching { uriHandler.openUri("https://github.com/${item.owner}") }
+                    },
+                    onNotInterested = if (notInterestedEnabled && tracker != null) {
+                        ({ tracker.notInterested(item) })
+                    } else {
+                        null
+                    },
+                )
             }
 
             item.description?.takeIf { it.isNotBlank() }?.let { description ->
