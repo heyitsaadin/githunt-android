@@ -346,7 +346,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
                 .fillMaxWidth()
                 .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 14.dp),
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(end = 38.dp) // room for the 30dp send button + 8dp gap
@@ -354,15 +354,25 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
                     .background(scheme.onSurface.copy(alpha = 0.05f))
                     .horizontalScroll(rememberScrollState())
                     .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                AiSearchFilter.values().forEach { option ->
-                    SearchFilterChip(
-                        label = option.label,
-                        icon = option.icon,
-                        selected = state.filter == option,
-                        onClick = { state.filter = option },
-                    )
+                // Where each chip sits inside the tray, so one blue highlight can glide to the
+                // picked chip instead of the tint just switching from one chip to the next.
+                val bounds = remember { mutableStateMapOf<AiSearchFilter, ChipBounds>() }
+                bounds[state.filter]?.let { FilterPill(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    AiSearchFilter.values().forEach { option ->
+                        SearchFilterChip(
+                            label = option.label,
+                            icon = option.icon,
+                            selected = state.filter == option,
+                            onClick = { state.filter = option },
+                            modifier = Modifier.onGloballyPositioned { c ->
+                                val p = c.positionInParent()
+                                val b = ChipBounds(p.x, p.y, c.size.width.toFloat(), c.size.height.toFloat())
+                                if (bounds[option] != b) bounds[option] = b
+                            },
+                        )
+                    }
                 }
             }
             Box(Modifier.align(Alignment.CenterEnd)) {
