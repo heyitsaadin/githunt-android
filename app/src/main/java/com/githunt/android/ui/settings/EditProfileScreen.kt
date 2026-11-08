@@ -725,11 +725,7 @@ private fun BusyOverlay() {
             .background(Color(0x8C000000)),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            strokeWidth = 2.dp,
-            color = Color.White,
-        )
+        GhLoadingIndicator(diameter = 28.dp, color = Color.White)
     }
 }
 
