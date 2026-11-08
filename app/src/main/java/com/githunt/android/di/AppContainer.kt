@@ -60,7 +60,26 @@ class AppContainer(context: Context) {
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 
-    val authRepository = AuthRepository(retrofit.create(AuthApi::class.java), cookieJar, json)
+    val settingsRepository = com.githunt.android.data.settings.SettingsRepository(
+        retrofit.create(com.githunt.android.data.settings.SettingsApi::class.java),
+        json,
+    )
+
+    /** Notifications on this phone: registers the device and shows new alerts (see DevicePush). */
+    val devicePush = com.githunt.android.data.push.DevicePush(
+        context.applicationContext,
+        settingsRepository,
+        cookieJar,
+        okHttp,
+    )
+
+    val authRepository = AuthRepository(
+        retrofit.create(AuthApi::class.java),
+        cookieJar,
+        json,
+        // Stop notifications for this phone while the session can still authenticate the call.
+        beforeLogout = { devicePush.onSignedOut() },
+    )
 
     val googleSignIn = GoogleSignIn(BuildConfig.GOOGLE_WEB_CLIENT_ID)
 
@@ -84,11 +103,6 @@ class AppContainer(context: Context) {
     val readmeRepository = ReadmeRepository(retrofit.create(ReadmeApi::class.java))
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
-
-    val settingsRepository = com.githunt.android.data.settings.SettingsRepository(
-        retrofit.create(com.githunt.android.data.settings.SettingsApi::class.java),
-        json,
-    )
 
     /** Auto-translates repo card text into the language chosen in Settings (/api/translate). */
     val translateRepository = com.githunt.android.data.translate.TranslateRepository(
