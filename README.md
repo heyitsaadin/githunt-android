@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="app/src/main/res/drawable/githunt_logo.png" alt="GitHunt logo" width="96" />
+<img src="app/src/main/res/drawable/ic_launcher_foreground.png" alt="GitHunt logo" width="96" />
 
 # GitHunt
 
