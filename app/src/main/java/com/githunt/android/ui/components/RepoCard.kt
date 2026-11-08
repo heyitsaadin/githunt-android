@@ -175,6 +175,7 @@ fun RepoCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .bringIntoViewRequester(topRequester)
             .clip(shape)
             .background(scheme.surface)
             .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
