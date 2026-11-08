@@ -1,5 +1,10 @@
 package com.githunt.android.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -49,14 +56,14 @@ import com.githunt.android.ui.theme.LocalGhMono
 private const val ClosePath = "M6 6L18 18 M18 6L6 18"
 private const val MaxZoom = 5f
 private const val DoubleTapZoom = 2.5f
+private val PreviewSurface = Color(0xFF171717)
+private val PreviewBorder = Color.White.copy(alpha = 0.12f)
 
 /**
  * Full-screen look at a repo's README pictures.
  *
- * Swipe sideways between pictures, pinch to zoom, drag to pan while zoomed, double-tap to zoom in
- * or back out, tap the empty area (when not zoomed) or press back to close. Pictures are shown
- * whole and uncropped. [onOpenGithub] is the way to the repository from here, since tapping the
- * picture itself now opens this preview instead of GitHub.
+ * Swipe sideways between pictures, pinch to zoom, drag to pan while zoomed, and double-tap to
+ * toggle zoom. Pictures are shown whole and uncropped. GitHub remains available from the toolbar.
  */
 @Composable
 fun ImagePreviewDialog(
@@ -80,7 +87,11 @@ fun ImagePreviewDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.96f)),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF111111), Color.Black, Color(0xFF080808)),
+                    ),
+                ),
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -96,45 +107,80 @@ fun ImagePreviewDialog(
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(220)) + slideInVertically(tween(280)) { -it / 3 },
+                exit = fadeOut(tween(150)),
+                modifier = Modifier.align(Alignment.TopCenter),
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.14f))
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PathIcon(pathData = ClosePath, tint = Color.White, iconSize = 18.dp, strokeWidth = 2f)
-                }
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    if (images.size > 1) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${images.size}",
-                            fontFamily = LocalGhMono.current,
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(PreviewSurface)
+                            .border(1.dp, PreviewBorder, CircleShape)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PathIcon(pathData = ClosePath, tint = Color.White, iconSize = 18.dp, strokeWidth = 2f)
                     }
+
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        if (images.size > 1) {
+                            Text(
+                                text = "${pagerState.currentPage + 1} / ${images.size}",
+                                fontFamily = LocalGhMono.current,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.78f),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(PreviewSurface.copy(alpha = 0.92f))
+                                    .border(1.dp, PreviewBorder, RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "GitHub ↗",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(22.dp))
+                            .clickable(onClick = onOpenGithub)
+                            .padding(horizontal = 15.dp, vertical = 11.dp),
+                    )
                 }
-                Text(
-                    text = "Open on GitHub  \u2197",
-                    fontFamily = LocalGhMono.current,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-                        .clickable(onClick = onOpenGithub)
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
-                )
+            }
+
+            if (images.size > 1 && !zoomed) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(tween(350, delayMillis = 120)) + slideInVertically(tween(350)) { it / 2 },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
+                    Text(
+                        text = "Swipe to explore",
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.48f),
+                        modifier = Modifier
+                            .padding(bottom = 26.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.Black.copy(alpha = 0.32f))
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                    )
+                }
             }
         }
     }
@@ -156,7 +202,6 @@ private fun ZoomableImage(
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    // Leaving a page puts it back to normal size, so it is never found zoomed later.
     LaunchedEffect(active) {
         if (!active) {
             scale = 1f
@@ -168,7 +213,7 @@ private fun ZoomableImage(
         ImageRequest.Builder(context)
             .data(proxiedImageUrl(url))
             .decoderFactory(SvgDecoder.Factory())
-            .crossfade(200)
+            .crossfade(260)
             .build()
     }
 
@@ -196,7 +241,6 @@ private fun ZoomableImage(
                     do {
                         val event = awaitPointerEvent()
                         val fingers = event.changes.count { it.pressed }
-                        // Two fingers always zoom; one finger only pans once already zoomed in.
                         if (fingers >= 2 || scale > 1f) {
                             val newScale = (scale * event.calculateZoom()).coerceIn(1f, MaxZoom)
                             val pan = event.calculatePan()
