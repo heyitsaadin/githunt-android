@@ -415,12 +415,19 @@ private fun PillButton(
     leading: @Composable () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 20.dp, pressed = 10.dp)
+    val shape = RoundedCornerShape(corner)
     Row(
         modifier = Modifier
-            .clip(CircleShape)
+            .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline, CircleShape)
-            .clickable(onClick = onClick)
+            .border(1.dp, scheme.outline, shape)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
