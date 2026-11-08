@@ -447,17 +447,19 @@ fun RepoCard(
                         Spacer(Modifier.height(12.dp))
                         HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                         Spacer(Modifier.height(10.dp))
-                        ReadmeView(
-                            markdown = if (showOriginal) readmeText else (readmeTranslated ?: readmeText),
-                            maxChars = if (!showOriginal && readmeTranslated != null) {
-                                TranslatedReadmeMaxChars
-                            } else {
-                                null
-                            },
-                            owner = item.owner,
-                            repo = repoName,
-                            branch = item.raw?.text("default_branch"),
-                        )
+                        val blockState = readmeBlocks
+                        if (readmeTranslate && !readmeShowOriginal && blockState != null && targetLanguage != "off") {
+                            // Skeletons that turn into translated text, one block at a time.
+                            TranslatedReadmeBlocks(state = blockState)
+                        } else {
+                            // The full original, straight away.
+                            ReadmeView(
+                                markdown = readmeText,
+                                owner = item.owner,
+                                repo = repoName,
+                                branch = defaultBranch,
+                            )
+                        }
                     }
                 }
             }
