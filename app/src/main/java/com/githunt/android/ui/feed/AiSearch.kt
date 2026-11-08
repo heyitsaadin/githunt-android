@@ -382,14 +382,46 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
     }
 }
 
-/** One chip in the tray: the picked one is tinted blue (web: bg-blue-500/15 text-blue-400). */
+/** Where a chip sits inside the tray (px), so the highlight can follow it. */
+private data class ChipBounds(val left: Float, val top: Float, val width: Float, val height: Float)
+
+/**
+ * The blue highlight behind the picked chip (web: bg-blue-500/15). It is one shape that glides and
+ * resizes to the picked chip with a soft spring. It is only composed once the chip positions are
+ * known, so on first show it simply appears in place instead of sliding in from the corner.
+ */
 @Composable
-private fun SearchFilterChip(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
-    val tint = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
+private fun FilterPill(target: ChipBounds) {
+    val density = LocalDensity.current
+    val spec = spring<Float>(dampingRatio = 0.85f, stiffness = 420f)
+    val left by animateFloatAsState(target.left, spec, label = "filter-pill-left")
+    val width by animateFloatAsState(target.width, spec, label = "filter-pill-width")
+    Box(
         modifier = Modifier
+            .offset { IntOffset(left.roundToInt(), target.top.roundToInt()) }
+            .size(with(density) { width.toDp() }, with(density) { target.height.toDp() })
             .clip(RoundedCornerShape(7.dp))
-            .background(if (selected) FocusBlue.copy(alpha = 0.15f) else Color.Transparent)
+            .background(FocusBlue.copy(alpha = 0.15f)),
+    )
+}
+
+/** One chip in the tray: the picked one is tinted blue (web: text-blue-400); its fill is [FilterPill]. */
+@Composable
+private fun SearchFilterChip(
+    label: String,
+    icon: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tint by animateColorAsState(
+        targetValue = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220),
+        label = "filter-chip-tint",
+    )
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
