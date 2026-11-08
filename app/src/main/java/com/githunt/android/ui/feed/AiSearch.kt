@@ -330,15 +330,17 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
 
         // Second row, like the website: the Repository / Users / Topic chips in a soft tray, and
         // the round send button at the end.
-        Row(
+        // The tray is only as wide as its chips (it scrolls if the screen is too narrow); the send
+        // button stays pinned to the end, so there is no empty stretch of tray between them.
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 10.dp, end = 10.dp, top = 2.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .align(Alignment.CenterStart)
+                    .padding(end = 38.dp) // room for the 30dp send button + 8dp gap
                     .clip(RoundedCornerShape(10.dp))
                     .background(scheme.onSurface.copy(alpha = 0.05f))
                     .horizontalScroll(rememberScrollState())
