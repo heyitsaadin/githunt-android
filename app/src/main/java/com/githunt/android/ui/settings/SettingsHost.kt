@@ -3,25 +3,21 @@ package com.githunt.android.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,9 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -265,7 +260,7 @@ private fun SettingsHome(
         .filter { it.second.isNotEmpty() }
 
     SettingsScaffold(title = "Settings", onBack = onBack) {
-        OutlinedTextField(
+        TextField(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier
@@ -284,11 +279,22 @@ private fun SettingsHome(
             },
             singleLine = true,
             shape = RoundedCornerShape(28.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = scheme.surface,
+                unfocusedContainerColor = scheme.surface,
+                disabledContainerColor = scheme.surface,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                cursorColor = scheme.primary,
+            ),
         )
 
         visible.forEachIndexed { index, (group, rows) ->
             SettingsSection(title = group.title, description = group.description, first = index == 0) {
-                rows.forEach { entry -> key(entry.id) { entry.content() } }
+                SettingsGroup {
+                    rows.forEach { entry -> key(entry.id) { entry.content() } }
+                }
             }
         }
 
@@ -306,8 +312,7 @@ private fun SettingsHome(
 
         // Logout stands alone at the very bottom, as on the website.
         if (q.isEmpty()) {
-            HorizontalDivider(color = scheme.outline.copy(alpha = 0.6f))
-            SettingsActions(modifier = Modifier.padding(top = 16.dp)) {
+            SettingsActions(modifier = Modifier.padding(top = 24.dp)) {
                 SettingsButton(
                     text = "Log out",
                     onClick = { confirmLogout = true },
@@ -339,7 +344,7 @@ private fun SettingsHome(
     }
 }
 
-/** "Choose theme" bottom sheet: System default, Light or Dark. */
+/** "Choose theme" bottom sheet: System default, Light or Dark, as a segmented choice list. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeSheet(
@@ -358,33 +363,31 @@ private fun ThemeSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = scheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = scheme.background,
     ) {
         Text(
             text = "Choose theme",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = scheme.onSurface,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            fontWeight = FontWeight.Bold,
+            color = scheme.onBackground,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
         )
-        ThemeMode.values().forEach { mode ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .selectable(
-                        selected = mode == current,
-                        onClick = {
-                            onPick(mode)
-                            close()
-                        },
-                        role = Role.RadioButton,
-                    )
-                    .padding(horizontal = 24.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = mode == current, onClick = null)
-                Spacer(Modifier.width(16.dp))
-                Text(text = mode.label, color = scheme.onSurface, style = MaterialTheme.typography.bodyLarge)
+        SettingsGroup {
+            ThemeMode.values().forEach { mode ->
+                SettingsRow(
+                    title = mode.label,
+                    selected = mode == current,
+                    onClick = {
+                        onPick(mode)
+                        close()
+                    },
+                    trailing = {
+                        if (mode == current) {
+                            PathIcon(pathData = NavIcons.Check, tint = scheme.onPrimaryContainer, iconSize = 22.dp)
+                        }
+                    },
+                )
             }
         }
         Spacer(Modifier.navigationBarsPadding().height(16.dp))
