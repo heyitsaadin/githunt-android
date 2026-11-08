@@ -333,7 +333,7 @@ private fun SearchBar(
 ) {
     val scheme = MaterialTheme.colorScheme
     val focus = remember { FocusRequester() }
-    val fieldShape = RoundedCornerShape(12.dp)
+    val fieldShape = RoundedCornerShape(22.dp)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     Row(
