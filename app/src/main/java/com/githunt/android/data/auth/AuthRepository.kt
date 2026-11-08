@@ -3,6 +3,7 @@ package com.githunt.android.data.auth
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.net.SessionCookieJar
 import com.githunt.android.data.net.apiCall
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 
@@ -19,6 +20,7 @@ class AuthRepository(
     private val api: AuthApi,
     private val cookieJar: SessionCookieJar,
     private val json: Json,
+    private val beforeLogout: suspend () -> Unit = {},
 ) {
 
     suspend fun login(username: String, password: String): ApiResult<User> =
@@ -87,6 +89,14 @@ class AuthRepository(
     /** Revokes the session on the server, then forgets the cookie even if that call failed. */
     suspend fun logout() {
         try {
+            // Best effort, and before the call below so the session can still authenticate it.
+            try {
+                beforeLogout()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Never let this block signing out.
+            }
             apiCall(json) { api.logout() }
         } finally {
             cookieJar.clear()

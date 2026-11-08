@@ -12,6 +12,8 @@ import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tasklist.TaskListPlugin
 import io.noties.markwon.html.HtmlPlugin
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,12 +110,61 @@ fun PersonalizationScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 @Composable
 fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val state by vm.notifications.collectAsState()
+    val deviceOn by vm.deviceOn.collectAsState()
+    val context = LocalContext.current
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) vm.enableDevice() else vm.notificationPermissionDenied()
+    }
     LaunchedEffect(Unit) { vm.loadNotifications() }
     SettingsScaffold(title = "Notifications", onBack = onBack) {
         SettingsSection(
+            title = "On this phone",
+            description = "GitHunt checks for new alerts in the background about every 15 minutes and shows them here, even when the app is closed.",
+            first = true,
+        ) {
+            SettingsRow(
+                title = "Notifications on this phone",
+                subtitle = when {
+                    state.deviceBusy -> "Working…"
+                    deviceOn -> "On"
+                    else -> "Off"
+                },
+                trailing = {
+                    Switch(
+                        checked = deviceOn,
+                        enabled = !state.deviceBusy,
+                        onCheckedChange = { on ->
+                            when {
+                                !on -> vm.disableDevice()
+                                vm.needsNotificationPermission() ->
+                                    permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                else -> vm.enableDevice()
+                            }
+                        },
+                    )
+                },
+            )
+            state.deviceError?.let { SettingsNote(it, error = true) }
+            if (deviceOn && vm.notificationsBlockedBySystem()) {
+                SettingsNote("Notifications are turned off for GitHunt in your phone's settings, so nothing will show.", error = true)
+            }
+            if (state.deviceBlocked || (deviceOn && vm.notificationsBlockedBySystem())) {
+                SettingsActions {
+                    SettingsButton(
+                        text = "Open phone settings",
+                        kind = ButtonKind.Outlined,
+                        onClick = {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            context.startActivity(intent)
+                        },
+                    )
+                }
+            }
+        }
+        SettingsSection(
             title = "Push notifications",
             description = "Choose which GitHunt updates you want to receive.",
-            first = true,
         ) {
             SettingsRow(
                 title = "Trending repository alerts",
@@ -135,7 +186,7 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     text = if (state.testSent) "Test sent" else "Send test notification",
                     onClick = vm::sendTestNotification,
                     loading = state.testing,
-                    enabled = !state.loading,
+                    enabled = !state.loading && deviceOn,
                     kind = ButtonKind.Outlined,
                 )
             }

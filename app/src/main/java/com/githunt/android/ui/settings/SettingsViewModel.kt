@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import com.githunt.android.data.net.ApiResult
+import com.githunt.android.data.push.DevicePush
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.BuildLog
 import com.githunt.android.data.settings.DeviceSession
@@ -64,6 +65,11 @@ data class NotificationsUi(
     val interestError: String? = null,
     val testing: Boolean = false,
     val testSent: Boolean = false,
+    /** Turning notifications on or off for this phone is in progress. */
+    val deviceBusy: Boolean = false,
+    val deviceError: String? = null,
+    /** The Android permission was refused, so only the phone's own settings can allow it now. */
+    val deviceBlocked: Boolean = false,
 )
 
 enum class InterestKind { Language, Topic }
@@ -161,6 +167,7 @@ const val MAX_INTERESTS = 8
 class SettingsViewModel(
     private val repo: SettingsRepository,
     val prefs: AppPreferences,
+    private val devicePush: DevicePush,
 ) : ViewModel() {
 
     // ---- Security ----
@@ -484,6 +491,46 @@ class SettingsViewModel(
         }
     }
 
+    /** Whether this phone is set up to receive notifications (the person's own choice). */
+    val deviceOn: StateFlow<Boolean> = devicePush.enabled
+
+    /** True on Android 13+ until the person allows notifications for GitHunt. */
+    fun needsNotificationPermission(): Boolean = devicePush.needsPermission()
+
+    /** True when notifications are switched off for GitHunt in the phone's own settings. */
+    fun notificationsBlockedBySystem(): Boolean = !devicePush.canShow()
+
+    fun enableDevice() {
+        if (_notifications.value.deviceBusy) return
+        _notifications.update { it.copy(deviceBusy = true, deviceError = null, deviceBlocked = false) }
+        viewModelScope.launch {
+            when (val result = devicePush.enable()) {
+                is ApiResult.Ok -> _notifications.update { it.copy(deviceBusy = false) }
+                is ApiResult.Err -> _notifications.update {
+                    it.copy(deviceBusy = false, deviceError = result.message)
+                }
+            }
+        }
+    }
+
+    fun disableDevice() {
+        if (_notifications.value.deviceBusy) return
+        _notifications.update { it.copy(deviceBusy = true, deviceError = null, deviceBlocked = false) }
+        viewModelScope.launch {
+            devicePush.disable()
+            _notifications.update { it.copy(deviceBusy = false) }
+        }
+    }
+
+    fun notificationPermissionDenied() {
+        _notifications.update {
+            it.copy(
+                deviceBlocked = true,
+                deviceError = "Notifications are blocked for GitHunt. Allow them in your phone's settings, then turn this on.",
+            )
+        }
+    }
+
     fun setHotAlerts(value: Boolean) {
         val previous = _notifications.value.hotAlerts
         _notifications.update { it.copy(hotAlerts = value, error = null) }
@@ -551,6 +598,8 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (val result = repo.pushTest()) {
                 is ApiResult.Ok -> {
+                    // The server saved it in the inbox; fetch it now rather than at the next 15-minute check.
+                    devicePush.checkNow()
                     _notifications.update { it.copy(testing = false, testSent = true) }
                     delay(4000)
                     _notifications.update { it.copy(testSent = false) }
@@ -640,6 +689,25 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Reloads the list each time the page opens. [loadNotificationInbox] only ever loaded once, so
+     * alerts that arrived later (the whole point of notifications) never showed. The old list stays
+     * on screen while the new one loads, and a failed refresh doesn't replace it with an error.
+     */
+    fun refreshNotificationInbox() {
+        viewModelScope.launch {
+            when (val result = repo.notifications()) {
+                is ApiResult.Ok -> {
+                    _inbox.value = NotificationInboxUi(loading = false, items = result.value.notifications)
+                    repo.markNotificationsSeen(result.value.notifications.firstOrNull()?.createdAt)
+                }
+                is ApiResult.Err -> if (_inbox.value.items.isEmpty()) {
+                    _inbox.value = NotificationInboxUi(loading = false, error = result.message)
+                }
+            }
+        }
+    }
+
     fun retryNotificationInbox() {
         _inbox.value = NotificationInboxUi()
         loadNotificationInbox()
@@ -690,5 +758,5 @@ class SettingsViewModel(
 class SettingsViewModelFactory(private val container: AppContainer) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        SettingsViewModel(container.settingsRepository, container.appPreferences) as T
+        SettingsViewModel(container.settingsRepository, container.appPreferences, container.devicePush) as T
 }

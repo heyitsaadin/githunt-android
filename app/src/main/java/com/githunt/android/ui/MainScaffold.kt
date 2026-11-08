@@ -100,6 +100,8 @@ fun MainScaffold(
     profileViewModel: ProfileViewModel,
     settingsViewModel: SettingsViewModel,
     clipsRepository: ClipsRepository,
+    /** Goes up by one each time a system notification is tapped; opens the Notifications page. */
+    openNotificationsTick: Int = 0,
 ) {
     val scheme = MaterialTheme.colorScheme
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
@@ -121,6 +123,15 @@ fun MainScaffold(
     // Home's feed hides the top bar and this bottom dock while you scroll down it.
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
+
+    // Tapping a system notification asks for the Notifications page.
+    LaunchedEffect(openNotificationsTick) {
+        if (openNotificationsTick > 0) {
+            settingsOpen = false
+            settingsRoute = null
+            quickPage = "notifications"
+        }
+    }
 
     BackHandler(enabled = settingsOpen) {
         settingsOpen = false
@@ -257,7 +268,7 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
     val state by viewModel.inbox.collectAsState()
-    LaunchedEffect(Unit) { viewModel.loadNotificationInbox() }
+    LaunchedEffect(Unit) { viewModel.refreshNotificationInbox() }
     val shape = RoundedCornerShape(16.dp)
 
     Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {

@@ -143,6 +143,33 @@ data class BuildLogsResponse(val logs: List<BuildLog> = emptyList())
 data class NotificationInboxResponse(
     val ttlHours: Int = 24,
     val notifications: List<InboxNotification> = emptyList(),
+    /** Only when the request carried X-GitHunt-Device: "registered", or "unknown" when the server lost this phone. */
+    val device: String? = null,
+    /** Only when the request carried X-GitHunt-Device: the person's alert switch and quiet-hours state right now. */
+    val deliver: DeliverState? = null,
+)
+
+@Serializable
+data class DeliverState(
+    val enabled: Boolean = true,
+    val quiet: Boolean = false,
+)
+
+@Serializable
+data class DeviceInfo(
+    val kind: String = "android",
+    val id: String,
+)
+
+@Serializable
+data class RegisterDeviceRequest(
+    val device: DeviceInfo,
+    val tzOffsetMin: Int = 0,
+)
+
+@Serializable
+data class UnregisterDeviceRequest(
+    val device: DeviceInfo,
 )
 
 @Serializable
