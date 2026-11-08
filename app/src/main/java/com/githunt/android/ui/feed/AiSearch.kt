@@ -335,7 +335,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 10.dp, end = 10.dp, top = 2.dp, bottom = 8.dp),
+                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 14.dp),
         ) {
             Row(
                 modifier = Modifier
