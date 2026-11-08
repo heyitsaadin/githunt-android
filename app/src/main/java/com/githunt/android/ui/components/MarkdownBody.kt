@@ -113,6 +113,28 @@ fun MarkdownBody(
     )
 }
 
+/**
+ * One renderer to share between many small [MarkdownBody]s whose text never changes (the blocks of
+ * a README being translated), so a README of 50 blocks does not build 50 renderers. Only safe
+ * where every block is parsed on the main thread, which is the case for those blocks.
+ */
+@Composable
+internal fun rememberMarkdownRenderer(): Markwon {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+    val textColor = scheme.onSurfaceVariant.toArgb()
+    val headingColor = scheme.onBackground.toArgb()
+    val linkColor = scheme.onBackground.toArgb()
+    val ruleColor = scheme.outline.copy(alpha = 0.6f).toArgb()
+    val codeBackground = scheme.surfaceVariant.toArgb()
+    return remember(context, textColor, headingColor, linkColor, ruleColor, codeBackground) {
+        buildMarkdownRenderer(
+            context, textColor, headingColor, linkColor, ruleColor, codeBackground,
+            context.resources.displayMetrics.density,
+        )
+    }
+}
+
 private fun buildMarkdownRenderer(
     context: Context,
     text: Int,
