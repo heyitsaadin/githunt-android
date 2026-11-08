@@ -246,11 +246,7 @@ fun EditProfileScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 if (state.saving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = scheme.background,
-                    )
+                    GhLoadingIndicator(diameter = 22.dp, color = scheme.background)
                 } else {
                     Text(
                         text = "Save",
