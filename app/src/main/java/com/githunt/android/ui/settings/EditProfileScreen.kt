@@ -410,9 +410,8 @@ fun EditProfileScreen(
                         isError = check == UsernameCheck.Taken || (state.username.isNotEmpty() && !usernameValid),
                         trailing = {
                             when (check) {
-                                UsernameCheck.Checking -> CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
+                                UsernameCheck.Checking -> GhLoadingIndicator(
+                                    diameter = 24.dp,
                                     color = scheme.onSurfaceVariant,
                                 )
                                 UsernameCheck.Available -> PathIcon(
