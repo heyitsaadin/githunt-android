@@ -1,28 +1,24 @@
 package com.githunt.android.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -83,16 +80,24 @@ internal class SquircleShape(private val radius: Dp) : Shape {
     }
 }
 
+// Menu size. The width is fixed on purpose: a popup window has no width of its own, so rows that
+// fill their width would otherwise stretch across the whole screen.
+private val MenuWidth = 176.dp
+private val MenuRadius = 22.dp
+
 // The popup window clips whatever is outside it, so the card sits inside a transparent margin
 // that leaves room for its shadow.
-private val ShadowMargin = 12.dp
+private val ShadowMargin = 10.dp
+
+// Where the menu grows from and shrinks back to: the "..." button's corner.
+private val MenuOrigin = TransformOrigin(1f, 0f)
 
 /**
  * The "..." button on a repo card and the menu it opens.
  *
- * The menu is our own popup instead of Material's DropdownMenu: it grows out of the button's corner
- * with a soft spring and a fade, and shrinks back into it when it closes, and it has squircle
- * corners with no square backing behind them.
+ * The menu is our own popup instead of Material's DropdownMenu, so it has squircle corners with no
+ * square backing behind them. It opens with one short scale-and-fade out of the button's corner
+ * and closes the same way, nothing bouncy or layered, so it stays smooth.
  *
  * @param onOpenRepo opens the repository on GitHub.
  * @param onOpenOwner opens the owner's profile.
@@ -143,53 +148,55 @@ internal fun RepoMoreMenu(
 
         if (visible.currentState || visible.targetState) {
             Popup(
-                // Top-right corner of the menu sits just under the button's top-right corner.
+                // The menu's top-right corner sits just under the button's top-right corner.
                 alignment = Alignment.TopEnd,
-                offset = with(density) { IntOffset(ShadowMargin.roundToPx(), (40.dp - ShadowMargin).roundToPx()) },
+                offset = with(density) {
+                    IntOffset(ShadowMargin.roundToPx(), (38.dp - ShadowMargin).roundToPx())
+                },
                 onDismissRequest = { open = false },
                 properties = PopupProperties(focusable = true),
             ) {
                 AnimatedVisibility(
                     visibleState = visible,
                     enter = scaleIn(
-                        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow),
-                        initialScale = 0.72f,
-                        transformOrigin = TransformOrigin(0.92f, 0.04f),
-                    ) + slideInVertically(
-                        animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow),
-                        initialOffsetY = { -it / 10 },
-                    ) + fadeIn(tween(durationMillis = 140)),
+                        animationSpec = tween(durationMillis = 190, easing = FastOutSlowInEasing),
+                        initialScale = 0.9f,
+                        transformOrigin = MenuOrigin,
+                    ) + fadeIn(tween(durationMillis = 120)),
                     exit = scaleOut(
-                        animationSpec = tween(durationMillis = 150),
-                        targetScale = 0.8f,
-                        transformOrigin = TransformOrigin(0.92f, 0.04f),
-                    ) + slideOutVertically(
-                        animationSpec = tween(durationMillis = 150),
-                        targetOffsetY = { -it / 14 },
-                    ) + fadeOut(tween(durationMillis = 120)),
+                        animationSpec = tween(durationMillis = 130, easing = FastOutSlowInEasing),
+                        targetScale = 0.94f,
+                        transformOrigin = MenuOrigin,
+                    ) + fadeOut(tween(durationMillis = 100)),
                 ) {
                     Box(Modifier.padding(ShadowMargin)) {
                         Surface(
-                            shape = SquircleShape(26.dp),
+                            shape = SquircleShape(MenuRadius),
                             color = scheme.surface,
-                            tonalElevation = 6.dp,
-                            shadowElevation = 12.dp,
-                            border = BorderStroke(1.dp, scheme.outline.copy(alpha = 0.45f)),
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, scheme.outline.copy(alpha = 0.4f)),
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .widthIn(min = 210.dp)
-                                    .padding(8.dp),
+                                    .width(MenuWidth)
+                                    .padding(6.dp),
                             ) {
                                 MenuRow(label = "Open on GitHub", onClick = { choose(action = onOpenRepo) })
                                 MenuRow(label = "View owner's profile", onClick = { choose(action = onOpenOwner) })
                                 if (onNotInterested != null) {
-                                    Spacer(Modifier.height(6.dp))
-                                    // The one destructive-ish choice: its own grey button.
+                                    // A thin line, then the one negative choice in grey text. No fill:
+                                    // a filled row reads as "selected".
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                                            .height(1.dp)
+                                            .background(scheme.outline.copy(alpha = 0.3f)),
+                                    )
                                     MenuRow(
                                         label = "Not interested",
-                                        grey = true,
-                                        onClick = { choose(waitMs = 170L, action = onNotInterested) },
+                                        color = scheme.onSurfaceVariant,
+                                        onClick = { choose(waitMs = 160L, action = onNotInterested) },
                                     )
                                 }
                             }
@@ -202,23 +209,20 @@ internal fun RepoMoreMenu(
 }
 
 @Composable
-private fun MenuRow(label: String, onClick: () -> Unit, grey: Boolean = false) {
-    val scheme = MaterialTheme.colorScheme
-    val shape = SquircleShape(18.dp)
+private fun MenuRow(label: String, onClick: () -> Unit, color: Color = MaterialTheme.colorScheme.onSurface) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .then(if (grey) Modifier.background(scheme.onSurface.copy(alpha = 0.12f)) else Modifier)
+            .clip(SquircleShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(
             text = label,
             fontSize = 14.sp,
             lineHeight = 18.sp,
             fontWeight = FontWeight.Medium,
-            color = scheme.onSurface,
+            color = color,
             maxLines = 1,
         )
     }
