@@ -366,15 +366,15 @@ private fun SearchFilterChip(label: String, icon: String, selected: Boolean, onC
     val tint = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(7.dp))
             .background(if (selected) FocusBlue.copy(alpha = 0.15f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        PathIcon(pathData = icon, tint = tint, iconSize = 15.dp, strokeWidth = 1.8f)
-        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
+        PathIcon(pathData = icon, tint = tint, iconSize = 13.dp, strokeWidth = 1.8f)
+        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
     }
 }
 
