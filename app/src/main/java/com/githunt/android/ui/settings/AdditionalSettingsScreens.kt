@@ -1,30 +1,12 @@
 package com.githunt.android.ui.settings
 
-import android.text.method.LinkMovementMethod
-import android.widget.TextView
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.viewinterop.AndroidView
-import io.noties.markwon.Markwon
-import io.noties.markwon.AbstractMarkwonPlugin
-import io.noties.markwon.core.MarkwonTheme
-import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
-import io.noties.markwon.ext.tables.TablePlugin
-import io.noties.markwon.ext.tasklist.TaskListPlugin
-import io.noties.markwon.html.HtmlPlugin
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,12 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.githunt.android.BuildConfig
-import com.githunt.android.ui.components.MarkdownBody
-import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.ui.components.GhSwitch
+import com.githunt.android.ui.components.MarkdownBody
+import com.githunt.android.ui.components.PathIcon
 
 @Composable
 fun LanguageScreen(prefs: AppPreferences, onBack: () -> Unit) {
@@ -50,12 +34,15 @@ fun LanguageScreen(prefs: AppPreferences, onBack: () -> Unit) {
             description = "Choose the language used for translated repository descriptions.",
             first = true,
         ) {
-            TranslationLanguages.all.forEach { language ->
-                SettingsRow(
-                    title = language.label,
-                    onClick = { prefs.setLanguage(language.code) },
-                    trailing = { RadioButton(selected = selected == language.code, onClick = { prefs.setLanguage(language.code) }) },
-                )
+            SettingsGroup {
+                TranslationLanguages.all.forEach { language ->
+                    SettingsRow(
+                        title = language.label,
+                        selected = selected == language.code,
+                        onClick = { prefs.setLanguage(language.code) },
+                        trailing = { RadioButton(selected = selected == language.code, onClick = null) },
+                    )
+                }
             }
         }
     }
@@ -76,7 +63,7 @@ fun PersonalizationScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 title = "Personalized recommendations",
                 subtitle = if (state.enabled) "Personalization is on" else "Personalization is off",
                 trailing = {
-                    Switch(checked = state.enabled, onCheckedChange = vm::setPersonalization, enabled = !state.loading && !state.saving)
+                    GhSwitch(checked = state.enabled, onCheckedChange = vm::setPersonalization, enabled = !state.loading && !state.saving)
                 },
             )
         }
@@ -130,7 +117,7 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     else -> "Off"
                 },
                 trailing = {
-                    Switch(
+                    GhSwitch(
                         checked = deviceOn,
                         enabled = !state.deviceBusy,
                         onCheckedChange = { on ->
@@ -166,16 +153,18 @@ fun NotificationsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             title = "Push notifications",
             description = "Choose which GitHunt updates you want to receive.",
         ) {
-            SettingsRow(
-                title = "Trending repository alerts",
-                subtitle = "Get notified when repositories start trending.",
-                trailing = { Switch(checked = state.hotAlerts, onCheckedChange = vm::setHotAlerts, enabled = !state.loading) },
-            )
-            SettingsRow(
-                title = "Daily digest",
-                subtitle = "A daily summary of activity and recommendations.",
-                trailing = { Switch(checked = state.dailyDigest, onCheckedChange = vm::setDailyDigest, enabled = !state.loading) },
-            )
+            SettingsGroup {
+                SettingsRow(
+                    title = "Trending repository alerts",
+                    subtitle = "Get notified when repositories start trending.",
+                    trailing = { GhSwitch(checked = state.hotAlerts, onCheckedChange = vm::setHotAlerts, enabled = !state.loading) },
+                )
+                SettingsRow(
+                    title = "Daily digest",
+                    subtitle = "A daily summary of activity and recommendations.",
+                    trailing = { GhSwitch(checked = state.dailyDigest, onCheckedChange = vm::setDailyDigest, enabled = !state.loading) },
+                )
+            }
         }
         if (state.loading) SettingsNote("Loading notification preferences…")
         state.error?.let { SettingsNote(it, error = true) }
@@ -284,14 +273,18 @@ fun AboutScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val openSite = rememberSiteOpener()
     SettingsScaffold(title = "About GitHunt", onBack = onBack) {
         SettingsSection(title = "About GitHunt", description = "Learn how GitHunt works and what's new.", first = true) {
-            SettingsRow(title = "What is this", subtitle = "What GitHunt is", icon = SettingsIcons.Info, onClick = { onNavigate("what") }, trailing = { ChevronTrailing() })
-            SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
-            SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
-            SettingsRow(title = "Logs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
+            SettingsGroup {
+                SettingsRow(title = "What is this", subtitle = "What GitHunt is", icon = SettingsIcons.Info, onClick = { onNavigate("what") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Logs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
+            }
         }
         SettingsSection(title = "Legal", description = "Review GitHunt's policies.") {
-            SettingsRow(title = "Privacy Policy", icon = SettingsIcons.File, onClick = { openSite("privacy") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "Terms of Service", icon = SettingsIcons.File, onClick = { openSite("terms") }, trailing = { OpenTrailing() })
+            SettingsGroup {
+                SettingsRow(title = "Privacy Policy", icon = SettingsIcons.File, onClick = { openSite("privacy") }, trailing = { OpenTrailing() })
+                SettingsRow(title = "Terms of Service", icon = SettingsIcons.File, onClick = { openSite("terms") }, trailing = { OpenTrailing() })
+            }
         }
     }
 }
@@ -310,17 +303,21 @@ fun WhatIsThisScreen(onBack: () -> Unit) {
 fun HowToUseScreen(onBack: () -> Unit) {
     SettingsScaffold(title = "How to use", onBack = onBack) {
         SettingsSection(title = "Getting around", description = "Posting, discovering, and more.", first = true) {
-            SettingsRow(title = "Post something", subtitle = "Use the create button to share text, an image, a file, a link, or a GitHub repository.")
-            SettingsRow(title = "Search the feed", subtitle = "Use feed search to find posts and projects by keyword.")
-            SettingsRow(title = "Discover repos", subtitle = "Open Discover to browse trending or top GitHub repositories with live stats.")
-            SettingsRow(title = "Clip a repo", subtitle = "Save a repository privately to your Clipped list for later.")
-            SettingsRow(title = "Like and comment", subtitle = "Like posts and open a post to join the conversation.")
-            SettingsRow(title = "Connect GitHub", subtitle = "Connect a GitHub account from your profile editor so people can find your work.")
+            SettingsGroup {
+                SettingsRow(title = "Post something", subtitle = "Use the create button to share text, an image, a file, a link, or a GitHub repository.")
+                SettingsRow(title = "Search the feed", subtitle = "Use feed search to find posts and projects by keyword.")
+                SettingsRow(title = "Discover repos", subtitle = "Open Discover to browse trending or top GitHub repositories with live stats.")
+                SettingsRow(title = "Clip a repo", subtitle = "Save a repository privately to your Clipped list for later.")
+                SettingsRow(title = "Like and comment", subtitle = "Like posts and open a post to join the conversation.")
+                SettingsRow(title = "Connect GitHub", subtitle = "Connect a GitHub account from your profile editor so people can find your work.")
+            }
         }
         SettingsSection(title = "Tutorial", description = "A quick reminder of the main app areas.") {
-            SettingsRow(title = "Home", subtitle = "Your feed of posts and repository activity.")
-            SettingsRow(title = "Discover", subtitle = "Explore repositories and developers.")
-            SettingsRow(title = "Profile", subtitle = "Manage your profile, posts, follows, repositories, and clipped items.")
+            SettingsGroup {
+                SettingsRow(title = "Home", subtitle = "Your feed of posts and repository activity.")
+                SettingsRow(title = "Discover", subtitle = "Explore repositories and developers.")
+                SettingsRow(title = "Profile", subtitle = "Manage your profile, posts, follows, repositories, and clipped items.")
+            }
         }
     }
 }
@@ -350,29 +347,33 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             SettingsBody("Version ${BuildConfig.VERSION_NAME}")
         }
         SettingsSection(title = "How it works", description = "What you can do with GitHunt.") {
-            SettingsRow(title = "Share", subtitle = "Post images, files, and links to a feed with activity from people you follow.", leading = { InfoIconSlot(SettingsIcons.Image) })
-            SettingsRow(title = "Discover", subtitle = "Browse trending and top GitHub repositories with stars, forks, and live stats.", leading = { InfoIconSlot(SettingsIcons.Info) })
-            SettingsRow(title = "Translate", subtitle = "Translate repository descriptions and READMEs in the app.", leading = { InfoIconSlot(SettingsIcons.Translate) })
-            SettingsRow(title = "Your account, your data", subtitle = "Your profile, posts, and follows stay tied to your account.", leading = { InfoIconSlot(SettingsIcons.Shield) })
+            SettingsGroup {
+                SettingsRow(title = "Share", subtitle = "Post images, files, and links to a feed with activity from people you follow.", leading = { InfoIconSlot(SettingsIcons.Image) })
+                SettingsRow(title = "Discover", subtitle = "Browse trending and top GitHub repositories with stars, forks, and live stats.", leading = { InfoIconSlot(SettingsIcons.Info) })
+                SettingsRow(title = "Translate", subtitle = "Translate repository descriptions and READMEs in the app.", leading = { InfoIconSlot(SettingsIcons.Translate) })
+                SettingsRow(title = "Your account, your data", subtitle = "Your profile, posts, and follows stay tied to your account.", leading = { InfoIconSlot(SettingsIcons.Shield) })
+            }
         }
         SettingsSection(title = "Powered by the GitHub API", description = "Repository discovery, stats, and profile data are fetched live from GitHub. You can connect your own token in API Connection.") {}
         SettingsSection(title = "Developer", description = "Get in touch or follow along.") {
-            SettingsRow(
-                title = "Aadin Kc",
-                subtitle = "Kerala, India",
-                leading = {
-                    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                        AvatarCircle(
-                            url = "https://avatars.githubusercontent.com/u/256625064?v=4",
-                            size = 36.dp,
-                        )
-                    }
-                },
-            )
-            SettingsRow(title = "GitHub", subtitle = "@heyitsaadin", leading = { InfoIconSlot(DeveloperGithubMark) }, onClick = { open("https://github.com/heyitsaadin") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "LinkedIn", subtitle = "Aadin Kc", leading = { InfoIconSlot(SettingsIcons.LinkedIn) }, onClick = { open("https://www.linkedin.com/in/aadin-kc-128bb3371") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "X (Twitter)", subtitle = "@its_aadin", leading = { InfoIconSlot(SettingsIcons.XMark) }, onClick = { open("https://x.com/its_aadin") }, trailing = { OpenTrailing() })
-            SettingsRow(title = "Email", subtitle = "hey.itsaadin@gmail.com", leading = { InfoIconSlot(SettingsIcons.Mail) }, onClick = { open("mailto:hey.itsaadin@gmail.com") }, trailing = { OpenTrailing() })
+            SettingsGroup {
+                SettingsRow(
+                    title = "Aadin Kc",
+                    subtitle = "Kerala, India",
+                    leading = {
+                        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                            AvatarCircle(
+                                url = "https://avatars.githubusercontent.com/u/256625064?v=4",
+                                size = 36.dp,
+                            )
+                        }
+                    },
+                )
+                SettingsRow(title = "GitHub", subtitle = "@heyitsaadin", leading = { InfoIconSlot(DeveloperGithubMark) }, onClick = { open("https://github.com/heyitsaadin") }, trailing = { OpenTrailing() })
+                SettingsRow(title = "LinkedIn", subtitle = "Aadin Kc", leading = { InfoIconSlot(SettingsIcons.LinkedIn) }, onClick = { open("https://www.linkedin.com/in/aadin-kc-128bb3371") }, trailing = { OpenTrailing() })
+                SettingsRow(title = "X (Twitter)", subtitle = "@its_aadin", leading = { InfoIconSlot(SettingsIcons.XMark) }, onClick = { open("https://x.com/its_aadin") }, trailing = { OpenTrailing() })
+                SettingsRow(title = "Email", subtitle = "hey.itsaadin@gmail.com", leading = { InfoIconSlot(SettingsIcons.Mail) }, onClick = { open("mailto:hey.itsaadin@gmail.com") }, trailing = { OpenTrailing() })
+            }
         }
         SettingsSection(title = "Have an idea?", description = "Tell the developer what you'd like to see added or changed.") {
             SettingsField(label = "Your idea", value = message, onValueChange = { message = it }, singleLine = false, minLines = 4, maxLength = 2000, placeholder = "What would you like to see added or changed?")
@@ -411,11 +412,10 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     first = index == 0,
                 ) {
                     if (log.markdown.isNotBlank()) {
-                        MarkdownBody(log.markdown, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                        MarkdownBody(log.markdown, Modifier.padding(horizontal = 28.dp, vertical = 4.dp))
                     }
                 }
             }
         }
     }
 }
-
