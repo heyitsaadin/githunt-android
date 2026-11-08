@@ -359,11 +359,7 @@ private fun ExpandingMenu(
     val scheme = MaterialTheme.colorScheme
     val progress by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = if (expanded) {
-            tween(durationMillis = 340, easing = EmphasizedDecelerate)
-        } else {
-            tween(durationMillis = 200, easing = EmphasizedAccelerate)
-        },
+        animationSpec = if (expanded) GhMotion.defaultSpatial() else GhMotion.slowEffects(),
         label = "menu-expand",
     )
 
