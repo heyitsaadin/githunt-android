@@ -200,7 +200,13 @@ internal fun RepoMoreMenu(
                 ) {
                     Surface(
                         shape = SquircleShape(MenuRadius),
-                        color = scheme.surface,
+                        // In dark mode the card and a same-coloured menu merge together, so the menu is
+                        // a clearly lighter grey there; in light mode it is only a touch greyer.
+                        color = lerp(
+                            scheme.surface,
+                            scheme.onSurface,
+                            if (scheme.surface.luminance() < 0.5f) 0.16f else 0.05f,
+                        ),
                         shadowElevation = 8.dp,
                         border = BorderStroke(1.dp, scheme.outline.copy(alpha = 0.4f)),
                     ) {
