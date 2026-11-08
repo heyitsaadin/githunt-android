@@ -356,8 +356,9 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            SendCircle(enabled = !state.loading && state.input.isNotBlank(), onClick = { state.submit() }, size = 30.dp)
+            Box(Modifier.align(Alignment.CenterEnd)) {
+                SendCircle(enabled = !state.loading && state.input.isNotBlank(), onClick = { state.submit() }, size = 30.dp)
+            }
         }
     }
 }
