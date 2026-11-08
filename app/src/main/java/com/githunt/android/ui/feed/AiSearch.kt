@@ -1,7 +1,16 @@
 package com.githunt.android.ui.feed
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import com.githunt.android.ui.theme.FocusBlue
@@ -300,7 +309,7 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 4.dp),
+                .padding(start = 16.dp, end = 8.dp, top = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PathIcon(pathData = CardIcons.Search, tint = scheme.onSurfaceVariant, iconSize = 18.dp, strokeWidth = 1.8f)
@@ -330,51 +339,96 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
 
         // Second row, like the website: the Repository / Users / Topic chips in a soft tray, and
         // the round send button at the end.
-        Row(
+        // The tray is only as wide as its chips (it scrolls if the screen is too narrow); the send
+        // button stays pinned to the end, so there is no empty stretch of tray between them.
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 14.dp),
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .align(Alignment.CenterStart)
+                    .padding(end = 38.dp) // room for the 30dp send button + 8dp gap
+                    .clip(RoundedCornerShape(10.dp))
                     .background(scheme.onSurface.copy(alpha = 0.05f))
                     .horizontalScroll(rememberScrollState())
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    .padding(3.dp),
             ) {
-                AiSearchFilter.values().forEach { option ->
-                    SearchFilterChip(
-                        label = option.label,
-                        icon = option.icon,
-                        selected = state.filter == option,
-                        onClick = { state.filter = option },
-                    )
+                // Where each chip sits inside the tray, so one blue highlight can glide to the
+                // picked chip instead of the tint just switching from one chip to the next.
+                val bounds = remember { mutableStateMapOf<AiSearchFilter, ChipBounds>() }
+                bounds[state.filter]?.let { FilterPill(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    AiSearchFilter.values().forEach { option ->
+                        SearchFilterChip(
+                            label = option.label,
+                            icon = option.icon,
+                            selected = state.filter == option,
+                            onClick = { state.filter = option },
+                            modifier = Modifier.onGloballyPositioned { c ->
+                                val p = c.positionInParent()
+                                val b = ChipBounds(p.x, p.y, c.size.width.toFloat(), c.size.height.toFloat())
+                                if (bounds[option] != b) bounds[option] = b
+                            },
+                        )
+                    }
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            SendCircle(enabled = !state.loading && state.input.isNotBlank(), onClick = { state.submit() })
+            Box(Modifier.align(Alignment.CenterEnd)) {
+                SendCircle(enabled = !state.loading && state.input.isNotBlank(), onClick = { state.submit() }, size = 30.dp)
+            }
         }
     }
 }
 
-/** One chip in the tray: the picked one is tinted blue (web: bg-blue-500/15 text-blue-400). */
+/** Where a chip sits inside the tray (px), so the highlight can follow it. */
+private data class ChipBounds(val left: Float, val top: Float, val width: Float, val height: Float)
+
+/**
+ * The blue highlight behind the picked chip (web: bg-blue-500/15). It is one shape that glides and
+ * resizes to the picked chip with a soft spring. It is only composed once the chip positions are
+ * known, so on first show it simply appears in place instead of sliding in from the corner.
+ */
 @Composable
-private fun SearchFilterChip(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
-    val tint = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
+private fun FilterPill(target: ChipBounds) {
+    val density = LocalDensity.current
+    val spec = spring<Float>(dampingRatio = 0.85f, stiffness = 420f)
+    val left by animateFloatAsState(target.left, spec, label = "filter-pill-left")
+    val width by animateFloatAsState(target.width, spec, label = "filter-pill-width")
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) FocusBlue.copy(alpha = 0.15f) else Color.Transparent)
+            .offset { IntOffset(left.roundToInt(), target.top.roundToInt()) }
+            .size(with(density) { width.toDp() }, with(density) { target.height.toDp() })
+            .clip(RoundedCornerShape(7.dp))
+            .background(FocusBlue.copy(alpha = 0.15f)),
+    )
+}
+
+/** One chip in the tray: the picked one is tinted blue (web: text-blue-400); its fill is [FilterPill]. */
+@Composable
+private fun SearchFilterChip(
+    label: String,
+    icon: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tint by animateColorAsState(
+        targetValue = if (selected) SoftBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 220),
+        label = "filter-chip-tint",
+    )
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        PathIcon(pathData = icon, tint = tint, iconSize = 15.dp, strokeWidth = 1.8f)
-        Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
+        PathIcon(pathData = icon, tint = tint, iconSize = 13.dp, strokeWidth = 1.8f)
+        Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
     }
 }
 
