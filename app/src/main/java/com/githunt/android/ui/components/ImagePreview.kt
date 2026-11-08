@@ -59,12 +59,7 @@ private const val DoubleTapZoom = 2.5f
 private val ControlSurface = Color(0xFF19191B)
 private val ControlBorder = Color.White.copy(alpha = 0.10f)
 
-/**
- * Full-screen README image viewer.
- *
- * A blurred, darkened version of the current image fills the screen behind the uncropped image,
- * avoiding the large empty black bands around landscape screenshots. Tap to hide/show controls.
- */
+/** Full-screen image viewer with a blurred ambient backdrop and tap-to-hide controls. */
 @Composable
 fun ImagePreviewDialog(
     images: List<String>,
@@ -75,10 +70,19 @@ fun ImagePreviewDialog(
 ) {
     if (images.isEmpty()) return
 
+    val context = LocalContext.current
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(
         initialPage = startIndex.coerceIn(0, images.lastIndex),
         pageCount = { images.size },
     )
+    val currentImageUrl = images[pagerState.currentPage]
+    val backdropRequest = remember(currentImageUrl, context) {
+        ImageRequest.Builder(context)
+            .data(proxiedImageUrl(currentImageUrl))
+            .decoderFactory(SvgDecoder.Factory())
+            .crossfade(250)
+            .build()
+    }
     var zoomed by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
 
@@ -87,15 +91,9 @@ fun ImagePreviewDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080809))) {
-            // Ambient image backdrop fills portrait screens while keeping the actual image uncropped.
+            // The blurred image fills portrait screens while the foreground stays uncropped.
             AsyncImage(
-                model = remember(images[pagerState.currentPage]) {
-                    ImageRequest.Builder(LocalContext.current)
-                        .data(proxiedImageUrl(images[pagerState.currentPage]))
-                        .decoderFactory(SvgDecoder.Factory())
-                        .crossfade(250)
-                        .build()
-                },
+                model = backdropRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(28.dp).graphicsLayer {
