@@ -1,5 +1,12 @@
 package com.githunt.android.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,9 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,15 +55,10 @@ import com.githunt.android.ui.theme.LocalGhMono
 private const val ClosePath = "M6 6L18 18 M18 6L6 18"
 private const val MaxZoom = 5f
 private const val DoubleTapZoom = 2.5f
+private val ControlSurface = Color(0xFF19191B)
+private val ControlBorder = Color.White.copy(alpha = 0.10f)
 
-/**
- * Full-screen look at a repo's README pictures.
- *
- * Swipe sideways between pictures, pinch to zoom, drag to pan while zoomed, double-tap to zoom in
- * or back out, tap the empty area (when not zoomed) or press back to close. Pictures are shown
- * whole and uncropped. [onOpenGithub] is the way to the repository from here, since tapping the
- * picture itself now opens this preview instead of GitHub.
- */
+/** Minimal full-screen README image viewer with paging, pinch zoom, and pan. */
 @Composable
 fun ImagePreviewDialog(
     images: List<String>,
@@ -67,22 +68,22 @@ fun ImagePreviewDialog(
     onOpenGithub: () -> Unit,
 ) {
     if (images.isEmpty()) return
-    val pagerState = rememberPagerState(
+
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
         initialPage = startIndex.coerceIn(0, images.lastIndex),
         pageCount = { images.size },
     )
     var zoomed by remember { mutableStateOf(false) }
+    var controlsVisible by remember { mutableStateOf(true) }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.96f)),
+            modifier = Modifier.fillMaxSize().background(Color(0xFF0B0B0C)),
         ) {
-            HorizontalPager(
+            androidx.compose.foundation.pager.HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = images.size > 1 && !zoomed,
                 modifier = Modifier.fillMaxSize(),
@@ -92,58 +93,88 @@ fun ImagePreviewDialog(
                     contentDescription = contentDescription,
                     active = pagerState.currentPage == page,
                     onZoomChange = { zoomed = it },
-                    onBackgroundTap = onDismiss,
+                    onBackgroundTap = {
+                        if (controlsVisible) controlsVisible = false else onDismiss()
+                    },
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            AnimatedVisibility(
+                visible = controlsVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 3 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 }),
+                modifier = Modifier.align(Alignment.TopCenter),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.14f))
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    modifier = Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PathIcon(pathData = ClosePath, tint = Color.White, iconSize = 18.dp, strokeWidth = 2f)
+                    Box(
+                        modifier = Modifier.size(42.dp).clip(CircleShape)
+                            .background(ControlSurface).border(1.dp, ControlBorder, CircleShape)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PathIcon(pathData = ClosePath, tint = Color.White, iconSize = 18.dp, strokeWidth = 2f)
+                    }
+
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        if (images.size > 1) {
+                            Text(
+                                text = "${pagerState.currentPage + 1} / ${images.size}",
+                                fontFamily = LocalGhMono.current,
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.78f),
+                                modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                                    .background(ControlSurface).border(1.dp, ControlBorder, RoundedCornerShape(18.dp))
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "GitHub ↗",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                        modifier = Modifier.clip(RoundedCornerShape(22.dp)).background(ControlSurface)
+                            .border(1.dp, ControlBorder, RoundedCornerShape(22.dp))
+                            .clickable(onClick = onOpenGithub).padding(horizontal = 14.dp, vertical = 10.dp),
+                    )
                 }
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    if (images.size > 1) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${images.size}",
-                            fontFamily = LocalGhMono.current,
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                        )
+            }
+
+            if (images.size > 1) {
+                AnimatedVisibility(
+                    visible = controlsVisible && !zoomed,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp))
+                            .background(ControlSurface.copy(alpha = 0.92f))
+                            .border(1.dp, ControlBorder, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        repeat(images.size) { index ->
+                            val selected = pagerState.currentPage == index
+                            Box(
+                                modifier = Modifier.padding(horizontal = 3.dp)
+                                    .size(width = if (selected) 16.dp else 5.dp, height = 5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (selected) Color.White else Color.White.copy(alpha = 0.30f)),
+                            )
+                        }
                     }
                 }
-                Text(
-                    text = "Open on GitHub  \u2197",
-                    fontFamily = LocalGhMono.current,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.35f), CircleShape)
-                        .clickable(onClick = onOpenGithub)
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
-                )
             }
         }
     }
 }
 
-/**
- * One picture, shown whole (never cropped). Pinch to zoom up to 5x, pan while zoomed, double-tap
- * to toggle zoom. A one-finger swipe at normal size is left alone so the pager can change page.
- */
 @Composable
 private fun ZoomableImage(
     url: String,
@@ -155,8 +186,12 @@ private fun ZoomableImage(
     val context = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    val displayedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f),
+        label = "previewZoom",
+    )
 
-    // Leaving a page puts it back to normal size, so it is never found zoomed later.
     LaunchedEffect(active) {
         if (!active) {
             scale = 1f
@@ -165,16 +200,12 @@ private fun ZoomableImage(
     }
 
     val request = remember(url) {
-        ImageRequest.Builder(context)
-            .data(proxiedImageUrl(url))
-            .decoderFactory(SvgDecoder.Factory())
-            .crossfade(200)
-            .build()
+        ImageRequest.Builder(context).data(proxiedImageUrl(url))
+            .decoderFactory(SvgDecoder.Factory()).crossfade(220).build()
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { if (scale <= 1f) onBackgroundTap() },
@@ -196,20 +227,15 @@ private fun ZoomableImage(
                     do {
                         val event = awaitPointerEvent()
                         val fingers = event.changes.count { it.pressed }
-                        // Two fingers always zoom; one finger only pans once already zoomed in.
                         if (fingers >= 2 || scale > 1f) {
                             val newScale = (scale * event.calculateZoom()).coerceIn(1f, MaxZoom)
                             val pan = event.calculatePan()
                             val maxX = size.width * (newScale - 1f) / 2f
                             val maxY = size.height * (newScale - 1f) / 2f
-                            offset = if (newScale <= 1f) {
-                                Offset.Zero
-                            } else {
-                                Offset(
-                                    (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                    (offset.y + pan.y).coerceIn(-maxY, maxY),
-                                )
-                            }
+                            offset = if (newScale <= 1f) Offset.Zero else Offset(
+                                (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                (offset.y + pan.y).coerceIn(-maxY, maxY),
+                            )
                             scale = newScale
                             onZoomChange(newScale > 1f)
                             event.changes.forEach { if (it.positionChanged()) it.consume() }
@@ -222,14 +248,12 @@ private fun ZoomableImage(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
-                },
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                scaleX = displayedScale
+                scaleY = displayedScale
+                translationX = offset.x
+                translationY = offset.y
+            },
         )
     }
 }
