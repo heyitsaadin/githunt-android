@@ -551,7 +551,7 @@ private fun PrimaryButton(label: String, enabled: Boolean, loading: Boolean, onC
         horizontalArrangement = Arrangement.Center,
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp, color = Color.White)
+            GhLoadingIndicator(diameter = 28.dp, color = Color.White)
         } else {
             AnimatedContent(targetState = label, label = "buttonLabel") { text ->
                 Text(
