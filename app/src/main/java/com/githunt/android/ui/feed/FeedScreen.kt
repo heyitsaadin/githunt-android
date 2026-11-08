@@ -188,9 +188,18 @@ fun FeedScreen(
             }
             }
 
+            val pullState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
                 onRefresh = onRefreshFeed,
+                state = pullState,
+                indicator = {
+                    GhPullIndicator(
+                        state = pullState,
+                        isRefreshing = feed.refreshing,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
