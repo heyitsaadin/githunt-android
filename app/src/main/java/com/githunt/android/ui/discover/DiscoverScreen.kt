@@ -173,9 +173,18 @@ fun DiscoverScreen(
             )
         }
 
+        val pullState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = state.refreshing,
             onRefresh = { viewModel.refresh() },
+            state = pullState,
+            indicator = {
+                GhPullIndicator(
+                    state = pullState,
+                    isRefreshing = state.refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
