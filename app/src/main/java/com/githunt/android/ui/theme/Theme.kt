@@ -14,9 +14,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 // "primary" is plain white (dark) or near-black (light): no accent colour anywhere.
+// Every Material role is spelled out in neutral greys, so no component can fall back to the
+// baseline purple (containers, tonal buttons, switches, menus and so on).
 private val DarkColors = darkColorScheme(
     primary = Bone,
     onPrimary = Ink,
+    primaryContainer = Color(0xFF3A3A40),
+    onPrimaryContainer = Bone,
+    secondary = Color(0xFFC8C8D0),
+    onSecondary = Ink,
+    secondaryContainer = Color(0xFF2F2F34),
+    onSecondaryContainer = Bone,
+    tertiary = Color(0xFFC8C8D0),
+    onTertiary = Ink,
+    tertiaryContainer = Color(0xFF2F2F34),
+    onTertiaryContainer = Bone,
     background = Ink,
     onBackground = Bone,
     surface = Panel,
@@ -25,13 +37,31 @@ private val DarkColors = darkColorScheme(
     onSurfaceVariant = Mist,
     outline = Line,
     outlineVariant = Line,
+    inverseSurface = Bone,
+    inverseOnSurface = Ink,
+    inversePrimary = Carbon,
     error = Flare,
     onError = Ink,
+    surfaceContainerLowest = Color(0xFF0E0E10),
+    surfaceContainerLow = Color(0xFF17171A),
+    surfaceContainer = Panel,
+    surfaceContainerHigh = Color(0xFF232326),
+    surfaceContainerHighest = PanelHigh,
 )
 
 private val LightColors = lightColorScheme(
     primary = Carbon,
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFD5D5DB),
+    onPrimaryContainer = Carbon,
+    secondary = Slate,
+    onSecondary = Color.White,
+    secondaryContainer = PaperHigh,
+    onSecondaryContainer = Carbon,
+    tertiary = Slate,
+    onTertiary = Color.White,
+    tertiaryContainer = PaperHigh,
+    onTertiaryContainer = Carbon,
     background = Paper,
     onBackground = Carbon,
     surface = PaperPanel,
@@ -40,14 +70,25 @@ private val LightColors = lightColorScheme(
     onSurfaceVariant = Slate,
     outline = PaperLine,
     outlineVariant = PaperLine,
+    inverseSurface = Carbon,
+    inverseOnSurface = Paper,
+    inversePrimary = Bone,
     error = Brick,
     onError = Color.White,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF8F8FA),
+    surfaceContainer = PaperPanel,
+    surfaceContainerHigh = Color(0xFFEDEDF0),
+    surfaceContainerHighest = PaperHigh,
 )
 
+// Expressive shapes: rounder across the board than the old 10 / 14 / 20.
 private val GhShapes = Shapes(
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(20.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )
 
 @Composable
