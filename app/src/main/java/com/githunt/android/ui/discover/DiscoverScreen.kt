@@ -290,11 +290,7 @@ fun DiscoverScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (state.loadingMore) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
-                                    color = scheme.onSurfaceVariant,
-                                )
+                                GhLoadingIndicator(diameter = 32.dp, color = scheme.onSurfaceVariant)
                             }
                         }
                     }
