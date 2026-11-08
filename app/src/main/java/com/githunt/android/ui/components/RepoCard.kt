@@ -384,8 +384,12 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
-                            if (!expanded) track(EngagementEvent.README)
-                            expanded = !expanded
+                            if (!expanded) {
+                                track(EngagementEvent.README)
+                                expanded = true
+                            } else {
+                                closeKeepingCardInView { expanded = false }
+                            }
                         }
                     },
                 )
