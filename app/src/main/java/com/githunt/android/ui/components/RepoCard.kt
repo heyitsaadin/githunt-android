@@ -141,6 +141,21 @@ fun RepoCard(
     // "Ask AI" panel. Like the website, closing it throws the conversation away.
     var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
 
+    // Closing a long README or a long Ask AI chat shrinks this card by a lot. If the person has
+    // scrolled down inside it, the list is then left pointing past the end of the shrunken card and
+    // snaps to whatever repo comes next. So before a panel closes, scroll the top of this card back
+    // into view (a no-op when it is already visible) and only then collapse it, which keeps the
+    // card, and the person's place in the feed, exactly where they opened the panel.
+    val scope = rememberCoroutineScope()
+    val topRequester = remember { BringIntoViewRequester() }
+    val topGapPx = with(LocalDensity.current) { 12.dp.toPx() }
+    fun closeKeepingCardInView(close: () -> Unit) {
+        scope.launch {
+            topRequester.bringIntoView(Rect(left = 0f, top = -topGapPx, right = 1f, bottom = 1f))
+            close()
+        }
+    }
+
     LaunchedEffect(expanded, item.fullName) {
         if (expanded && markdown == null && readmeRepository != null) {
             loadingReadme = true
