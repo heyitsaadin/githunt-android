@@ -752,26 +752,29 @@ private fun PhotoSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = scheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = scheme.background,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = scheme.onSurface,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            fontWeight = FontWeight.Bold,
+            color = scheme.onBackground,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
         )
-        SettingsRow(
-            title = "Choose new photo",
-            icon = SettingsIcons.Image,
-            onClick = { closeThen(onChoose) },
-        )
-        SettingsRow(
-            title = "Remove photo",
-            icon = SettingsIcons.Delete,
-            danger = true,
-            onClick = { closeThen(onRemove) },
-        )
+        SettingsGroup {
+            SettingsRow(
+                title = "Choose new photo",
+                icon = SettingsIcons.Image,
+                onClick = { closeThen(onChoose) },
+            )
+            SettingsRow(
+                title = "Remove photo",
+                icon = SettingsIcons.Delete,
+                danger = true,
+                onClick = { closeThen(onRemove) },
+            )
+        }
         Spacer(Modifier.navigationBarsPadding().height(16.dp))
     }
 }
