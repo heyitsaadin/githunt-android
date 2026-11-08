@@ -215,6 +215,147 @@ class TranslateRepository(private val api: TranslateApi) {
         return MarkdownTranslation(finalText, changed)
     }
 
+    /**
+     * Cuts a README into blocks and works out which of them have words to translate, on a
+     * background thread. Nothing is sent anywhere yet.
+     */
+    suspend fun prepareReadmeBlocks(markdown: String, target: String): ReadmeBlocks =
+        withContext(Dispatchers.Default) {
+            val blocks = splitMarkdownBlocks(markdown)
+            ReadmeBlocks(blocks, blocks.map { planMarkdown(it, target) })
+        }
+
+    /**
+     * Translates a prepared README one block at a time, top to bottom, a few blocks at once.
+     *
+     * [onBlock] is called once for every block that had something to translate, as soon as that
+     * block is done: with its translated markdown, or null when the block stays as the original
+     * (nothing changed, it did not fit the size budget, or the backends refused). Blocks with
+     * nothing to translate never get a call. Pieces that did translate are cached, so calling this
+     * again only asks for what is missing.
+     *
+     * Never throws (except for coroutine cancellation).
+     */
+    suspend fun translateReadmeBlocks(
+        prepared: ReadmeBlocks,
+        target: String,
+        onBlock: (index: Int, translated: String?) -> Unit,
+    ): BlockTranslationResult {
+        val blocks = prepared.blocks
+        val plans = prepared.plans
+        if (target == OFF) {
+            plans.forEachIndexed { i, plan -> if (plan.order.isNotEmpty()) onBlock(i, null) }
+            return BlockTranslationResult(changedBlocks = 0, incomplete = false)
+        }
+
+        // Same size budget as translateMarkdown: past it, the rest of the README keeps its original.
+        var budget = README_CHAR_BUDGET
+        var overBudget = false
+        val inBudget = BooleanArray(blocks.size)
+        for (i in blocks.indices) {
+            val cost = plans[i].order.filter { cache.get(key(target, it)) == null }.sumOf { it.length }
+            if (overBudget || budget - cost < 0) {
+                overBudget = true
+            } else {
+                budget -= cost
+                inBudget[i] = true
+            }
+        }
+
+        val cursor = AtomicInteger(0)
+        val strikes = AtomicInteger(0)
+        val stopped = AtomicBoolean(false)
+        val changed = AtomicInteger(0)
+        val incomplete = AtomicBoolean(false)
+
+        coroutineScope {
+            // A few workers take the next block in document order, so the README fills in from the
+            // top while the free backends are asked only a few things at a time.
+            repeat(MAX_CONCURRENT_REQUESTS) {
+                launch {
+                    while (true) {
+                        val index = cursor.getAndIncrement()
+                        if (index >= blocks.size) break
+                        val plan = plans[index]
+                        if (plan.order.isEmpty()) continue
+                        if (!inBudget[index]) {
+                            onBlock(index, null)
+                            continue
+                        }
+                        if (stopped.get()) {
+                            incomplete.set(true)
+                            onBlock(index, null)
+                            continue
+                        }
+                        val outcome = translateBlock(plan, target)
+                        // The backends refusing twice in a row means they're out of capacity: stop
+                        // asking and leave the rest in the original language.
+                        if (outcome.refused) {
+                            if (strikes.incrementAndGet() >= 2) stopped.set(true)
+                        } else {
+                            strikes.set(0)
+                        }
+                        if (outcome.incomplete) incomplete.set(true)
+                        if (outcome.text != null) changed.incrementAndGet()
+                        onBlock(index, outcome.text)
+                    }
+                }
+            }
+        }
+        return BlockTranslationResult(changed.get(), incomplete.get())
+    }
+
+    private class BlockOutcome(val text: String?, val refused: Boolean, val incomplete: Boolean)
+
+    /** Translates the pieces of one block. [BlockOutcome.text] is null when nothing changed. */
+    private suspend fun translateBlock(plan: MarkdownPlan, target: String): BlockOutcome {
+        val results = HashMap<String, String>()
+        val missing = ArrayList<String>()
+        for (unit in plan.order) {
+            val hit = cache.get(key(target, unit))
+            if (hit != null) results[unit] = hit.text else missing.add(unit)
+        }
+
+        var gotAny = false
+        for (chunk in chunkForRequest(missing)) {
+            val fetched = fetch(chunk, target) ?: continue
+            chunk.forEachIndexed { i, unit ->
+                val entry = fetched[i] ?: return@forEachIndexed
+                results[unit] = entry.text
+                cache.put(key(target, unit), entry)
+                gotAny = true
+            }
+        }
+
+        val refused = missing.isNotEmpty() && !gotAny
+        val incomplete = plan.order.any { it !in results }
+        val changed = plan.order.any { unit -> results[unit]?.let { it != unit } == true }
+        val text = if (changed) {
+            withContext(Dispatchers.Default) { assembleMarkdown(plan.slots, results) }
+        } else {
+            null
+        }
+        return BlockOutcome(text, refused, incomplete)
+    }
+
+    /** Groups pieces into requests that stay within the batch size and character limits. */
+    private fun chunkForRequest(units: List<String>): List<List<String>> {
+        val out = ArrayList<List<String>>()
+        var current = ArrayList<String>()
+        var chars = 0
+        for (unit in units) {
+            if (current.isNotEmpty() && (current.size >= BATCH_SIZE || chars + unit.length > BATCH_CHAR_LIMIT)) {
+                out.add(current)
+                current = ArrayList()
+                chars = 0
+            }
+            current.add(unit)
+            chars += unit.length
+        }
+        if (current.isNotEmpty()) out.add(current)
+        return out
+    }
+
     /** One entry per input string; null where it could not be translated. */
     private suspend fun translateAll(texts: List<String>, target: String): List<Entry?> {
         val out = arrayOfNulls<Entry>(texts.size)
