@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -58,7 +59,12 @@ private const val DoubleTapZoom = 2.5f
 private val ControlSurface = Color(0xFF19191B)
 private val ControlBorder = Color.White.copy(alpha = 0.10f)
 
-/** Minimal full-screen README image viewer with paging, pinch zoom, and pan. */
+/**
+ * Full-screen README image viewer.
+ *
+ * A blurred, darkened version of the current image fills the screen behind the uncropped image,
+ * avoiding the large empty black bands around landscape screenshots. Tap to hide/show controls.
+ */
 @Composable
 fun ImagePreviewDialog(
     images: List<String>,
@@ -80,9 +86,26 @@ fun ImagePreviewDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF0B0B0C)),
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080809))) {
+            // Ambient image backdrop fills portrait screens while keeping the actual image uncropped.
+            AsyncImage(
+                model = remember(images[pagerState.currentPage]) {
+                    ImageRequest.Builder(LocalContext.current)
+                        .data(proxiedImageUrl(images[pagerState.currentPage]))
+                        .decoderFactory(SvgDecoder.Factory())
+                        .crossfade(250)
+                        .build()
+                },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(28.dp).graphicsLayer {
+                    alpha = 0.58f
+                    scaleX = 1.12f
+                    scaleY = 1.12f
+                },
+            )
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.52f)))
+
             androidx.compose.foundation.pager.HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = images.size > 1 && !zoomed,
@@ -92,10 +115,11 @@ fun ImagePreviewDialog(
                     url = images[page],
                     contentDescription = contentDescription,
                     active = pagerState.currentPage == page,
-                    onZoomChange = { zoomed = it },
-                    onBackgroundTap = {
-                        if (controlsVisible) controlsVisible = false else onDismiss()
+                    onZoomChange = {
+                        zoomed = it
+                        controlsVisible = !it
                     },
+                    onBackgroundTap = { controlsVisible = !controlsVisible },
                 )
             }
 
@@ -125,9 +149,10 @@ fun ImagePreviewDialog(
                                 text = "${pagerState.currentPage + 1} / ${images.size}",
                                 fontFamily = LocalGhMono.current,
                                 fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.78f),
+                                color = Color.White.copy(alpha = 0.88f),
                                 modifier = Modifier.clip(RoundedCornerShape(18.dp))
-                                    .background(ControlSurface).border(1.dp, ControlBorder, RoundedCornerShape(18.dp))
+                                    .background(ControlSurface.copy(alpha = 0.92f))
+                                    .border(1.dp, ControlBorder, RoundedCornerShape(18.dp))
                                     .padding(horizontal = 12.dp, vertical = 7.dp),
                             )
                         }
