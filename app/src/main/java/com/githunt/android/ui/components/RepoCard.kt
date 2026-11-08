@@ -174,22 +174,45 @@ fun RepoCard(
         }
     }
 
-    // README translation. Runs only while the README is open, top to bottom in small batches, and
-    // shows what it has so far after every batch. Closing the card cancels it; reopening is instant
-    // for everything already translated, because the repository caches each piece.
-    var readmeTranslated by remember(item.fullName, targetLanguage, markdown) { mutableStateOf<String?>(null) }
+    // README translation is an explicit action. "Show README" always opens the full original at
+    // once; "Translate README" then turns every block that has words in it into a skeleton, and each
+    // skeleton is replaced by plain translated text as soon as that block arrives, top to bottom.
+    // Closing the card cancels it; reopening is instant for what was already translated, because
+    // the repository caches each piece.
+    val defaultBranch = item.raw?.text("default_branch")
+    var readmeTranslate by rememberSaveable(item.fullName + "#readme-translate") { mutableStateOf(false) }
+    var readmeShowOriginal by rememberSaveable(item.fullName + "#readme-original") { mutableStateOf(false) }
+    var readmeAttempt by remember(item.fullName, targetLanguage) { mutableIntStateOf(0) }
+    var readmeBlocks by remember(item.fullName, targetLanguage, markdown) { mutableStateOf<TranslatingReadme?>(null) }
     var readmeBusy by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
-    LaunchedEffect(expanded, markdown, targetLanguage) {
+    var readmeFinished by remember(item.fullName, targetLanguage, markdown) { mutableStateOf(false) }
+    var readmeIncomplete by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    var readmeChanged by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    LaunchedEffect(expanded, markdown, targetLanguage, readmeTranslate, readmeAttempt) {
         val source = markdown
-        if (!expanded || source == null || translateRepository == null || targetLanguage == "off") {
+        if (!expanded || !readmeTranslate || source == null || translateRepository == null || targetLanguage == "off") {
             return@LaunchedEffect
         }
+        if (readmeFinished && !readmeIncomplete) return@LaunchedEffect
         readmeBusy = true
+        readmeIncomplete = false
+        readmeChanged = false
         try {
-            val result = translateRepository.translateMarkdown(source, targetLanguage) { partial ->
-                if (partial != source) readmeTranslated = partial
+            val prepared = translateRepository.prepareReadmeBlocks(
+                markdown = withContext(Dispatchers.Default) {
+                    prepareReadme(source, item.owner, repoName, defaultBranch, MaxReadmeChars)
+                },
+                target = targetLanguage,
+            )
+            val state = TranslatingReadme(prepared.blocks, prepared.needsTranslation)
+            readmeBlocks = state
+            val result = translateRepository.translateReadmeBlocks(prepared, targetLanguage) { index, text ->
+                state.translated[index] = text
+                state.waiting[index] = false
             }
-            readmeTranslated = if (result.changed) result.markdown else null
+            readmeIncomplete = result.incomplete
+            readmeChanged = result.changedBlocks > 0
+            readmeFinished = true
         } finally {
             readmeBusy = false
         }
