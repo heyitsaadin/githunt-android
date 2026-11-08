@@ -68,7 +68,11 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.feed.PostItem
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import com.githunt.android.GitHuntApp
 import com.githunt.android.data.feed.RepoItem
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PrimaryButton
@@ -110,6 +114,18 @@ fun FeedScreen(
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
     val aiSearch = rememberAiSearchState()
+
+    // Repos marked "Not interested" leave the feed at once. The server also stops sending them
+    // (for about three weeks) and scores down similar repos, so a refresh keeps them gone.
+    val appContext = LocalContext.current.applicationContext
+    val hiddenFlow = remember(appContext) {
+        (appContext as? GitHuntApp)?.container?.engagementTracker?.hidden ?: MutableStateFlow(emptySet<String>())
+    }
+    val hiddenRepos by hiddenFlow.collectAsState()
+    val visibleItems = remember(feed.items, hiddenRepos) {
+        if (hiddenRepos.isEmpty()) feed.items
+        else feed.items.filterNot { it is RepoItem && it.fullName in hiddenRepos }
+    }
 
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
@@ -216,9 +232,9 @@ fun FeedScreen(
                         }
                     }
 
-                    items(feed.items, key = { it.key }) { item ->
+                    items(visibleItems, key = { it.key }) { item ->
                         when (item) {
-                            is RepoItem -> RepoCard(item = item)
+                            is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
                             is PostItem -> PostCard(item)
                         }
                     }
