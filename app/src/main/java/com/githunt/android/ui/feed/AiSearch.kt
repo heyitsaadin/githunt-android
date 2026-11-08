@@ -333,16 +333,16 @@ fun AiSearchPanel(state: AiSearchState, modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp),
+                .padding(start = 10.dp, end = 10.dp, top = 2.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(scheme.onSurface.copy(alpha = 0.05f))
                     .horizontalScroll(rememberScrollState())
-                    .padding(4.dp),
+                    .padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 AiSearchFilter.values().forEach { option ->
