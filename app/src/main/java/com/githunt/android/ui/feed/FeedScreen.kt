@@ -33,7 +33,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.githunt.android.ui.components.GhLoadingIndicator
+import com.githunt.android.ui.components.GhPullIndicator
+import com.githunt.android.ui.theme.GhMotion
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.IconButton
