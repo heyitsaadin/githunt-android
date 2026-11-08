@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -24,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.settings.DeviceSession
+import com.githunt.android.ui.components.GhContainedLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 
@@ -35,25 +35,27 @@ fun AccountScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             description = "Manage your profile, password and security.",
             first = true,
         ) {
-            SettingsRow(
-                title = "Edit profile",
-                subtitle = "Name, username, bio, photos",
-                icon = NavIcons.Edit,
-                onClick = { onNavigate("edit-profile") },
-                trailing = { ChevronTrailing() },
-            )
-            SettingsRow(
-                title = "Change password",
-                icon = SettingsIcons.Lock,
-                onClick = { onNavigate("password") },
-                trailing = { ChevronTrailing() },
-            )
-            SettingsRow(
-                title = "Security",
-                icon = SettingsIcons.Shield,
-                onClick = { onNavigate("security") },
-                trailing = { ChevronTrailing() },
-            )
+            SettingsGroup {
+                SettingsRow(
+                    title = "Edit profile",
+                    subtitle = "Name, username, bio, photos",
+                    icon = NavIcons.Edit,
+                    onClick = { onNavigate("edit-profile") },
+                    trailing = { ChevronTrailing() },
+                )
+                SettingsRow(
+                    title = "Change password",
+                    icon = SettingsIcons.Lock,
+                    onClick = { onNavigate("password") },
+                    trailing = { ChevronTrailing() },
+                )
+                SettingsRow(
+                    title = "Security",
+                    icon = SettingsIcons.Shield,
+                    onClick = { onNavigate("security") },
+                    trailing = { ChevronTrailing() },
+                )
+            }
         }
     }
 }
@@ -211,35 +213,37 @@ fun SecurityScreen(
                         .fillMaxWidth()
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator(modifier = Modifier.padding(0.dp)) }
+                ) { GhContainedLoadingIndicator() }
             } else {
                 if (sessions.isEmpty()) SettingsNote("No active sign-ins found.")
-                sessions.forEach { session ->
-                    val ago = activeAgo(session.lastSeenAt)
-                    SettingsRow(
-                        title = sessionTitle(session),
-                        subtitle = listOf(if (session.isCurrent) "This device" else "", ago)
-                            .filter { it.isNotEmpty() }
-                            .joinToString(" \u00B7 ")
-                            .ifEmpty { null },
-                        icon = SettingsIcons.Phone,
-                        trailing = {
-                            OutlinedButton(
-                                onClick = { pending = session },
-                                enabled = state.revokingId == null,
-                            ) { Text("Log out", fontWeight = FontWeight.SemiBold) }
-                        },
-                    )
-                }
-                if (sessions.size > 1) {
-                    SettingsRow(
-                        title = "Log out other devices",
-                        subtitle = "Keep only this device signed in",
-                        icon = com.githunt.android.ui.components.AppIcons.SignOut,
-                        danger = true,
-                        enabled = state.revokingId == null,
-                        onClick = { pendingAll = true },
-                    )
+                SettingsGroup {
+                    sessions.forEach { session ->
+                        val ago = activeAgo(session.lastSeenAt)
+                        SettingsRow(
+                            title = sessionTitle(session),
+                            subtitle = listOf(if (session.isCurrent) "This device" else "", ago)
+                                .filter { it.isNotEmpty() }
+                                .joinToString(" \u00B7 ")
+                                .ifEmpty { null },
+                            icon = SettingsIcons.Phone,
+                            trailing = {
+                                OutlinedButton(
+                                    onClick = { pending = session },
+                                    enabled = state.revokingId == null,
+                                ) { Text("Log out", fontWeight = FontWeight.SemiBold) }
+                            },
+                        )
+                    }
+                    if (sessions.size > 1) {
+                        SettingsRow(
+                            title = "Log out other devices",
+                            subtitle = "Keep only this device signed in",
+                            icon = com.githunt.android.ui.components.AppIcons.SignOut,
+                            danger = true,
+                            enabled = state.revokingId == null,
+                            onClick = { pendingAll = true },
+                        )
+                    }
                 }
             }
             state.error?.let { SettingsNote(text = it, error = true) }
