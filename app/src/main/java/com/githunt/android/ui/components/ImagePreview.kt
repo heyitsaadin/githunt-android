@@ -1,10 +1,12 @@
 package com.githunt.android.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,8 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -34,9 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -56,15 +56,10 @@ import com.githunt.android.ui.theme.LocalGhMono
 private const val ClosePath = "M6 6L18 18 M18 6L6 18"
 private const val MaxZoom = 5f
 private const val DoubleTapZoom = 2.5f
-private val PreviewSurface = Color(0xFF171717)
-private val PreviewBorder = Color.White.copy(alpha = 0.12f)
+private val ControlSurface = Color(0xFF19191B)
+private val ControlBorder = Color.White.copy(alpha = 0.10f)
 
-/**
- * Full-screen look at a repo's README pictures.
- *
- * Swipe sideways between pictures, pinch to zoom, drag to pan while zoomed, and double-tap to
- * toggle zoom. Pictures are shown whole and uncropped. GitHub remains available from the toolbar.
- */
+/** Full-screen image viewer with a blurred ambient backdrop and tap-to-hide controls. */
 @Composable
 fun ImagePreviewDialog(
     images: List<String>,
@@ -74,26 +69,42 @@ fun ImagePreviewDialog(
     onOpenGithub: () -> Unit,
 ) {
     if (images.isEmpty()) return
-    val pagerState = rememberPagerState(
+
+    val context = LocalContext.current
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
         initialPage = startIndex.coerceIn(0, images.lastIndex),
         pageCount = { images.size },
     )
+    val currentImageUrl = images[pagerState.currentPage]
+    val backdropRequest = remember(currentImageUrl, context) {
+        ImageRequest.Builder(context)
+            .data(proxiedImageUrl(currentImageUrl))
+            .decoderFactory(SvgDecoder.Factory())
+            .crossfade(250)
+            .build()
+    }
     var zoomed by remember { mutableStateOf(false) }
+    var controlsVisible by remember { mutableStateOf(true) }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFF111111), Color.Black, Color(0xFF080808)),
-                    ),
-                ),
-        ) {
-            HorizontalPager(
+        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF080809))) {
+            // The blurred image fills portrait screens while the foreground stays uncropped.
+            AsyncImage(
+                model = backdropRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(28.dp).graphicsLayer {
+                    alpha = 0.58f
+                    scaleX = 1.12f
+                    scaleY = 1.12f
+                },
+            )
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.52f)))
+
+            androidx.compose.foundation.pager.HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = images.size > 1 && !zoomed,
                 modifier = Modifier.fillMaxSize(),
@@ -102,30 +113,28 @@ fun ImagePreviewDialog(
                     url = images[page],
                     contentDescription = contentDescription,
                     active = pagerState.currentPage == page,
-                    onZoomChange = { zoomed = it },
-                    onBackgroundTap = onDismiss,
+                    onZoomChange = {
+                        zoomed = it
+                        controlsVisible = !it
+                    },
+                    onBackgroundTap = { controlsVisible = !controlsVisible },
                 )
             }
 
             AnimatedVisibility(
-                visible = true,
-                enter = fadeIn(tween(220)) + slideInVertically(tween(280)) { -it / 3 },
-                exit = fadeOut(tween(150)),
+                visible = controlsVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 3 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 }),
                 modifier = Modifier.align(Alignment.TopCenter),
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(PreviewSurface)
-                            .border(1.dp, PreviewBorder, CircleShape)
+                        modifier = Modifier.size(42.dp).clip(CircleShape)
+                            .background(ControlSurface).border(1.dp, ControlBorder, CircleShape)
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -138,12 +147,10 @@ fun ImagePreviewDialog(
                                 text = "${pagerState.currentPage + 1} / ${images.size}",
                                 fontFamily = LocalGhMono.current,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White.copy(alpha = 0.78f),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(PreviewSurface.copy(alpha = 0.92f))
-                                    .border(1.dp, PreviewBorder, RoundedCornerShape(20.dp))
+                                color = Color.White.copy(alpha = 0.88f),
+                                modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                                    .background(ControlSurface.copy(alpha = 0.92f))
+                                    .border(1.dp, ControlBorder, RoundedCornerShape(18.dp))
                                     .padding(horizontal = 12.dp, vertical = 7.dp),
                             )
                         }
@@ -154,42 +161,43 @@ fun ImagePreviewDialog(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.White,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
-                            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(22.dp))
-                            .clickable(onClick = onOpenGithub)
-                            .padding(horizontal = 15.dp, vertical = 11.dp),
+                        modifier = Modifier.clip(RoundedCornerShape(22.dp)).background(ControlSurface)
+                            .border(1.dp, ControlBorder, RoundedCornerShape(22.dp))
+                            .clickable(onClick = onOpenGithub).padding(horizontal = 14.dp, vertical = 10.dp),
                     )
                 }
             }
 
-            if (images.size > 1 && !zoomed) {
+            if (images.size > 1) {
                 AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(tween(350, delayMillis = 120)) + slideInVertically(tween(350)) { it / 2 },
+                    visible = controlsVisible && !zoomed,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
                     modifier = Modifier.align(Alignment.BottomCenter),
                 ) {
-                    Text(
-                        text = "Swipe to explore",
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.48f),
-                        modifier = Modifier
-                            .padding(bottom = 26.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Color.Black.copy(alpha = 0.32f))
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                    )
+                    Row(
+                        modifier = Modifier.padding(bottom = 24.dp).clip(RoundedCornerShape(20.dp))
+                            .background(ControlSurface.copy(alpha = 0.92f))
+                            .border(1.dp, ControlBorder, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        repeat(images.size) { index ->
+                            val selected = pagerState.currentPage == index
+                            Box(
+                                modifier = Modifier.padding(horizontal = 3.dp)
+                                    .size(width = if (selected) 16.dp else 5.dp, height = 5.dp)
+                                    .clip(CircleShape)
+                                    .background(if (selected) Color.White else Color.White.copy(alpha = 0.30f)),
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * One picture, shown whole (never cropped). Pinch to zoom up to 5x, pan while zoomed, double-tap
- * to toggle zoom. A one-finger swipe at normal size is left alone so the pager can change page.
- */
 @Composable
 private fun ZoomableImage(
     url: String,
@@ -201,6 +209,11 @@ private fun ZoomableImage(
     val context = LocalContext.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    val displayedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f),
+        label = "previewZoom",
+    )
 
     LaunchedEffect(active) {
         if (!active) {
@@ -210,16 +223,12 @@ private fun ZoomableImage(
     }
 
     val request = remember(url) {
-        ImageRequest.Builder(context)
-            .data(proxiedImageUrl(url))
-            .decoderFactory(SvgDecoder.Factory())
-            .crossfade(260)
-            .build()
+        ImageRequest.Builder(context).data(proxiedImageUrl(url))
+            .decoderFactory(SvgDecoder.Factory()).crossfade(220).build()
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { if (scale <= 1f) onBackgroundTap() },
@@ -246,14 +255,10 @@ private fun ZoomableImage(
                             val pan = event.calculatePan()
                             val maxX = size.width * (newScale - 1f) / 2f
                             val maxY = size.height * (newScale - 1f) / 2f
-                            offset = if (newScale <= 1f) {
-                                Offset.Zero
-                            } else {
-                                Offset(
-                                    (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                    (offset.y + pan.y).coerceIn(-maxY, maxY),
-                                )
-                            }
+                            offset = if (newScale <= 1f) Offset.Zero else Offset(
+                                (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                (offset.y + pan.y).coerceIn(-maxY, maxY),
+                            )
                             scale = newScale
                             onZoomChange(newScale > 1f)
                             event.changes.forEach { if (it.positionChanged()) it.consume() }
@@ -266,14 +271,12 @@ private fun ZoomableImage(
             model = request,
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
-                },
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                scaleX = displayedScale
+                scaleY = displayedScale
+                translationX = offset.x
+                translationY = offset.y
+            },
         )
     }
 }
