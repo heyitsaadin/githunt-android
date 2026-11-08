@@ -64,8 +64,8 @@ fun MarkdownBody(
     val codeBackground = scheme.surfaceVariant.toArgb()
     val density = context.resources.displayMetrics.density
 
-    val markwon = remember(context, textColor, headingColor, linkColor, ruleColor, codeBackground) {
-        buildMarkdownRenderer(context, textColor, headingColor, linkColor, ruleColor, codeBackground, density)
+    val markwon = remember(renderer, context, textColor, headingColor, linkColor, ruleColor, codeBackground) {
+        renderer ?: buildMarkdownRenderer(context, textColor, headingColor, linkColor, ruleColor, codeBackground, density)
     }
     // The first text is parsed right here, exactly as before, so a card scrolled back into view
     // has its README at full height straight away. When the text later CHANGES (a README being
