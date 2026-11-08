@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.profile.ProfileImages
+import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import kotlinx.coroutines.Dispatchers
