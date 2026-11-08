@@ -186,11 +186,11 @@ internal fun TypingBubble() {
 
 /** The round up-arrow send button. Inverted like the website's (light on dark, dark on light). */
 @Composable
-internal fun SendCircle(enabled: Boolean, onClick: () -> Unit) {
+internal fun SendCircle(enabled: Boolean, onClick: () -> Unit, size: Dp = 36.dp) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(size)
             .clip(CircleShape)
             .background(scheme.onBackground.copy(alpha = if (enabled) 1f else 0.3f))
             .clickable(enabled = enabled, onClick = onClick),
