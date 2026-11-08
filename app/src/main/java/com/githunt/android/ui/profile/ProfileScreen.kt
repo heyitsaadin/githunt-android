@@ -288,7 +288,10 @@ private fun ProfileHeader(
         key1 = user.backgroundUrl,
     ) {
         value = withContext(Dispatchers.IO) {
+            // No cover of their own (or an undecodable one): use the site's
+            // default cover, served by the backend from the support account.
             profileCoverImageModel(user.backgroundUrl)
+                ?: "${BuildConfig.API_BASE_URL.trimEnd('/')}/api/default-cover"
         }
     }
 
