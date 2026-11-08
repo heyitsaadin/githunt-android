@@ -269,7 +269,7 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
     val mono = LocalGhMono.current
     val state by viewModel.inbox.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshNotificationInbox() }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
         SubPageBar(title = "Notifications", onBack = onBack, subtitle = "Last 24 hours")
