@@ -38,6 +38,7 @@ import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.ThemeMode
 import com.githunt.android.data.settings.TranslationLanguages
 import com.githunt.android.ui.components.AppIcons
+import com.githunt.android.ui.components.GhSegmentedPicker
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.pageTransition
