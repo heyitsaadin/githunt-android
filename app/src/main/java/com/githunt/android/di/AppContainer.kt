@@ -102,12 +102,17 @@ class AppContainer(context: Context) {
     /** Loads README markdown for the repo card's "Show README" button. */
     val readmeRepository = ReadmeRepository(retrofit.create(ReadmeApi::class.java))
 
-    /** Auto-translates repo card text into the language chosen in Settings (/api/translate). */
-    val translateRepository = com.githunt.android.data.translate.TranslateRepository(
-        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+    /** Reports what happens on repo cards (dwell, README, clips, shares, Not interested) so Personalization can learn. */
+    val engagementTracker = com.githunt.android.data.engagement.EngagementTracker(
+        retrofit.create(com.githunt.android.data.engagement.EngagementApi::class.java),
     )
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
+
+    /** Auto-translates repo card text and READMEs into the language chosen in Settings (/api/translate). */
+    val translateRepository = com.githunt.android.data.translate.TranslateRepository(
+        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+    )
 
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
