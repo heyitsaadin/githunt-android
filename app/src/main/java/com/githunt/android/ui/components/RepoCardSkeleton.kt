@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RepoCardSkeleton(modifier: Modifier = Modifier, showPreview: Boolean = true) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()

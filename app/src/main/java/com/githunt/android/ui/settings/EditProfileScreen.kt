@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.githunt.android.data.auth.User
 import com.githunt.android.data.profile.ProfileImages
+import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import kotlinx.coroutines.Dispatchers
@@ -246,11 +246,7 @@ fun EditProfileScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 if (state.saving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = scheme.background,
-                    )
+                    GhLoadingIndicator(diameter = 22.dp, color = scheme.background)
                 } else {
                     Text(
                         text = "Save",
@@ -414,9 +410,8 @@ fun EditProfileScreen(
                         isError = check == UsernameCheck.Taken || (state.username.isNotEmpty() && !usernameValid),
                         trailing = {
                             when (check) {
-                                UsernameCheck.Checking -> CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
+                                UsernameCheck.Checking -> GhLoadingIndicator(
+                                    diameter = 24.dp,
                                     color = scheme.onSurfaceVariant,
                                 )
                                 UsernameCheck.Available -> PathIcon(
@@ -730,11 +725,7 @@ private fun BusyOverlay() {
             .background(Color(0x8C000000)),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(22.dp),
-            strokeWidth = 2.dp,
-            color = Color.White,
-        )
+        GhLoadingIndicator(diameter = 28.dp, color = Color.White)
     }
 }
 
@@ -761,26 +752,29 @@ private fun PhotoSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = scheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = scheme.background,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = scheme.onSurface,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            fontWeight = FontWeight.Bold,
+            color = scheme.onBackground,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
         )
-        SettingsRow(
-            title = "Choose new photo",
-            icon = SettingsIcons.Image,
-            onClick = { closeThen(onChoose) },
-        )
-        SettingsRow(
-            title = "Remove photo",
-            icon = SettingsIcons.Delete,
-            danger = true,
-            onClick = { closeThen(onRemove) },
-        )
+        SettingsGroup {
+            SettingsRow(
+                title = "Choose new photo",
+                icon = SettingsIcons.Image,
+                onClick = { closeThen(onChoose) },
+            )
+            SettingsRow(
+                title = "Remove photo",
+                icon = SettingsIcons.Delete,
+                danger = true,
+                onClick = { closeThen(onRemove) },
+            )
+        }
         Spacer(Modifier.navigationBarsPadding().height(16.dp))
     }
 }

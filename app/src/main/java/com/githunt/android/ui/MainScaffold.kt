@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.githunt.android.ui.components.GhContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -269,17 +269,16 @@ private fun NotificationInboxScreen(viewModel: SettingsViewModel, onBack: () -> 
     val mono = LocalGhMono.current
     val state by viewModel.inbox.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshNotificationInbox() }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     Column(modifier = Modifier.fillMaxSize().background(scheme.background)) {
         SubPageBar(title = "Notifications", onBack = onBack, subtitle = "Last 24 hours")
         Box(modifier = Modifier.fillMaxWidth().weight(1f).navigationBarsPadding()) {
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
+                    GhContainedLoadingIndicator(
                         modifier = Modifier.padding(16.dp),
-                        strokeWidth = 2.dp,
-                        color = scheme.onSurfaceVariant,
+                        diameter = 56.dp,
                     )
                 }
                 state.error != null -> PageMessage(

@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -176,11 +175,7 @@ internal fun TypingBubble() {
                 .background(scheme.surfaceVariant.copy(alpha = 0.7f))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(14.dp),
-                strokeWidth = 2.dp,
-                color = scheme.onSurfaceVariant,
-            )
+            GhLoadingIndicator(diameter = 22.dp, color = scheme.onSurfaceVariant)
         }
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,26 +17,35 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.githunt.android.ui.components.AnimatedWordmark
+import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.PrimaryButton
 import com.githunt.android.ui.components.Wordmark
 
 /**
  * Shown while the app checks whether the person is still signed in.
  * With [animate] the wordmark types itself out and [onAnimationFinished] is called when it is done;
- * without it this is the plain static wordmark.
+ * without it this is the static wordmark with the morphing loader underneath.
  */
 @Composable
 fun LoadingScreen(animate: Boolean = false, onAnimationFinished: () -> Unit = {}) {
+    val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(scheme.background),
         contentAlignment = Alignment.Center,
     ) {
         if (animate) {
             AnimatedWordmark(fontSize = 40.sp, onFinished = onAnimationFinished)
         } else {
             Wordmark(size = 40.sp)
+            // Offset instead of stacked in a column, so the wordmark never moves between the
+            // typed and the static version.
+            GhLoadingIndicator(
+                modifier = Modifier.offset(y = 76.dp),
+                diameter = 36.dp,
+                color = scheme.onSurfaceVariant,
+            )
         }
     }
 }

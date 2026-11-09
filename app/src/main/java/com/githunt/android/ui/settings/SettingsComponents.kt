@@ -1,8 +1,10 @@
 package com.githunt.android.ui.settings
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,18 +19,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -41,6 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
@@ -65,8 +69,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.githunt.android.BuildConfig
 import com.githunt.android.ui.components.AppIcons
+import com.githunt.android.ui.components.CookieShape
+import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
+import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.theme.GhMotion
 import java.time.Duration
 import java.time.Instant
 
@@ -123,7 +131,10 @@ fun rememberSiteOpener(): (String) -> Unit {
 
 // ---- Page shell ----
 
-/** Material page: centered top app bar with a back arrow, then a scrolling column. */
+/**
+ * Expressive page: a large top app bar that collapses as you scroll, with a tonal back button,
+ * then a scrolling column.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScaffold(
@@ -132,35 +143,41 @@ fun SettingsScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = scheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
+            LargeTopAppBar(
                 title = {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
-                    IconButton(
+                    FilledTonalIconButton(
                         onClick = onBack,
-                        modifier = Modifier.semantics { contentDescription = "Back" },
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .semantics { contentDescription = "Back" },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = scheme.surfaceVariant,
+                            contentColor = scheme.onSurface,
+                        ),
                     ) {
-                        PathIcon(pathData = SettingsIcons.ArrowBack, tint = scheme.onBackground)
+                        PathIcon(pathData = SettingsIcons.ArrowBack, tint = scheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    // Give every settings screen the same subtle charcoal header.
-                    // Use the theme surface so light mode gets its matching panel tone.
-                    containerColor = scheme.surface,
-                    scrolledContainerColor = scheme.surface,
-                    titleContentColor = scheme.onSurface,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = scheme.background,
+                    scrolledContainerColor = scheme.background,
+                    titleContentColor = scheme.onBackground,
                     navigationIconContentColor = scheme.onSurface,
                 ),
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
@@ -176,7 +193,7 @@ fun SettingsScaffold(
     }
 }
 
-/** A titled group of rows with a hairline above it (except the first group on a page). */
+/** A titled block: a heading and description, then whatever rows, fields or buttons belong to it. */
 @Composable
 fun SettingsSection(
     title: String,
@@ -187,20 +204,17 @@ fun SettingsSection(
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(modifier = modifier.fillMaxWidth()) {
-        if (!first) {
-            HorizontalDivider(color = scheme.outline.copy(alpha = 0.6f))
-        }
         Column(
             modifier = Modifier.padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = if (first) 8.dp else 20.dp,
+                start = 28.dp,
+                end = 28.dp,
+                top = if (first) 4.dp else 24.dp,
                 bottom = 8.dp,
             ),
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = scheme.onBackground,
             )
@@ -214,11 +228,37 @@ fun SettingsSection(
             }
         }
         content()
-        Spacer(Modifier.height(8.dp))
     }
 }
 
-/** One Material list row: icon, title, optional supporting text, optional trailing control. */
+private val LocalInSettingsGroup = compositionLocalOf { false }
+
+/**
+ * A run of [SettingsRow]s drawn as one segmented list: the group has big rounded outer corners,
+ * every row inside is its own tile with only a small gap and small corners between them, and a
+ * row that is pressed springs rounder. Rows used outside a group are single rounded tiles.
+ */
+@Composable
+fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    CompositionLocalProvider(LocalInSettingsGroup provides true) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(28.dp)),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            content = content,
+        )
+    }
+}
+
+/**
+ * One list row: tonal icon chip, title, optional supporting text, optional trailing control.
+ * [selected] fills the tile with the container colour (used for choice lists).
+ */
 @Composable
 fun SettingsRow(
     title: String,
@@ -228,15 +268,41 @@ fun SettingsRow(
     leading: (@Composable () -> Unit)? = null,
     danger: Boolean = false,
     enabled: Boolean = true,
+    selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val tint = if (danger) scheme.error else scheme.onBackground
+    val inGroup = LocalInSettingsGroup.current
+    val tint = if (danger) scheme.error else scheme.onSurface
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(
+        interactionSource = interaction,
+        rest = if (inGroup) 6.dp else 24.dp,
+        pressed = if (inGroup) 24.dp else 32.dp,
+    )
+    val container by animateColorAsState(
+        targetValue = if (selected) scheme.primaryContainer else scheme.surface,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "row-container",
+    )
     ListItem(
-        headlineContent = { Text(text = title, color = tint) },
+        headlineContent = { Text(text = title, color = tint, fontWeight = FontWeight.Medium) },
         modifier = modifier
-            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
+            .then(if (inGroup) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            .clip(RoundedCornerShape(corner))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = interaction,
+                        indication = LocalIndication.current,
+                        enabled = enabled,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .alpha(if (enabled) 1f else 0.5f),
         supportingContent = if (subtitle != null) {
             { Text(text = subtitle) }
@@ -248,7 +314,15 @@ fun SettingsRow(
                 if (leading != null) {
                     leading()
                 } else if (icon != null) {
-                    PathIcon(pathData = icon, tint = tint)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (danger) scheme.error.copy(alpha = 0.14f) else scheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PathIcon(pathData = icon, tint = tint, iconSize = 22.dp)
+                    }
                 }
             }
         } else {
@@ -256,7 +330,7 @@ fun SettingsRow(
         },
         trailingContent = trailing,
         colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent,
+            containerColor = container,
             supportingColor = scheme.onSurfaceVariant,
         ),
     )
@@ -280,13 +354,14 @@ fun OpenTrailing() {
     )
 }
 
+/** Profile picture in a scalloped "cookie" shape. */
 @Composable
 fun AvatarCircle(url: String?, size: Dp = 40.dp) {
     val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .size(size)
-            .clip(CircleShape)
+            .clip(CookieShape)
             .background(scheme.surfaceVariant),
         contentAlignment = Alignment.Center,
     ) {
@@ -314,7 +389,7 @@ fun SettingsNote(text: String, modifier: Modifier = Modifier, error: Boolean = f
         color = if (error) scheme.error else scheme.onSurfaceVariant,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 28.dp, vertical = 8.dp),
     )
 }
 
@@ -326,11 +401,11 @@ fun SettingsBody(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 28.dp, vertical = 6.dp),
     )
 }
 
-/** Outlined message box with an icon, used for "Password updated" and similar. */
+/** Rounded message tile with an icon, used for "Password updated" and similar. */
 @Composable
 fun SettingsCallout(
     iconPath: String,
@@ -340,15 +415,14 @@ fun SettingsCallout(
     iconTint: Color = MaterialTheme.colorScheme.onBackground,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.6f), shape)
-            .padding(16.dp),
+            .padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         PathIcon(pathData = iconPath, tint = iconTint)
@@ -424,12 +498,13 @@ fun SettingsField(
         singleLine = singleLine,
         minLines = minLines,
         textStyle = if (mono) LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace) else LocalTextStyle.current,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(18.dp),
     )
 }
 
 enum class ButtonKind { Primary, Outlined, Danger }
 
+/** Pill button that springs into a squarer shape while pressed. */
 @Composable
 fun SettingsButton(
     text: String,
@@ -441,15 +516,13 @@ fun SettingsButton(
     leading: (@Composable () -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
-    val sized = modifier.height(48.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 26.dp, pressed = 14.dp)
+    val shape = RoundedCornerShape(corner)
+    val sized = modifier.height(52.dp)
     val inner: @Composable () -> Unit = {
         if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = LocalContentColor.current,
-            )
+            GhLoadingIndicator(diameter = 26.dp, color = LocalContentColor.current)
             Spacer(Modifier.width(10.dp))
         } else if (leading != null) {
             leading()
@@ -463,6 +536,7 @@ fun SettingsButton(
             modifier = sized,
             enabled = enabled && !loading,
             shape = shape,
+            interactionSource = interaction,
             content = { inner() },
         )
         ButtonKind.Danger -> Button(
@@ -470,6 +544,7 @@ fun SettingsButton(
             modifier = sized,
             enabled = enabled && !loading,
             shape = shape,
+            interactionSource = interaction,
             colors = ButtonDefaults.buttonColors(containerColor = scheme.error, contentColor = scheme.onError),
             content = { inner() },
         )
@@ -478,6 +553,7 @@ fun SettingsButton(
             modifier = sized,
             enabled = enabled && !loading,
             shape = shape,
+            interactionSource = interaction,
             content = { inner() },
         )
     }
@@ -508,16 +584,21 @@ fun ConfirmDialog(
     val scheme = MaterialTheme.colorScheme
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = scheme.surface,
-        title = { Text(title) },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = scheme.surfaceContainerHigh,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = { Text(text = text, color = scheme.onSurfaceVariant) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(text = confirmLabel, color = if (destructive) scheme.error else scheme.primary)
+                Text(
+                    text = confirmLabel,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (destructive) scheme.error else scheme.primary,
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(cancelLabel) }
+            TextButton(onClick = onDismiss) { Text(cancelLabel, fontWeight = FontWeight.SemiBold) }
         },
     )
 }

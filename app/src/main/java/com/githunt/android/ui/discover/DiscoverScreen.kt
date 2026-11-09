@@ -1,18 +1,23 @@
 package com.githunt.android.ui.discover
 
 import android.widget.Toast
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -20,18 +25,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,23 +50,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.data.discover.SortMode
+import com.githunt.android.ui.components.CookieShape
+import com.githunt.android.ui.components.GhLoadingIndicator
+import com.githunt.android.ui.components.GhPullIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.Wordmark
+import com.githunt.android.ui.components.animatedPressCorner
 import com.githunt.android.ui.components.languageColor
+import com.githunt.android.ui.settings.SettingsGroup
+import com.githunt.android.ui.settings.SettingsRow
+import com.githunt.android.ui.theme.GhMotion
 import kotlinx.coroutines.launch
 
 private val LanguageOptions = listOf(
@@ -94,6 +112,9 @@ private fun sortIcon(mode: SortMode): String = when (mode) {
 /**
  * The website's Discover page: a Sort and a Language filter, a search box behind the magnifier,
  * and an endless list of repo cards with a clip (bookmark) on each.
+ *
+ * The two filters open as bottom sheets with segmented choice lists (the Material 3 Expressive
+ * way) instead of small floating menus.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,11 +162,18 @@ fun DiscoverScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(size = 26.sp)
+            val searchInteraction = remember { MutableInteractionSource() }
+            val searchCorner = animatedPressCorner(searchInteraction, rest = 22.dp, pressed = 12.dp)
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable { viewModel.toggleSearch() },
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(searchCorner))
+                    .background(if (state.searchOpen) scheme.onBackground.copy(alpha = 0.12f) else scheme.onBackground.copy(alpha = 0f))
+                    .clickable(
+                        interactionSource = searchInteraction,
+                        indication = LocalIndication.current,
+                        onClick = { viewModel.toggleSearch() },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 PathIcon(
@@ -168,9 +196,18 @@ fun DiscoverScreen(
             )
         }
 
+        val pullState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = state.refreshing,
             onRefresh = { viewModel.refresh() },
+            state = pullState,
+            indicator = {
+                GhPullIndicator(
+                    state = pullState,
+                    isRefreshing = state.refreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -215,17 +252,27 @@ fun DiscoverScreen(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
+                            Spacer(Modifier.width(12.dp))
+                            val clearInteraction = remember { MutableInteractionSource() }
+                            val clearShape = RoundedCornerShape(
+                                animatedPressCorner(clearInteraction, rest = 18.dp, pressed = 9.dp),
+                            )
                             Text(
                                 text = "Clear",
                                 style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
                                 color = scheme.onBackground,
                                 modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable {
+                                    .clip(clearShape)
+                                    .background(scheme.surfaceVariant)
+                                    .clickable(
+                                        interactionSource = clearInteraction,
+                                        indication = LocalIndication.current,
+                                    ) {
                                         viewModel.toggleSearch()
                                         scope.launch { listState.scrollToItem(0) }
                                     }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                             )
                         }
                     }
@@ -240,14 +287,29 @@ fun DiscoverScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 48.dp),
+                                .padding(vertical = 40.dp, horizontal = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CookieShape)
+                                    .background(scheme.surfaceVariant),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                PathIcon(
+                                    pathData = NavIcons.Search,
+                                    tint = scheme.onSurfaceVariant,
+                                    iconSize = 32.dp,
+                                )
+                            }
+                            Spacer(Modifier.height(20.dp))
                             Text(
                                 text = state.error
                                     ?: if (state.search.isNotEmpty()) "No repos matched that search." else "No projects found. Try a different filter.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = scheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
                             )
                             if (state.error != null) {
                                 Spacer(Modifier.height(16.dp))
@@ -276,11 +338,7 @@ fun DiscoverScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (state.loadingMore) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
-                                    color = scheme.onSurfaceVariant,
-                                )
+                                GhLoadingIndicator(diameter = 32.dp, color = scheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -291,7 +349,7 @@ fun DiscoverScreen(
                             color = scheme.onSurfaceVariant,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .clickable { viewModel.loadMore() }
                                 .padding(16.dp),
                         )
@@ -304,7 +362,7 @@ fun DiscoverScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 16.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                         )
                     }
                     Spacer(Modifier.height(8.dp))
@@ -323,7 +381,11 @@ private fun SearchBar(
 ) {
     val scheme = MaterialTheme.colorScheme
     val focus = remember { FocusRequester() }
-    val fieldShape = RoundedCornerShape(12.dp)
+    val fieldShape = RoundedCornerShape(28.dp)
+    val buttonInteraction = remember { MutableInteractionSource() }
+    val buttonShape = RoundedCornerShape(
+        animatedPressCorner(buttonInteraction, rest = 28.dp, pressed = 14.dp),
+    )
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     Row(
@@ -333,18 +395,18 @@ private fun SearchBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Filled, borderless field: the expressive search bar look.
         Row(
             modifier = Modifier
                 .weight(1f)
-                .height(44.dp)
+                .height(56.dp)
                 .clip(fieldShape)
                 .background(scheme.surface)
-                .border(1.dp, scheme.outline, fieldShape)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PathIcon(pathData = NavIcons.Search, tint = scheme.onSurfaceVariant, iconSize = 18.dp)
-            Spacer(Modifier.width(8.dp))
+            PathIcon(pathData = NavIcons.Search, tint = scheme.onSurfaceVariant, iconSize = 20.dp)
+            Spacer(Modifier.width(10.dp))
             Box(modifier = Modifier.weight(1f)) {
                 if (input.isEmpty()) {
                     Text(
@@ -371,7 +433,7 @@ private fun SearchBar(
             if (input.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                         .clickable(onClick = onClear),
                     contentAlignment = Alignment.Center,
@@ -382,36 +444,62 @@ private fun SearchBar(
         }
         Box(
             modifier = Modifier
-                .height(44.dp)
-                .clip(fieldShape)
-                .background(scheme.onBackground)
-                .clickable(onClick = onSubmit)
-                .padding(horizontal = 16.dp),
+                .height(56.dp)
+                .clip(buttonShape)
+                .background(scheme.primary)
+                .clickable(
+                    interactionSource = buttonInteraction,
+                    indication = LocalIndication.current,
+                    onClick = onSubmit,
+                )
+                .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "Search",
                 style = MaterialTheme.typography.labelLarge,
-                color = scheme.background,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onPrimary,
             )
         }
     }
 }
 
+/**
+ * A filter pill. Fully round at rest, springs into a squarer shape while pressed, fills with the
+ * container colour when [active] (a filter is on), and turns its arrow while its sheet is [open].
+ */
 @Composable
 private fun PillButton(
     label: String,
     onClick: () -> Unit,
     leading: @Composable () -> Unit,
+    active: Boolean = false,
+    open: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 11.dp)
+    val container by animateColorAsState(
+        targetValue = if (active) scheme.primaryContainer else scheme.surface,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "pill-container",
+    )
+    val arrow by animateFloatAsState(
+        targetValue = if (open) 180f else 0f,
+        animationSpec = GhMotion.defaultSpatial(),
+        label = "pill-arrow",
+    )
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(scheme.surface)
-            .border(1.dp, scheme.outline, CircleShape)
-            .clickable(onClick = onClick)
-            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            .clip(RoundedCornerShape(corner))
+            .background(container)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .padding(start = 14.dp, end = 10.dp, top = 11.dp, bottom = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         leading()
@@ -419,11 +507,51 @@ private fun PillButton(
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = scheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+            color = if (active) scheme.onPrimaryContainer else scheme.onBackground,
             maxLines = 1,
         )
         Spacer(Modifier.width(2.dp))
-        PathIcon(pathData = NavIcons.ArrowDropDown, tint = scheme.onSurfaceVariant, iconSize = 20.dp)
+        PathIcon(
+            pathData = NavIcons.ArrowDropDown,
+            tint = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            iconSize = 20.dp,
+            modifier = Modifier.rotate(arrow),
+        )
+    }
+}
+
+/** Bottom sheet shell shared by the Sort and Language pickers. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PickerSheet(
+    title: String,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val close: () -> Unit = {
+        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = scheme.background,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onBackground,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+        )
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            content(close)
+            Spacer(Modifier.navigationBarsPadding().height(16.dp))
+        }
     }
 }
 
@@ -431,48 +559,34 @@ private fun PillButton(
 private fun SortPill(mode: SortMode, onSelect: (SortMode) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var open by remember { mutableStateOf(false) }
-    Box {
-        PillButton(
-            label = mode.label,
-            onClick = { open = true },
-            leading = {
-                PathIcon(pathData = sortIcon(mode), tint = scheme.onBackground, iconSize = 18.dp)
-            },
-        )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            SortMode.values().forEach { option ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(
-                                text = option.label,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = scheme.onBackground,
-                            )
-                            Text(
-                                text = option.sublabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = scheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    leadingIcon = {
-                        PathIcon(
-                            pathData = sortIcon(option),
-                            tint = if (option == mode) scheme.onBackground else scheme.onSurfaceVariant,
-                            iconSize = 20.dp,
-                        )
-                    },
-                    trailingIcon = {
-                        if (option == mode) {
-                            PathIcon(pathData = NavIcons.Check, tint = scheme.onBackground, iconSize = 20.dp)
-                        }
-                    },
-                    onClick = {
-                        open = false
-                        onSelect(option)
-                    },
-                )
+    PillButton(
+        label = mode.label,
+        onClick = { open = true },
+        open = open,
+        leading = {
+            PathIcon(pathData = sortIcon(mode), tint = scheme.onBackground, iconSize = 18.dp)
+        },
+    )
+    if (open) {
+        PickerSheet(title = "Sort by", onDismiss = { open = false }) { close ->
+            SettingsGroup {
+                SortMode.values().forEach { option ->
+                    SettingsRow(
+                        title = option.label,
+                        subtitle = option.sublabel,
+                        icon = sortIcon(option),
+                        selected = option == mode,
+                        onClick = {
+                            onSelect(option)
+                            close()
+                        },
+                        trailing = {
+                            if (option == mode) {
+                                PathIcon(pathData = NavIcons.Check, tint = scheme.onPrimaryContainer, iconSize = 22.dp)
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -483,33 +597,36 @@ private fun LanguagePill(language: String, onSelect: (String) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var open by remember { mutableStateOf(false) }
     val label = LanguageOptions.firstOrNull { it.first == language }?.second ?: "Language"
-    Box {
-        PillButton(
-            label = label,
-            onClick = { open = true },
-            leading = { LanguageMark(language, 18.dp) },
-        )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            LanguageOptions.forEach { (value, name) ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = scheme.onBackground,
-                        )
-                    },
-                    leadingIcon = { LanguageMark(value, 20.dp) },
-                    trailingIcon = {
-                        if (value == language) {
-                            PathIcon(pathData = NavIcons.Check, tint = scheme.onBackground, iconSize = 20.dp)
-                        }
-                    },
-                    onClick = {
-                        open = false
-                        onSelect(value)
-                    },
-                )
+    PillButton(
+        label = label,
+        onClick = { open = true },
+        open = open,
+        active = language.isNotEmpty(),
+        leading = { LanguageMark(language, 18.dp) },
+    )
+    if (open) {
+        PickerSheet(title = "Language", onDismiss = { open = false }) { close ->
+            SettingsGroup {
+                LanguageOptions.forEach { (value, name) ->
+                    SettingsRow(
+                        title = name,
+                        selected = value == language,
+                        leading = {
+                            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                LanguageMark(value, 24.dp)
+                            }
+                        },
+                        onClick = {
+                            onSelect(value)
+                            close()
+                        },
+                        trailing = {
+                            if (value == language) {
+                                PathIcon(pathData = NavIcons.Check, tint = scheme.onPrimaryContainer, iconSize = 22.dp)
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -517,7 +634,7 @@ private fun LanguagePill(language: String, onSelect: (String) -> Unit) {
 
 /** A colour dot for a language, or the code-brackets glyph for "All languages". */
 @Composable
-private fun LanguageMark(language: String, size: androidx.compose.ui.unit.Dp) {
+private fun LanguageMark(language: String, size: Dp) {
     val scheme = MaterialTheme.colorScheme
     val color = languageColor(language)
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {

@@ -33,7 +33,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.githunt.android.ui.components.GhLoadingIndicator
+import com.githunt.android.ui.components.GhPullIndicator
+import com.githunt.android.ui.theme.GhMotion
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.IconButton
@@ -41,6 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -185,9 +188,18 @@ fun FeedScreen(
             }
             }
 
+            val pullState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
                 onRefresh = onRefreshFeed,
+                state = pullState,
+                indicator = {
+                    GhPullIndicator(
+                        state = pullState,
+                        isRefreshing = feed.refreshing,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -250,11 +262,7 @@ fun FeedScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (feed.loadingMore) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = scheme.onSurfaceVariant,
-                                    )
+                                    GhLoadingIndicator(diameter = 32.dp, color = scheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -351,11 +359,7 @@ private fun ExpandingMenu(
     val scheme = MaterialTheme.colorScheme
     val progress by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
-        animationSpec = if (expanded) {
-            tween(durationMillis = 340, easing = EmphasizedDecelerate)
-        } else {
-            tween(durationMillis = 200, easing = EmphasizedAccelerate)
-        },
+        animationSpec = if (expanded) GhMotion.defaultSpatial() else GhMotion.slowEffects(),
         label = "menu-expand",
     )
 
@@ -391,7 +395,7 @@ private fun ExpandingMenu(
                 }
             },
         color = scheme.surface,
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(28.dp),
         tonalElevation = 6.dp,
         shadowElevation = 10.dp,
     ) {
@@ -413,7 +417,7 @@ private fun ConfirmEmailBanner(
     onResend: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -461,7 +465,7 @@ private fun ConfirmEmailBanner(
 @Composable
 private fun PostCard(item: PostItem) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     Column(
         modifier = Modifier

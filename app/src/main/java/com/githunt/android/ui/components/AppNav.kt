@@ -1,11 +1,9 @@
 package com.githunt.android.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,12 +19,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -42,9 +42,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.githunt.android.ui.theme.GhMotion
 
 /** The three places the signed-in app lives, same as the website's dock: Feed, Discover, Profile. */
 enum class AppTab(val label: String, val icon: String) {
@@ -53,16 +54,19 @@ enum class AppTab(val label: String, val icon: String) {
     Profile("Profile", NavIcons.Person),
 }
 
-private val NavHeight = 64.dp
+// Material's own navigation bar proportions: an 80dp bar, a 64 x 32 pill, icon over label.
+private val NavHeight = 80.dp
 private val IndicatorWidth = 64.dp
 private val IndicatorHeight = 32.dp
-private val IndicatorTop = 8.dp
+private val IndicatorTop = 12.dp
 
 /**
- * The classic bottom bar: a flat full-width strip with a hairline on top, three equal tabs,
- * icon over label. Same look as before; what is new is how it moves when you switch tabs:
- * a soft pill slides (with a little spring) under the active tab, the active icon pops up a
- * touch, the colours fade, and a press squeezes the icon.
+ * Flat, full-width bottom bar in the standard Material 3 style (like F-Droid's): three equal
+ * tabs, icon over label, and a wide pill behind the active icon.
+ *
+ * The expressive part is how it moves: the pill stretches as it travels (the edge it is moving
+ * towards runs ahead of the other one, then they catch up with a bounce), the active icon pops,
+ * and a press squeezes the icon.
  *
  * It sits below the content in a Column (nothing scrolls underneath it), so no screen needs
  * extra bottom padding.
@@ -83,7 +87,6 @@ fun AppBottomNav(
             .fillMaxWidth()
             .background(scheme.surfaceVariant),
     ) {
-        HorizontalDivider(color = scheme.outline)
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,22 +94,47 @@ fun AppBottomNav(
                 .height(NavHeight),
         ) {
             val tabWidth = maxWidth / tabs.size
-            val indicatorX = animateDpAsState(
-                targetValue = tabWidth * selected.ordinal + (tabWidth - IndicatorWidth) / 2,
-                animationSpec = spring(
-                    dampingRatio = 0.72f,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-                label = "navIndicatorX",
-            )
 
-            // The sliding pill sits behind the icons. Its position is read in the layout phase,
-            // so the slide never recomposes the bar.
+            // Which way did the selection move? The leading edge of the pill then springs faster
+            // than the trailing one, which is what makes it stretch.
+            val memory = remember { intArrayOf(selected.ordinal) }
+            val direction = remember(selected) {
+                val d = if (selected.ordinal >= memory[0]) 1 else -1
+                memory[0] = selected.ordinal
+                d
+            }
+            val fast = spring<Dp>(dampingRatio = 0.7f, stiffness = 700f)
+            val slow = spring<Dp>(dampingRatio = 0.8f, stiffness = 260f)
+
+            val targetLeft = tabWidth * selected.ordinal + (tabWidth - IndicatorWidth) / 2
+            val left = animateDpAsState(
+                targetValue = targetLeft,
+                animationSpec = if (direction > 0) slow else fast,
+                label = "navPillLeft",
+            )
+            val right = animateDpAsState(
+                targetValue = targetLeft + IndicatorWidth,
+                animationSpec = if (direction > 0) fast else slow,
+                label = "navPillRight",
+            )
+            val pillColor = scheme.primaryContainer
+
+            // The stretching pill sits behind the icons and is drawn directly from the animated
+            // values, so moving it never recomposes the bar.
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(indicatorX.value.roundToPx(), IndicatorTop.roundToPx()) }
-                    .size(IndicatorWidth, IndicatorHeight)
-                    .background(scheme.onBackground.copy(alpha = 0.12f), CircleShape),
+                    .fillMaxSize()
+                    .drawBehind {
+                        val l = left.value.toPx()
+                        val width = (right.value - left.value).toPx().coerceAtLeast(24.dp.toPx())
+                        val h = IndicatorHeight.toPx()
+                        drawRoundRect(
+                            color = pillColor,
+                            topLeft = Offset(l, IndicatorTop.toPx()),
+                            size = Size(width, h),
+                            cornerRadius = CornerRadius(h / 2f, h / 2f),
+                        )
+                    },
             )
 
             Row(modifier = Modifier.fillMaxSize()) {
@@ -140,25 +168,27 @@ private fun RowScope.NavTab(
     val pressed by interaction.collectIsPressedAsState()
 
     val tint by animateColorAsState(
-        targetValue = if (active) scheme.onBackground else scheme.onSurfaceVariant,
-        animationSpec = tween(durationMillis = 180),
+        targetValue = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+        animationSpec = GhMotion.defaultEffects(),
         label = "navTint",
+    )
+    val labelTint by animateColorAsState(
+        targetValue = if (active) scheme.onBackground else scheme.onSurfaceVariant,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "navLabelTint",
     )
     val iconScale by animateFloatAsState(
         targetValue = when {
-            pressed -> 0.88f
+            pressed -> 0.86f
             active -> 1.1f
             else -> 1f
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
+        animationSpec = GhMotion.fastSpatial(),
         label = "navIconScale",
     )
     val ringColor by animateColorAsState(
-        targetValue = if (active) scheme.onBackground else Color.Transparent,
-        animationSpec = tween(durationMillis = 180),
+        targetValue = if (active) scheme.onPrimaryContainer else Color.Transparent,
+        animationSpec = GhMotion.defaultEffects(),
         label = "navAvatarRing",
     )
 
@@ -187,7 +217,7 @@ private fun RowScope.NavTab(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(26.dp)
                         .graphicsLayer {
                             scaleX = iconScale
                             scaleY = iconScale
@@ -212,12 +242,12 @@ private fun RowScope.NavTab(
                 )
             }
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = tab.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = tint,
-            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+            style = MaterialTheme.typography.labelMedium,
+            color = labelTint,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
         )
     }

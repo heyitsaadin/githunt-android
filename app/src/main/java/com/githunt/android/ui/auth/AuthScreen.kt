@@ -55,7 +55,7 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import com.githunt.android.ui.components.GhLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -440,7 +440,7 @@ private fun GoogleButton(enabled: Boolean, loading: Boolean, onClick: () -> Unit
         horizontalArrangement = Arrangement.Center,
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = LavInk)
+            GhLoadingIndicator(diameter = 26.dp, color = LavInk)
         } else {
             GoogleG(Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
@@ -551,7 +551,7 @@ private fun PrimaryButton(label: String, enabled: Boolean, loading: Boolean, onC
         horizontalArrangement = Arrangement.Center,
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp, color = Color.White)
+            GhLoadingIndicator(diameter = 28.dp, color = Color.White)
         } else {
             AnimatedContent(targetState = label, label = "buttonLabel") { text ->
                 Text(

@@ -5,6 +5,10 @@ import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.githunt.android.ui.theme.GhMotion
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -113,7 +117,7 @@ fun RepoCard(
     val mono = LocalGhMono.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     val githubUrl = item.url
     val repoName = item.fullName.substringAfter('/')
     val readmeRepository = remember(context) {
@@ -509,11 +513,17 @@ private fun CardAction(
     onClick: () -> Unit,
     filled: Boolean = false,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(animatedPressCorner(interaction, rest = 20.dp, pressed = 10.dp))
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .clip(shape)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PathIcon(pathData = icon, tint = tint, iconSize = 18.dp, strokeWidth = 1.8f, filled = filled)
@@ -542,17 +552,32 @@ private fun ActionPill(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    // The web's Ask AI pill inverts (light fill, dark text) while its panel is open.
-    val container = if (active) scheme.onSurface else scheme.surfaceVariant.copy(alpha = 0.55f)
+    // The Ask AI pill inverts (light fill, dark text) while its panel is open.
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 10.dp)
+    val container by animateColorAsState(
+        targetValue = if (active) scheme.onSurface else scheme.surfaceVariant,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "action-pill-container",
+    )
     val content = if (active) scheme.surface else scheme.onSurface
+    val chevronTurn by animateFloatAsState(
+        targetValue = if (chevronUp == true) 180f else 0f,
+        animationSpec = GhMotion.defaultSpatial(),
+        label = "action-pill-chevron",
+    )
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.6f)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(corner))
             .background(container)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -577,7 +602,7 @@ private fun ActionPill(
                     tint = content,
                     iconSize = 12.dp,
                     strokeWidth = 2f,
-                    modifier = Modifier.rotate(if (chevronUp) 180f else 0f),
+                    modifier = Modifier.rotate(chevronTurn),
                 )
             }
         }
@@ -588,12 +613,18 @@ private fun ActionPill(
 @Composable
 private fun GitHubPill(onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(animatedPressCorner(interaction, rest = 18.dp, pressed = 8.dp))
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(onClick = onClick)
-            .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            .clip(shape)
+            .background(scheme.surfaceVariant)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -814,8 +845,8 @@ private fun RepoImageCarousel(
                 repeat(slides.size) { index ->
                     val selected = index == current
                     val dotWidth by animateDpAsState(
-                        targetValue = if (selected) 14.dp else 6.dp,
-                        animationSpec = tween(durationMillis = 150),
+                        targetValue = if (selected) 16.dp else 6.dp,
+                        animationSpec = GhMotion.fastSpatial(),
                         label = "carousel-dot",
                     )
                     Box(

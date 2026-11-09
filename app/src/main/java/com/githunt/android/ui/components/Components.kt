@@ -3,16 +3,15 @@ package com.githunt.android.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -55,6 +54,10 @@ fun Wordmark(modifier: Modifier = Modifier, size: TextUnit = 28.sp) {
     )
 }
 
+/**
+ * Expressive full-width button: a pill at rest that springs into a squarer shape while it is
+ * pressed, and shows the morphing loader while [loading].
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -64,13 +67,16 @@ fun PrimaryButton(
     loading: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 28.dp, pressed = 14.dp)
     Button(
         onClick = { if (!loading) onClick() },
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(54.dp),
-        shape = RoundedCornerShape(16.dp),
+            .height(56.dp),
+        shape = RoundedCornerShape(corner),
+        interactionSource = interaction,
         colors = ButtonDefaults.buttonColors(
             containerColor = scheme.primary,
             contentColor = scheme.onPrimary,
@@ -79,11 +85,7 @@ fun PrimaryButton(
         ),
     ) {
         if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = scheme.onPrimary,
-            )
+            GhLoadingIndicator(diameter = 28.dp, color = scheme.onPrimary)
         } else {
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
@@ -99,13 +101,16 @@ fun OutlineButton(
     loading: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 28.dp, pressed = 14.dp)
     OutlinedButton(
         onClick = { if (!loading) onClick() },
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .height(54.dp),
-        shape = RoundedCornerShape(16.dp),
+            .height(56.dp),
+        shape = RoundedCornerShape(corner),
+        interactionSource = interaction,
         border = BorderStroke(1.dp, scheme.outline),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = scheme.onBackground,
@@ -113,11 +118,7 @@ fun OutlineButton(
         ),
     ) {
         if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = scheme.onBackground,
-            )
+            GhLoadingIndicator(diameter = 28.dp, color = scheme.onBackground)
         } else {
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
@@ -145,7 +146,7 @@ fun GhTextField(
             style = MaterialTheme.typography.labelSmall,
             color = scheme.onSurfaceVariant,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .clickable { revealed = !revealed }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
@@ -158,7 +159,7 @@ fun GhTextField(
         enabled = enabled,
         singleLine = true,
         label = { Text(label) },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         visualTransformation = if (isPassword && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.None,
