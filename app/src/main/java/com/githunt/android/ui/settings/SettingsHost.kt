@@ -136,7 +136,6 @@ private fun SettingsHome(
     val theme by prefs.theme.collectAsStateWithLifecycle()
     val language by prefs.language.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
-    var showTheme by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
 
     val name = user.displayName?.takeIf { it.isNotBlank() } ?: user.username
