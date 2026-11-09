@@ -109,11 +109,6 @@ class AppContainer(context: Context) {
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
-    /** Auto-translates repo card text and READMEs into the language chosen in Settings (/api/translate). */
-    val translateRepository = com.githunt.android.data.translate.TranslateRepository(
-        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
-    )
-
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
 }
