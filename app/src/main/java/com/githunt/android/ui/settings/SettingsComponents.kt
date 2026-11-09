@@ -74,6 +74,7 @@ import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.components.rememberTick
 import com.githunt.android.ui.theme.GhMotion
 import java.time.Duration
 import java.time.Instant
