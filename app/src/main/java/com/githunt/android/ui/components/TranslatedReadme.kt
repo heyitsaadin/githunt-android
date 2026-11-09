@@ -44,7 +44,7 @@ internal class TranslatingReadme(
  */
 @Composable
 internal fun TranslatedReadmeBlocks(state: TranslatingReadme, modifier: Modifier = Modifier) {
-    val renderer = rememberMarkdownRenderer()
+    val shared = rememberSharedMarkdown()
     Column(modifier = modifier.fillMaxWidth()) {
         state.blocks.forEachIndexed { index, block ->
             key(index) {
