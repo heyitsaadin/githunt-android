@@ -242,3 +242,78 @@ private fun buildMarkdownRenderer(
         .usePlugin(ImagesPlugin.create())
         .build()
 }
+
+/**
+ * One Markdown renderer plus the colours it was built with, to share between many small blocks
+ * (the blocks of a README being translated). A README of 50 blocks then builds one renderer instead
+ * of 50. Every block is parsed on the main thread, one after another, so the renderer is never
+ * used from two threads at once.
+ */
+internal class SharedMarkdown(
+    val markwon: Markwon,
+    val textColor: Int,
+    val linkColor: Int,
+    val chipColor: Int,
+)
+
+/** Builds the [SharedMarkdown] renderer with the same look as [MarkdownBody]. */
+@Composable
+internal fun rememberSharedMarkdown(): SharedMarkdown {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+    val isLight = scheme.background.luminance() > 0.5f
+    val textColor = scheme.onSurfaceVariant.toArgb()
+    val headingColor = scheme.onBackground.toArgb()
+    val linkColor = (if (isLight) Color(0xFF0969DA) else Color(0xFF4493F8)).toArgb()
+    val ruleColor = scheme.outline.copy(alpha = 0.6f).toArgb()
+    val codeBackground = scheme.surfaceVariant.toArgb()
+    val codeTextColor = scheme.onBackground.toArgb()
+    val chipColor = scheme.onBackground.copy(alpha = if (isLight) 0.08f else 0.14f).toArgb()
+    return remember(
+        context, textColor, headingColor, linkColor, ruleColor, codeBackground, codeTextColor, chipColor,
+    ) {
+        SharedMarkdown(
+            markwon = buildMarkdownRenderer(
+                context, textColor, headingColor, linkColor, ruleColor, codeBackground, codeTextColor,
+                context.resources.displayMetrics.density,
+            ),
+            textColor = textColor,
+            linkColor = linkColor,
+            chipColor = chipColor,
+        )
+    }
+}
+
+/** One block of Markdown drawn with a [SharedMarkdown] renderer. Looks exactly like [MarkdownBody]. */
+@Composable
+internal fun SharedMarkdownText(
+    markdown: String,
+    shared: SharedMarkdown,
+    modifier: Modifier = Modifier,
+    textSizeSp: Float = 13.5f,
+) {
+    val rendered = remember(markdown, shared.markwon) { shared.markwon.toMarkdown(markdown) }
+
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { ctx ->
+            MarkdownTextView(ctx).apply {
+                textSize = textSizeSp
+                setLineSpacing(0f, 1.35f)
+                includeFontPadding = false
+                val pad = (2f * resources.displayMetrics.density).toInt()
+                setPadding(0, pad, 0, pad)
+                movementMethod = LinkMovementMethod.getInstance()
+            }
+        },
+        update = { view ->
+            view.setTextColor(shared.textColor)
+            view.setLinkTextColor(shared.linkColor)
+            view.chipColor = shared.chipColor
+            if (view.tag !== rendered) {
+                view.tag = rendered
+                shared.markwon.setParsedMarkdown(view, rendered)
+            }
+        },
+    )
+}

@@ -47,7 +47,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -85,8 +87,14 @@ import com.githunt.android.GitHuntApp
 import com.githunt.android.data.engagement.EngagementEvent
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
+import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.translate.TranslatedCard
 import com.githunt.android.ui.theme.LocalGhMono
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -123,6 +131,33 @@ fun RepoCard(
     val readmeRepository = remember(context) {
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
+
+    // Translation. The language from Settings ("off" = show originals) decides the target. The
+    // text is translated for display only: `item` is untouched, so clipping still sends the repo
+    // exactly as the server gave it. Results are cached, so scrolling back is instant.
+    val appContainer = remember(context) { (context.applicationContext as? GitHuntApp)?.container }
+    val translateRepository = appContainer?.translateRepository
+    val targetLanguage by (appContainer?.appPreferences?.language ?: NoTranslation).collectAsState()
+    var translated by remember(item.fullName, item.description, item.readmeSnippet, targetLanguage) {
+        mutableStateOf<TranslatedCard?>(null)
+    }
+    var showOriginal by rememberSaveable(item.fullName + "#original") { mutableStateOf(false) }
+    LaunchedEffect(item.fullName, item.description, item.readmeSnippet, item.topics, targetLanguage) {
+        if (translateRepository == null || targetLanguage == "off") return@LaunchedEffect
+        val result = translateRepository.translateCard(
+            description = item.description,
+            snippet = item.readmeSnippet,
+            topics = item.topics,
+            target = targetLanguage,
+        )
+        // Only keep it when something really changed, so cards already in the target language
+        // don't show a "Translated" line.
+        if (result.changed) translated = result
+    }
+    val shownTranslation = if (showOriginal) null else translated
+    val shownDescription = shownTranslation?.description ?: item.description
+    val shownSnippet = shownTranslation?.snippet ?: item.readmeSnippet
+    val shownTopics = shownTranslation?.topics ?: item.topics
 
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
@@ -171,6 +206,50 @@ fun RepoCard(
                     expanded = false
                 }
             loadingReadme = false
+        }
+    }
+
+    // README translation is an explicit action. "Show README" always opens the full original at
+    // once; "Translate README" then turns every block that has words in it into a skeleton, and each
+    // skeleton is replaced by plain translated text as soon as that block arrives, top to bottom.
+    // Closing the card cancels it; reopening is instant for what was already translated, because
+    // the repository caches each piece.
+    val defaultBranch = item.raw?.text("default_branch")
+    var readmeTranslate by rememberSaveable(item.fullName + "#readme-translate") { mutableStateOf(false) }
+    var readmeShowOriginal by rememberSaveable(item.fullName + "#readme-original") { mutableStateOf(false) }
+    var readmeAttempt by remember(item.fullName, targetLanguage) { mutableIntStateOf(0) }
+    var readmeBlocks by remember(item.fullName, targetLanguage, markdown) { mutableStateOf<TranslatingReadme?>(null) }
+    var readmeBusy by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    var readmeFinished by remember(item.fullName, targetLanguage, markdown) { mutableStateOf(false) }
+    var readmeIncomplete by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    var readmeChanged by remember(item.fullName, targetLanguage) { mutableStateOf(false) }
+    LaunchedEffect(expanded, markdown, targetLanguage, readmeTranslate, readmeAttempt) {
+        val source = markdown
+        if (!expanded || !readmeTranslate || source == null || translateRepository == null || targetLanguage == "off") {
+            return@LaunchedEffect
+        }
+        if (readmeFinished && !readmeIncomplete) return@LaunchedEffect
+        readmeBusy = true
+        readmeIncomplete = false
+        readmeChanged = false
+        try {
+            val prepared = translateRepository.prepareReadmeBlocks(
+                markdown = withContext(Dispatchers.Default) {
+                    prepareReadme(source, item.owner, repoName, defaultBranch, MaxReadmeChars)
+                },
+                target = targetLanguage,
+            )
+            val state = TranslatingReadme(prepared.blocks, prepared.needsTranslation)
+            readmeBlocks = state
+            val result = translateRepository.translateReadmeBlocks(prepared, targetLanguage) { index, text ->
+                state.translated[index] = text
+                state.waiting[index] = false
+            }
+            readmeIncomplete = result.incomplete
+            readmeChanged = result.changedBlocks > 0
+            readmeFinished = true
+        } finally {
+            readmeBusy = false
         }
     }
 
@@ -258,7 +337,7 @@ fun RepoCard(
                 )
             }
 
-            item.description?.takeIf { it.isNotBlank() }?.let { description ->
+            shownDescription?.takeIf { it.isNotBlank() }?.let { description ->
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = description,
@@ -273,7 +352,7 @@ fun RepoCard(
 
             // The short README excerpt is replaced by the full README once it is open.
             if (!expanded) {
-                item.readmeSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
+                shownSnippet?.takeIf { it.isNotBlank() }?.let { snippet ->
                     Spacer(Modifier.height(6.dp))
                     HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                     Spacer(Modifier.height(10.dp))
@@ -289,13 +368,13 @@ fun RepoCard(
                 }
             }
 
-            if (item.topics.isNotEmpty()) {
+            if (shownTopics.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item.topics.take(3).forEach { topic ->
+                    shownTopics.take(3).forEach { topic ->
                         Text(
                             text = topic,
                             fontFamily = mono,
@@ -310,6 +389,78 @@ fun RepoCard(
                         )
                     }
                 }
+            }
+
+            // While the README is open this line is its translate button: "Translate README to X",
+            // then the progress, then a switch between the translation and the original. Otherwise
+            // (and only when something was really translated) one tap flips the card text
+            // (description, excerpt, topics) between the two languages.
+            val readmeLine = expanded && translateRepository != null && targetLanguage != "off"
+            if (readmeLine) {
+                val readmeSource = markdown
+                if (readmeSource != null) {
+                    val languageLabel = TranslationLanguages.label(targetLanguage)
+                    val working = readmeBusy || (readmeTranslate && !readmeFinished)
+                    val alreadyInLanguage = readmeTranslate && readmeFinished && !readmeIncomplete && !readmeChanged
+                    val blocksState = readmeBlocks
+                    val label = when {
+                        working -> if (blocksState != null && blocksState.total > 0) {
+                            "Translating README\u2026 ${blocksState.finished}/${blocksState.total}"
+                        } else {
+                            "Translating README\u2026"
+                        }
+                        !readmeTranslate -> "Translate README to $languageLabel"
+                        readmeIncomplete -> "Some parts could not be translated \u00B7 Retry"
+                        alreadyInLanguage -> "README is already in $languageLabel"
+                        readmeShowOriginal -> "Original \u00B7 Show translation"
+                        else -> "Translated to $languageLabel \u00B7 Show original"
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = label,
+                        fontFamily = mono,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(enabled = !working && !alreadyInLanguage) {
+                                when {
+                                    !readmeTranslate -> {
+                                        readmeShowOriginal = false
+                                        readmeTranslate = true
+                                    }
+                                    readmeIncomplete -> {
+                                        readmeFinished = false
+                                        readmeAttempt++
+                                    }
+                                    else -> readmeShowOriginal = !readmeShowOriginal
+                                }
+                            }
+                            .padding(vertical = 2.dp),
+                    )
+                }
+            } else if (translated != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (showOriginal) {
+                        "Original \u00B7 Show translation"
+                    } else {
+                        "Translated to ${TranslationLanguages.label(targetLanguage)} \u00B7 Show original"
+                    },
+                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable { showOriginal = !showOriginal }
+                        .padding(vertical = 2.dp),
+                )
             }
 
             // While the README downloads, a skeleton holds its place so the card feels alive.
@@ -338,12 +489,19 @@ fun RepoCard(
                         Spacer(Modifier.height(12.dp))
                         HorizontalDivider(color = scheme.outline.copy(alpha = 0.4f))
                         Spacer(Modifier.height(10.dp))
-                        ReadmeView(
-                            markdown = readmeText,
-                            owner = item.owner,
-                            repo = repoName,
-                            branch = item.raw?.text("default_branch"),
-                        )
+                        val blockState = readmeBlocks
+                        if (readmeTranslate && !readmeShowOriginal && blockState != null && targetLanguage != "off") {
+                            // Skeletons that turn into translated text, one block at a time.
+                            TranslatedReadmeBlocks(state = blockState)
+                        } else {
+                            // The full original, straight away.
+                            ReadmeView(
+                                markdown = readmeText,
+                                owner = item.owner,
+                                repo = repoName,
+                                branch = defaultBranch,
+                            )
+                        }
                     }
                 }
             }
@@ -644,6 +802,9 @@ private fun GitHubPill(onClick: () -> Unit) {
         )
     }
 }
+
+/** Stands in for the language setting when no app container exists (previews, tests). */
+private val NoTranslation: StateFlow<String> = MutableStateFlow("off")
 
 /** Hosts the website's /api/img-proxy accepts. Anything else is loaded directly. */
 private val ProxyHosts = setOf(
