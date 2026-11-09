@@ -275,6 +275,7 @@ fun SettingsRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val inGroup = LocalInSettingsGroup.current
+    val tick = rememberTick()
     val tint = if (danger) scheme.error else scheme.onSurface
     val interaction = remember { MutableInteractionSource() }
     val corner = animatedPressCorner(
