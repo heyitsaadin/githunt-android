@@ -164,9 +164,9 @@ class MainActivity : ComponentActivity() {
             val useDarkTheme = when (themeMode) {
                 ThemeMode.System -> isSystemInDarkTheme()
                 ThemeMode.Light -> false
-                ThemeMode.Dark -> true
+                ThemeMode.Dark, ThemeMode.Amoled -> true
             }
-            GitHuntTheme(darkTheme = useDarkTheme) {
+            GitHuntTheme(darkTheme = useDarkTheme, amoled = themeMode == ThemeMode.Amoled) {
                 val session by authViewModel.session.collectAsStateWithLifecycle()
                 val home by authViewModel.home.collectAsStateWithLifecycle()
 
