@@ -117,7 +117,11 @@ fun GitHuntTheme(
     val mono = remember(context) { ghMonoFamily(context) }
     CompositionLocalProvider(LocalGhMono provides mono) {
         MaterialTheme(
-            colorScheme = if (darkTheme) DarkColors else LightColors,
+            colorScheme = when {
+                !darkTheme -> LightColors
+                amoled -> AmoledColors
+                else -> DarkColors
+            },
             typography = typography,
             shapes = GhShapes,
             content = content,
