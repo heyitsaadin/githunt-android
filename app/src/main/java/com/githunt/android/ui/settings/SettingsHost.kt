@@ -175,13 +175,19 @@ private fun SettingsHome(
             title = "Preferences",
             description = "Customize your experience on GitHunt.",
             entries = listOf(
-                Entry("appearance", "appearance theme dark mode light mode display") {
-                    SettingsRow(
+                Entry("appearance", "appearance theme dark mode light mode display amoled black pure black") {
+                    SettingsPickerRow(
                         title = "Appearance",
                         subtitle = theme.label,
                         icon = SettingsIcons.Brightness,
-                        onClick = { showTheme = true },
-                    )
+                    ) {
+                        GhSegmentedPicker(
+                            items = ThemeMode.values().toList(),
+                            selected = theme,
+                            onSelect = prefs::setTheme,
+                            label = { it.short },
+                        )
+                    }
                 },
                 Entry("language", "translation language translate $languageLabel") {
                     SettingsRow(
