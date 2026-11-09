@@ -813,8 +813,8 @@ private fun RepoImageCarousel(
                 repeat(slides.size) { index ->
                     val selected = index == current
                     val dotWidth by animateDpAsState(
-                        targetValue = if (selected) 14.dp else 6.dp,
-                        animationSpec = tween(durationMillis = 150),
+                        targetValue = if (selected) 16.dp else 6.dp,
+                        animationSpec = GhMotion.fastSpatial(),
                         label = "carousel-dot",
                     )
                     Box(
