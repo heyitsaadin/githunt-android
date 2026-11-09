@@ -331,10 +331,6 @@ private fun SettingsHome(
         }
     }
 
-    if (showTheme) {
-        ThemeSheet(current = theme, onPick = prefs::setTheme, onDismiss = { showTheme = false })
-    }
-
     if (confirmLogout) {
         ConfirmDialog(
             title = "Log out?",
