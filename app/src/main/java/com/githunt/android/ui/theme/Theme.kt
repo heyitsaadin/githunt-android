@@ -109,6 +109,7 @@ private val GhShapes = Shapes(
 @Composable
 fun GitHuntTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
