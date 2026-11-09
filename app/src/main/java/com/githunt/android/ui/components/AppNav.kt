@@ -4,10 +4,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -21,10 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -45,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.githunt.android.ui.theme.GhMotion
@@ -56,17 +54,19 @@ enum class AppTab(val label: String, val icon: String) {
     Profile("Profile", NavIcons.Person),
 }
 
-private val NavHeight = 68.dp
-private val IndicatorWidth = 68.dp
-private val IndicatorHeight = 34.dp
-private val IndicatorTop = 9.dp
-private val BarShape = RoundedCornerShape(34.dp)
+// Material's own navigation bar proportions: an 80dp bar, a 64 x 32 pill, icon over label.
+private val NavHeight = 80.dp
+private val IndicatorWidth = 64.dp
+private val IndicatorHeight = 32.dp
+private val IndicatorTop = 12.dp
 
 /**
- * Expressive bottom bar: a floating, fully rounded bar with a soft shadow instead of a flat strip.
- * The active tab sits in a pill that stretches as it travels (the edge it is moving towards
- * runs ahead of the other one, then they catch up with a bounce), the active icon pops, labels
- * go bold, and a press squeezes the icon.
+ * Flat, full-width bottom bar in the standard Material 3 style (like F-Droid's): three equal
+ * tabs, icon over label, and a wide pill behind the active icon.
+ *
+ * The expressive part is how it moves: the pill stretches as it travels (the edge it is moving
+ * towards runs ahead of the other one, then they catch up with a bounce), the active icon pops,
+ * and a press squeezes the icon.
  *
  * It sits below the content in a Column (nothing scrolls underneath it), so no screen needs
  * extra bottom padding.
@@ -85,18 +85,13 @@ fun AppBottomNav(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(scheme.background)
-            .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp),
+            .background(scheme.surfaceVariant),
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(NavHeight)
-                .shadow(elevation = 8.dp, shape = BarShape, clip = false)
-                .clip(BarShape)
-                .background(scheme.surfaceVariant)
-                .border(1.dp, scheme.outline.copy(alpha = 0.5f), BarShape),
+                .navigationBarsPadding()
+                .height(NavHeight),
         ) {
             val tabWidth = maxWidth / tabs.size
 
@@ -108,8 +103,8 @@ fun AppBottomNav(
                 memory[0] = selected.ordinal
                 d
             }
-            val fast = spring<androidx.compose.ui.unit.Dp>(dampingRatio = 0.7f, stiffness = 700f)
-            val slow = spring<androidx.compose.ui.unit.Dp>(dampingRatio = 0.8f, stiffness = 260f)
+            val fast = spring<Dp>(dampingRatio = 0.7f, stiffness = 700f)
+            val slow = spring<Dp>(dampingRatio = 0.8f, stiffness = 260f)
 
             val targetLeft = tabWidth * selected.ordinal + (tabWidth - IndicatorWidth) / 2
             val left = animateDpAsState(
@@ -122,7 +117,7 @@ fun AppBottomNav(
                 animationSpec = if (direction > 0) fast else slow,
                 label = "navPillRight",
             )
-            val pillColor = scheme.onBackground.copy(alpha = 0.14f)
+            val pillColor = scheme.primaryContainer
 
             // The stretching pill sits behind the icons and is drawn directly from the animated
             // values, so moving it never recomposes the bar.
@@ -173,21 +168,26 @@ private fun RowScope.NavTab(
     val pressed by interaction.collectIsPressedAsState()
 
     val tint by animateColorAsState(
-        targetValue = if (active) scheme.onBackground else scheme.onSurfaceVariant,
+        targetValue = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
         animationSpec = GhMotion.defaultEffects(),
         label = "navTint",
+    )
+    val labelTint by animateColorAsState(
+        targetValue = if (active) scheme.onBackground else scheme.onSurfaceVariant,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "navLabelTint",
     )
     val iconScale by animateFloatAsState(
         targetValue = when {
             pressed -> 0.86f
-            active -> 1.12f
+            active -> 1.1f
             else -> 1f
         },
         animationSpec = GhMotion.fastSpatial(),
         label = "navIconScale",
     )
     val ringColor by animateColorAsState(
-        targetValue = if (active) scheme.onBackground else Color.Transparent,
+        targetValue = if (active) scheme.onPrimaryContainer else Color.Transparent,
         animationSpec = GhMotion.defaultEffects(),
         label = "navAvatarRing",
     )
@@ -242,11 +242,11 @@ private fun RowScope.NavTab(
                 )
             }
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = tab.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = tint,
+            style = MaterialTheme.typography.labelMedium,
+            color = labelTint,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
         )
