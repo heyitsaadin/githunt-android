@@ -575,12 +575,18 @@ private fun ActionPill(
 @Composable
 private fun GitHubPill(onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(animatedPressCorner(interaction, rest = 18.dp, pressed = 8.dp))
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(onClick = onClick)
-            .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            .clip(shape)
+            .background(scheme.surfaceVariant)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
