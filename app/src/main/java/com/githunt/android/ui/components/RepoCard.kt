@@ -27,7 +27,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,11 +50,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,6 +80,7 @@ import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
+import com.githunt.android.data.engagement.EngagementEvent
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
 import com.githunt.android.data.settings.TranslationLanguages
@@ -85,9 +88,9 @@ import com.githunt.android.data.translate.TranslatedCard
 import com.githunt.android.ui.theme.LocalGhMono
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -111,6 +114,8 @@ fun RepoCard(
     modifier: Modifier = Modifier,
     clipped: Boolean = false,
     onClipToggle: (() -> Unit)? = null,
+    /** Shows the card's "..." menu with Not interested (Home feed). The card is hidden by the feed. */
+    notInterestedEnabled: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
@@ -157,8 +162,34 @@ fun RepoCard(
     var loadingReadme by remember(item.fullName) { mutableStateOf(false) }
     var readmeError by remember(item.fullName) { mutableStateOf<String?>(null) }
 
+    // What the person does with this card is reported to the backend (like the website's
+    // recordEngagement) so Personalization can learn from it. `dwell` times how long the card is
+    // in view; `track` reports one deliberate action and marks the look as engaged, so a quick
+    // "open the README, scroll on" is never counted as a skip.
+    val tracker = remember(context) { (context.applicationContext as? GitHuntApp)?.container?.engagementTracker }
+    val dwell = rememberCardDwell(item, tracker)
+    fun track(event: String) {
+        dwell.engaged = true
+        tracker?.record(item, event)
+    }
+
     // "Ask AI" panel. Like the website, closing it throws the conversation away.
     var askOpen by rememberSaveable(item.fullName + "#ask") { mutableStateOf(false) }
+
+    // Closing a long README or a long Ask AI chat shrinks this card by a lot. If the person has
+    // scrolled down inside it, the list is then left pointing past the end of the shrunken card and
+    // snaps to whatever repo comes next. So before a panel closes, scroll the top of this card back
+    // into view (a no-op when it is already visible) and only then collapse it, which keeps the
+    // card, and the person's place in the feed, exactly where they opened the panel.
+    val scope = rememberCoroutineScope()
+    val topRequester = remember { BringIntoViewRequester() }
+    val topGapPx = with(LocalDensity.current) { 12.dp.toPx() }
+    fun closeKeepingCardInView(close: () -> Unit) {
+        scope.launch {
+            topRequester.bringIntoView(Rect(left = 0f, top = -topGapPx, right = 1f, bottom = 1f))
+            close()
+        }
+    }
 
     LaunchedEffect(expanded, item.fullName) {
         if (expanded && markdown == null && readmeRepository != null) {
@@ -218,20 +249,16 @@ fun RepoCard(
         }
     }
 
-    // Closing the README or Ask AI makes the card much shorter. If the list is scrolled deep inside
-    // the card at that moment, it ends up pointing past the card's end, in some other repo. So on
-    // close the list first scrolls back to this card's header, and only then does the card shrink.
-    val scope = rememberCoroutineScope()
-    val cardTop = remember { BringIntoViewRequester() }
-
     // No whole-card click: it would fight the README text and links. Like the website,
     // GitHub opens from the button and the preview image.
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .bringIntoViewRequester(topRequester)
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape),
+            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .trackDwell(dwell),
     ) {
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
         // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
@@ -248,10 +275,7 @@ fun RepoCard(
 
         Column(modifier = Modifier.padding(horizontal = 14.dp)) {
             Spacer(Modifier.height(14.dp))
-            Row(
-                modifier = Modifier.bringIntoViewRequester(cardTop),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 RepoAvatar(url = item.avatarUrl, size = 36.dp)
                 Spacer(Modifier.size(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -293,6 +317,20 @@ fun RepoCard(
                         }
                     }
                 }
+                RepoMoreMenu(
+                    onOpenRepo = {
+                        track(EngagementEvent.GITHUB_CLICK)
+                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+                    },
+                    onOpenOwner = {
+                        runCatching { uriHandler.openUri("https://github.com/${item.owner}") }
+                    },
+                    onNotInterested = if (notInterestedEnabled && tracker != null) {
+                        ({ tracker.notInterested(item) })
+                    } else {
+                        null
+                    },
+                )
             }
 
             shownDescription?.takeIf { it.isNotBlank() }?.let { description ->
@@ -504,17 +542,11 @@ fun RepoCard(
                                 ?.let { runCatching { uriHandler.openUri(it) } }
                         } else {
                             readmeError = null
-                            if (expanded) {
-                                // Closing: bring the card's header back into view first, then shrink.
-                                scope.launch {
-                                    try {
-                                        cardTop.bringIntoView()
-                                    } finally {
-                                        expanded = false
-                                    }
-                                }
-                            } else {
+                            if (!expanded) {
+                                track(EngagementEvent.README)
                                 expanded = true
+                            } else {
+                                closeKeepingCardInView { expanded = false }
                             }
                         }
                     },
@@ -526,17 +558,11 @@ fun RepoCard(
                     chevronUp = askOpen,
                     active = askOpen,
                     onClick = {
-                        if (askOpen) {
-                            // Closing: bring the card's header back into view first, then shrink.
-                            scope.launch {
-                                try {
-                                    cardTop.bringIntoView()
-                                } finally {
-                                    askOpen = false
-                                }
-                            }
-                        } else {
+                        if (!askOpen) {
+                            track(EngagementEvent.ASK_AI)
                             askOpen = true
+                        } else {
+                            closeKeepingCardInView { askOpen = false }
                         }
                     },
                 )
@@ -575,7 +601,12 @@ fun RepoCard(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                GitHubPill(onClick = { githubUrl?.let { runCatching { uriHandler.openUri(it) } } })
+                GitHubPill(
+                    onClick = {
+                        track(EngagementEvent.GITHUB_CLICK)
+                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
+                    },
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -592,6 +623,7 @@ fun RepoCard(
                     tint = scheme.onSurfaceVariant,
                     onClick = {
                         githubUrl?.let { link ->
+                            track(EngagementEvent.SHARE)
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_TEXT, link)
@@ -607,7 +639,10 @@ fun RepoCard(
                         filled = clipped,
                         label = if (clipped) "Clipped" else "Clip",
                         tint = if (clipped) scheme.onBackground else scheme.onSurfaceVariant,
-                        onClick = onClipToggle,
+                        onClick = {
+                            track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                            onClipToggle()
+                        },
                     )
                 }
             }
