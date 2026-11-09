@@ -514,17 +514,32 @@ private fun ActionPill(
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    // The web's Ask AI pill inverts (light fill, dark text) while its panel is open.
-    val container = if (active) scheme.onSurface else scheme.surfaceVariant.copy(alpha = 0.55f)
+    // The Ask AI pill inverts (light fill, dark text) while its panel is open.
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 10.dp)
+    val container by animateColorAsState(
+        targetValue = if (active) scheme.onSurface else scheme.surfaceVariant,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "action-pill-container",
+    )
     val content = if (active) scheme.surface else scheme.onSurface
+    val chevronTurn by animateFloatAsState(
+        targetValue = if (chevronUp == true) 180f else 0f,
+        animationSpec = GhMotion.defaultSpatial(),
+        label = "action-pill-chevron",
+    )
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.6f)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(corner))
             .background(container)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick,
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
