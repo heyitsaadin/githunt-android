@@ -299,7 +299,10 @@ fun SettingsRow(
                         interactionSource = interaction,
                         indication = LocalIndication.current,
                         enabled = enabled,
-                        onClick = onClick,
+                        onClick = {
+                            tick()
+                            onClick()
+                        },
                     )
                 } else {
                     Modifier
