@@ -92,6 +92,11 @@ class AppContainer(context: Context) {
 
     val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
 
+    /** Auto-translates repo card text and READMEs into the language chosen in Settings (/api/translate). */
+    val translateRepository = com.githunt.android.data.translate.TranslateRepository(
+        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+    )
+
     /** Ask AI on repo cards and the AI search box on Home (/api/ai-chat and /api/ai-search). */
     val aiRepository = com.githunt.android.data.ai.AiRepository(
         retrofit.create(com.githunt.android.data.ai.AiApi::class.java),
