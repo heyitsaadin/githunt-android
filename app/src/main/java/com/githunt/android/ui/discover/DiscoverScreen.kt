@@ -480,6 +480,7 @@ private fun PillButton(
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 11.dp)
+    val tick = rememberTick()
     val container by animateColorAsState(
         targetValue = if (active) scheme.primaryContainer else scheme.surface,
         animationSpec = GhMotion.defaultEffects(),
