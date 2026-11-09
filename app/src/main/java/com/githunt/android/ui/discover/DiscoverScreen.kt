@@ -74,6 +74,7 @@ import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.Wordmark
 import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.components.rememberTick
 import com.githunt.android.ui.components.languageColor
 import com.githunt.android.ui.settings.SettingsGroup
 import com.githunt.android.ui.settings.SettingsRow
