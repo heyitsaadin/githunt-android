@@ -498,7 +498,10 @@ private fun PillButton(
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = {
+                    tick()
+                    onClick()
+                },
             )
             .padding(start = 14.dp, end = 10.dp, top = 11.dp, bottom = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
