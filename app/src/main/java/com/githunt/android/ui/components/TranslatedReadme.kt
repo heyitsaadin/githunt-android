@@ -59,7 +59,7 @@ internal fun TranslatedReadmeBlocks(state: TranslatingReadme, modifier: Modifier
                     if (waiting) {
                         BlockSkeleton(block = block, animate = animate)
                     } else {
-                        MarkdownBody(markdown = state.translated[index] ?: block, renderer = renderer)
+                        SharedMarkdownText(markdown = state.translated[index] ?: block, shared = shared)
                     }
                 }
             }
