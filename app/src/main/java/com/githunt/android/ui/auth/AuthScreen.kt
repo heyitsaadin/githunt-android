@@ -1,41 +1,31 @@
 package com.githunt.android.ui.auth
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,11 +45,9 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import com.githunt.android.ui.components.GhLoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,16 +55,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -88,37 +73,42 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.BuildConfig
-import com.githunt.android.R
 import com.githunt.android.ui.components.AppIcons
+import com.githunt.android.ui.components.GhLoadingIndicator
+import com.githunt.android.ui.components.GhSegmentedPicker
 import com.githunt.android.ui.components.GoogleG
 import com.githunt.android.ui.components.PathIcon
-import kotlin.math.PI
+import com.githunt.android.ui.components.PrimaryButton
+import com.githunt.android.ui.components.Wordmark
+import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.components.polarShape
+import com.githunt.android.ui.components.rememberTick
+import com.githunt.android.ui.theme.GhMotion
+import kotlin.math.cos
 import kotlin.math.sin
-
-private val LavInk = Color(0xFF111111)
-private val LavMuted = Color(0xFF6B6A7B)
-private val LavError = Color(0xFFD93B4B)
 
 // 24 x 24 outline icons, drawn with the app's own PathIcon so no icon library is needed.
 private const val MailPath =
     "M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"
 private const val LockPath =
     "M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2H8.9V6zM18 20H6V10h12v10z"
-private const val ArrowPath = "M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"
+
+/** A soft, slightly lopsided blob: the one decorative shape on the page. */
+private val BlobShape = polarShape { t -> 0.82f + 0.10f * cos(3f * t) + 0.06f * sin(2f * t + 1f) }
 
 /**
- * Login and sign-up share one card on an animated lavender background. The logo floats over a
- * soft pulsing glow; the card fades and slides in when the screen opens.
+ * Login and sign-up on one calm, minimal page that follows the app theme (light, dark or pure
+ * black): a drifting soft blob behind the wordmark, a connected Log in / Sign up switch, two or
+ * four filled pill fields, one pill button, and Google underneath. No card, no gradient.
  */
 @Composable
 fun AuthScreen(viewModel: AuthViewModel) {
     val form by viewModel.form.collectAsStateWithLifecycle()
+    val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val uriHandler = LocalUriHandler.current
@@ -126,10 +116,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
     val busy = form.busy || form.googleBusy
     var showPassword by remember { mutableStateOf(false) }
     val enter = remember { MutableTransitionState(false).apply { targetState = true } }
-    val logoWidth by animateDpAsState(if (signUp) 92.dp else 124.dp, tween(400), label = "logoWidth")
     val body = MaterialTheme.typography.bodyMedium
-
-    LightSystemBars()
 
     fun submit() {
         focusManager.clearFocus()
@@ -144,10 +131,8 @@ fun AuthScreen(viewModel: AuthViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(LavBgTop, LavBgBottom))),
+            .background(scheme.background),
     ) {
-        LiveBackground()
-
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -160,48 +145,65 @@ fun AuthScreen(viewModel: AuthViewModel) {
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .heightIn(min = maxHeight)
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 AnimatedVisibility(
                     visibleState = enter,
-                    enter = fadeIn(tween(700)) +
-                        scaleIn(tween(800, easing = FastOutSlowInEasing), initialScale = 0.85f),
+                    enter = fadeIn(GhMotion.slowEffects()),
                 ) {
-                    Header(logoWidth)
+                    Hero()
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(20.dp))
 
                 AnimatedVisibility(
                     visibleState = enter,
-                    enter = fadeIn(tween(700, delayMillis = 150)) +
-                        slideInVertically(tween(800, delayMillis = 150, easing = FastOutSlowInEasing)) { it / 5 },
+                    enter = fadeIn(GhMotion.slowEffects()) +
+                        slideInVertically(GhMotion.slowSpatial()) { it / 6 },
                 ) {
-                    val cardShape = RoundedCornerShape(36.dp)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .widthIn(max = 420.dp)
-                            .shadow(28.dp, cardShape, ambientColor = LavShadow, spotColor = LavShadow)
-                            .clip(cardShape)
-                            .background(Color.White.copy(alpha = 0.94f))
-                            .padding(horizontal = 18.dp, vertical = 20.dp),
+                            .widthIn(max = 420.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        GoogleButton(
-                            enabled = !form.busy,
-                            loading = form.googleBusy,
-                            onClick = {
-                                focusManager.clearFocus()
-                                viewModel.signInWithGoogle(context)
-                            },
-                        )
+                        AnimatedContent(
+                            targetState = signUp,
+                            transitionSpec = { fadeIn(GhMotion.defaultEffects()) togetherWith fadeOut(GhMotion.fastEffects()) },
+                            label = "authTitle",
+                        ) { isSignUp ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = if (isSignUp) "Create your account" else "Welcome back",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = scheme.onBackground,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (isSignUp) {
+                                        "Clip repos, share projects, follow people."
+                                    } else {
+                                        "Log in to pick up where you left off."
+                                    },
+                                    style = body,
+                                    color = scheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
 
-                        Spacer(Modifier.height(14.dp))
-                        OrDivider()
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(20.dp))
+                        GhSegmentedPicker(
+                            items = listOf(AuthMode.LogIn, AuthMode.SignUp),
+                            selected = form.mode,
+                            onSelect = { viewModel.setMode(it) },
+                            label = { if (it == AuthMode.SignUp) "Sign up" else "Log in" },
+                        )
+                        Spacer(Modifier.height(20.dp))
 
                         AnimatedVisibility(
                             visible = signUp,
@@ -210,7 +212,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                         ) {
                             Column {
                                 Row(Modifier.fillMaxWidth()) {
-                                    PillField(
+                                    AuthField(
                                         value = form.firstName,
                                         onValueChange = viewModel::onFirstNameChange,
                                         placeholder = "First name",
@@ -219,7 +221,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                                         capitalization = KeyboardCapitalization.Words,
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    PillField(
+                                    AuthField(
                                         value = form.lastName,
                                         onValueChange = viewModel::onLastNameChange,
                                         placeholder = "Last name",
@@ -232,7 +234,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                             }
                         }
 
-                        PillField(
+                        AuthField(
                             value = form.email,
                             onValueChange = viewModel::onEmailChange,
                             placeholder = "Email",
@@ -241,7 +243,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                             keyboardType = KeyboardType.Email,
                         )
                         Spacer(Modifier.height(10.dp))
-                        PillField(
+                        AuthField(
                             value = form.password,
                             onValueChange = viewModel::onPasswordChange,
                             placeholder = "Password",
@@ -254,14 +256,14 @@ fun AuthScreen(viewModel: AuthViewModel) {
                             trailing = {
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(40.dp)
                                         .clip(CircleShape)
                                         .clickable { showPassword = !showPassword },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     PathIcon(
                                         pathData = if (showPassword) AppIcons.EyeOff else AppIcons.Eye,
-                                        tint = LavMuted,
+                                        tint = scheme.onSurfaceVariant,
                                         iconSize = 22.dp,
                                         evenOdd = !showPassword,
                                     )
@@ -274,7 +276,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                             Text(
                                 text = message,
                                 style = body.copy(textAlign = TextAlign.Center),
-                                color = LavError,
+                                color = scheme.error,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
@@ -283,38 +285,52 @@ fun AuthScreen(viewModel: AuthViewModel) {
                             Text(
                                 text = message,
                                 style = body.copy(textAlign = TextAlign.Center),
-                                color = LavMuted,
+                                color = scheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
 
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(20.dp))
                         PrimaryButton(
-                            label = if (signUp) "Create account" else "Log in",
+                            text = if (signUp) "Create account" else "Log in",
+                            onClick = { submit() },
                             enabled = !form.googleBusy,
                             loading = form.busy,
-                            onClick = { submit() },
                         )
-                        Spacer(Modifier.height(18.dp))
+
+                        Spacer(Modifier.height(16.dp))
+                        OrDivider()
+                        Spacer(Modifier.height(16.dp))
+
+                        GoogleButton(
+                            enabled = !form.busy,
+                            loading = form.googleBusy,
+                            onClick = {
+                                focusManager.clearFocus()
+                                viewModel.signInWithGoogle(context)
+                            },
+                        )
+
+                        Spacer(Modifier.height(20.dp))
 
                         AnimatedContent(
                             targetState = signUp,
-                            transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(150)) },
+                            transitionSpec = { fadeIn(GhMotion.defaultEffects()) togetherWith fadeOut(GhMotion.fastEffects()) },
                             label = "authLinks",
                         ) { isSignUp ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (isSignUp) {
                                     val legal = remember {
                                         buildAnnotatedString {
-                                            append("Signing up for a GitHunt account means you agree to the ")
+                                            append("By signing up you agree to the ")
                                             pushStringAnnotation("page", "privacy")
-                                            withStyle(SpanStyle(color = LavInk, textDecoration = TextDecoration.Underline)) {
+                                            withStyle(SpanStyle(textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Medium)) {
                                                 append("Privacy Policy")
                                             }
                                             pop()
                                             append(" and ")
                                             pushStringAnnotation("page", "terms")
-                                            withStyle(SpanStyle(color = LavInk, textDecoration = TextDecoration.Underline)) {
+                                            withStyle(SpanStyle(textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Medium)) {
                                                 append("Terms of Service")
                                             }
                                             pop()
@@ -323,33 +339,23 @@ fun AuthScreen(viewModel: AuthViewModel) {
                                     }
                                     ClickableText(
                                         text = legal,
-                                        style = body.copy(fontSize = 14.sp, color = LavMuted, textAlign = TextAlign.Center),
+                                        style = body.copy(
+                                            fontSize = 13.sp,
+                                            color = scheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                        ),
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = { offset ->
                                             legal.getStringAnnotations("page", offset, offset).firstOrNull()
                                                 ?.let { openLegal(it.item) }
                                         },
                                     )
-                                    Spacer(Modifier.height(16.dp))
-                                    LinkRow(
-                                        prefix = "Have an account? ",
-                                        link = "Log in here",
-                                        enabled = !busy,
-                                        onClick = { viewModel.setMode(AuthMode.LogIn) },
-                                    )
                                 } else {
                                     LinkRow(
-                                        prefix = "Request a ",
-                                        link = "New Password",
+                                        prefix = "Forgot it? ",
+                                        link = "Request a new password",
                                         enabled = !busy,
                                         onClick = { viewModel.requestPasswordReset() },
-                                    )
-                                    Spacer(Modifier.height(10.dp))
-                                    LinkRow(
-                                        prefix = "New here? ",
-                                        link = "Create an account",
-                                        enabled = !busy,
-                                        onClick = { viewModel.setMode(AuthMode.SignUp) },
                                     )
                                 }
                             }
@@ -361,114 +367,98 @@ fun AuthScreen(viewModel: AuthViewModel) {
     }
 }
 
-/** Logo floating over a pulsing glow, then the wordmark and tagline. */
+/** The wordmark on a slowly turning soft blob, with the tagline under it. */
 @Composable
-private fun Header(logoWidth: Dp) {
-    val transition = rememberInfiniteTransition(label = "logo")
-    val bob = transition.animateFloat(
+private fun Hero() {
+    val scheme = MaterialTheme.colorScheme
+    val transition = rememberInfiniteTransition(label = "hero")
+    val turn by transition.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Restart),
-        label = "bob",
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 48000, easing = LinearEasing)),
+        label = "blob-turn",
     )
-
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.size(190.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Box(
                 modifier = Modifier
-                    .size(logoWidth * 1.55f)
-                    .graphicsLayer {
-                        val s = 0.92f + 0.10f * (0.5f + 0.5f * sin(bob.value * 2f * PI.toFloat()))
-                        scaleX = s
-                        scaleY = s
-                        alpha = 0.55f
-                    }
-                    .background(
-                        Brush.radialGradient(listOf(Color(0xFFD9D7F0), Color.Transparent)),
-                        CircleShape,
-                    ),
+                    .fillMaxSize()
+                    .graphicsLayer { rotationZ = turn }
+                    .clip(BlobShape)
+                    .background(scheme.surfaceVariant),
             )
-            Image(
-                painter = painterResource(R.drawable.githunt_logo),
-                contentDescription = "Githunt logo",
-                modifier = Modifier
-                    .width(logoWidth)
-                    .aspectRatio(420f / 396f)
-                    .graphicsLayer { translationY = sin(bob.value * 2f * PI.toFloat()) * 5.dp.toPx() },
-            )
+            Wordmark(size = 42.sp)
         }
-
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "Githunt",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = 54.sp,
-                lineHeight = 60.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-1.5).sp,
-            ),
-            color = LavInk,
-        )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Discover  •  Explore  •  Opensource",
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium),
-            color = LavMuted,
+            text = "Discover  \u2022  Explore  \u2022  Opensource",
+            style = MaterialTheme.typography.labelLarge,
+            color = scheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun GoogleButton(enabled: Boolean, loading: Boolean, onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "googleScale")
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(1.dp, LavHairline, CircleShape)
-            .clickable(interactionSource = source, indication = null, enabled = enabled && !loading, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        if (loading) {
-            GhLoadingIndicator(diameter = 26.dp, color = LavInk)
-        } else {
-            GoogleG(Modifier.size(22.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "Sign in with Google",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.Medium),
-                color = LavInk,
-            )
-        }
     }
 }
 
 @Composable
 private fun OrDivider() {
+    val scheme = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f).height(1.dp).background(LavHairline))
+        Box(Modifier.weight(1f).height(1.dp).background(scheme.outline))
         Text(
             text = "or",
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-            color = LavMuted,
-            modifier = Modifier.padding(horizontal = 18.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
         )
-        Box(Modifier.weight(1f).height(1.dp).background(LavHairline))
+        Box(Modifier.weight(1f).height(1.dp).background(scheme.outline))
     }
 }
 
+/** Tonal Google button: a pill that springs squarer under your finger. */
 @Composable
-private fun PillField(
+private fun GoogleButton(enabled: Boolean, loading: Boolean, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val source = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(animatedPressCorner(source, rest = 28.dp, pressed = 14.dp))
+    val tick = rememberTick()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(shape)
+            .background(scheme.surfaceVariant)
+            .clickable(
+                interactionSource = source,
+                indication = LocalIndication.current,
+                enabled = enabled && !loading,
+                onClick = {
+                    tick()
+                    onClick()
+                },
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (loading) {
+            GhLoadingIndicator(diameter = 28.dp, color = scheme.onSurface)
+        } else {
+            GoogleG(Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "Continue with Google",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onSurface,
+            )
+        }
+    }
+}
+
+/** Filled pill field with a hairline that turns solid while focused. */
+@Composable
+private fun AuthField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -482,17 +472,26 @@ private fun PillField(
     obscured: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp)
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(28.dp)
+    var focused by remember { mutableStateOf(false) }
+    val outline by animateColorAsState(
+        targetValue = if (focused) scheme.primary else scheme.outline,
+        animationSpec = GhMotion.defaultEffects(),
+        label = "field-outline",
+    )
+    val textStyle = MaterialTheme.typography.bodyLarge
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(56.dp)
+            .onFocusChanged { focused = it.isFocused },
         enabled = enabled,
         singleLine = true,
-        textStyle = textStyle.copy(color = LavInk),
-        cursorBrush = SolidColor(LavInk),
+        textStyle = textStyle.copy(color = scheme.onSurface),
+        cursorBrush = SolidColor(scheme.onSurface),
         visualTransformation = if (obscured) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             capitalization = capitalization,
@@ -504,13 +503,14 @@ private fun PillField(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(LavField)
-                    .padding(start = 18.dp, end = if (trailing != null) 12.dp else 18.dp),
+                    .clip(shape)
+                    .background(scheme.surface)
+                    .border(if (focused) 1.5.dp else 1.dp, outline, shape)
+                    .padding(start = 20.dp, end = if (trailing != null) 8.dp else 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (leadingIcon != null) {
-                    PathIcon(pathData = leadingIcon, tint = LavMuted, iconSize = 22.dp)
+                    PathIcon(pathData = leadingIcon, tint = scheme.onSurfaceVariant, iconSize = 22.dp)
                     Spacer(Modifier.width(14.dp))
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -518,7 +518,7 @@ private fun PillField(
                         Text(
                             text = placeholder,
                             style = textStyle,
-                            color = LavMuted.copy(alpha = 0.85f),
+                            color = scheme.onSurfaceVariant.copy(alpha = 0.8f),
                             maxLines = 1,
                         )
                     }
@@ -530,79 +530,21 @@ private fun PillField(
     )
 }
 
-@Composable
-private fun PrimaryButton(label: String, enabled: Boolean, loading: Boolean, onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "buttonScale")
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .background(if (enabled) LavInk else LavInk.copy(alpha = 0.45f))
-            .clickable(interactionSource = source, indication = null, enabled = enabled && !loading, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        if (loading) {
-            GhLoadingIndicator(diameter = 28.dp, color = Color.White)
-        } else {
-            AnimatedContent(targetState = label, label = "buttonLabel") { text ->
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 19.sp, fontWeight = FontWeight.Medium),
-                    color = Color.White,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            PathIcon(pathData = ArrowPath, tint = Color.White, iconSize = 22.dp)
-        }
-    }
-}
-
-/** Muted words followed by an underlined, tappable link. */
+/** Muted words followed by a bold underlined link. */
 @Composable
 private fun LinkRow(prefix: String, link: String, enabled: Boolean, onClick: () -> Unit) {
-    val style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp)
+    val scheme = MaterialTheme.colorScheme
+    val style = MaterialTheme.typography.bodyMedium
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = prefix, style = style, color = LavMuted)
+        Text(text = prefix, style = style, color = scheme.onSurfaceVariant)
         Text(
             text = link,
-            style = style.copy(fontWeight = FontWeight.Medium, textDecoration = TextDecoration.Underline),
-            color = LavInk,
+            style = style.copy(fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline),
+            color = scheme.onBackground,
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .clickable(enabled = enabled, onClick = onClick)
-                .padding(vertical = 2.dp),
+                .padding(horizontal = 2.dp, vertical = 6.dp),
         )
     }
-}
-
-/** The screen is light in both themes, so keep the status and navigation bar icons dark while it shows. */
-@Composable
-private fun LightSystemBars() {
-    val view = LocalView.current
-    val darkTheme = isSystemInDarkTheme()
-    DisposableEffect(darkTheme) {
-        val window = view.context.findActivity()?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
-        controller?.isAppearanceLightStatusBars = true
-        controller?.isAppearanceLightNavigationBars = true
-        onDispose {
-            controller?.isAppearanceLightStatusBars = !darkTheme
-            controller?.isAppearanceLightNavigationBars = !darkTheme
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
