@@ -388,10 +388,10 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+fun DocsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val state by vm.logs.collectAsState()
     LaunchedEffect(Unit) { vm.loadLogs() }
-    SettingsScaffold(title = "Changelog", onBack = onBack) {
+    SettingsScaffold(title = "Docs", onBack = onBack) {
         if (state.logs == null && state.error == null) {
             SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
                 SettingsNote("Loading build notes…")
