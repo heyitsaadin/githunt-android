@@ -668,6 +668,10 @@ internal fun proxiedImageUrl(src: String): String {
 // at most 1/0.6 (about 1.7x) as tall as wide, and at most 3x as wide as tall. A picture outside
 // that range still shows whole, it just has a little empty space beside or above it.
 private const val DEFAULT_IMAGE_RATIO = 16f / 9f
+
+// A YouTube slide is the key "yt:<id>" in the carousel's slide list; a real picture url never starts with it.
+// Videos are always a 16:9 player, so they use DEFAULT_IMAGE_RATIO.
+private const val VIDEO_KEY_PREFIX = "yt:"
 private const val MIN_IMAGE_RATIO = 0.6f
 private const val MAX_IMAGE_RATIO = 3f
 
