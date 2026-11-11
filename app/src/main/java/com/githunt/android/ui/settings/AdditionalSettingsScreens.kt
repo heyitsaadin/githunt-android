@@ -361,7 +361,9 @@ fun DebugScreen(
     var exportMessage by remember { mutableStateOf<String?>(null) }
     val crashReport = log.latestCrashReport()
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
-        if (uri == null) {
+        if (!prefs.developerOptions.value) {
+            exportMessage = "Enable Developer options to export diagnostics."
+        } else if (uri == null) {
             exportMessage = "Export cancelled."
         } else {
             val saved = runCatching {
@@ -441,7 +443,7 @@ fun DebugScreen(
         }
     }
 
-    if (confirmCrash) {
+    if (confirmCrash && developerOptions) {
         ConfirmDialog(
             title = "Trigger a test crash?",
             text = "GitHunt will close immediately. Reopen the app to inspect and download the captured crash report.",
@@ -449,8 +451,10 @@ fun DebugScreen(
             destructive = true,
             onConfirm = {
                 confirmCrash = false
-                Handler(Looper.getMainLooper()).post {
-                    throw IllegalStateException("GitHunt diagnostic test crash")
+                if (prefs.developerOptions.value) {
+                    Handler(Looper.getMainLooper()).post {
+                        throw IllegalStateException("GitHunt diagnostic test crash")
+                    }
                 }
             },
             onDismiss = { confirmCrash = false },
