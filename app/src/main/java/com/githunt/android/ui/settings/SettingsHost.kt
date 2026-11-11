@@ -235,7 +235,7 @@ private fun SettingsHome(
             title = "About and legal",
             description = "Learn how GitHunt works and review our policies.",
             entries = listOf(
-                Entry("about", "about what is this how to use legal terms privacy logs changelog version") {
+                Entry("about", "about what is this how to use legal terms privacy docs logs release notes version") {
                     SettingsRow(
                         title = "About",
                         subtitle = "What this is, how to use it, legal",
