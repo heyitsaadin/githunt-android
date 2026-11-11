@@ -134,7 +134,10 @@ fun RepoCard(
     val appContainer = remember(context) { (context.applicationContext as? GitHuntApp)?.container }
     val translateRepository = appContainer?.translateRepository
     val targetLanguage by (appContainer?.appPreferences?.language ?: NoTranslation).collectAsState()
-    var translated by remember(item.fullName, item.description, item.readmeSnippet, targetLanguage) {
+    // Which engine is selected (Settings > Translation language). It is a key below, so switching
+    // engines translates the cards on screen again with the new one.
+    val engine by (appContainer?.appPreferences?.engine ?: NoEngine).collectAsState()
+    var translated by remember(item.fullName, item.description, item.readmeSnippet, targetLanguage, engine) {
         mutableStateOf<TranslatedCard?>(null)
     }
     var showOriginal by rememberSaveable(item.fullName + "#original") { mutableStateOf(false) }
