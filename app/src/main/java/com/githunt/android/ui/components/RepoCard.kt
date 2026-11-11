@@ -141,7 +141,7 @@ fun RepoCard(
         mutableStateOf<TranslatedCard?>(null)
     }
     var showOriginal by rememberSaveable(item.fullName + "#original") { mutableStateOf(false) }
-    LaunchedEffect(item.fullName, item.description, item.readmeSnippet, item.topics, targetLanguage) {
+    LaunchedEffect(item.fullName, item.description, item.readmeSnippet, item.topics, targetLanguage, engine) {
         if (translateRepository == null || targetLanguage == "off") return@LaunchedEffect
         val result = translateRepository.translateCard(
             description = item.description,
