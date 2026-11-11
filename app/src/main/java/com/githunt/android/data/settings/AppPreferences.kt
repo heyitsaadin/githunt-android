@@ -11,6 +11,23 @@ enum class ThemeMode(val label: String) {
     Dark("Dark"),
 }
 
+/**
+ * How translations are fetched. Both exist so they can be compared side by side; [statsKey]
+ * matches the keys in TranslateStats.
+ */
+enum class TranslationEngine(val label: String, val detail: String, val statsKey: String) {
+    Server(
+        label = "Website (current)",
+        detail = "Through your site's /api/translate: Google, then MyMemory.",
+        statsKey = "server",
+    ),
+    Direct(
+        label = "Direct Google + on-device",
+        detail = "The phone asks Google itself. If that fails, ML Kit translates on the phone.",
+        statsKey = "direct",
+    ),
+}
+
 data class TranslationLanguage(val code: String, val label: String)
 
 /** Same list as the website's LanguageProvider. */
@@ -51,6 +68,9 @@ class AppPreferences(context: Context) {
     private val _language = MutableStateFlow(readLanguage())
     val language: StateFlow<String> = _language.asStateFlow()
 
+    private val _engine = MutableStateFlow(readEngine())
+    val engine: StateFlow<TranslationEngine> = _engine.asStateFlow()
+
     fun setTheme(mode: ThemeMode) {
         store.edit().putString(KEY_THEME, mode.name).apply()
         _theme.value = mode
@@ -60,6 +80,11 @@ class AppPreferences(context: Context) {
         if (TranslationLanguages.all.none { it.code == code }) return
         store.edit().putString(KEY_LANGUAGE, code).apply()
         _language.value = code
+    }
+
+    fun setEngine(engine: TranslationEngine) {
+        store.edit().putString(KEY_ENGINE, engine.name).apply()
+        _engine.value = engine
     }
 
     private fun readTheme(): ThemeMode {
@@ -72,8 +97,14 @@ class AppPreferences(context: Context) {
         return if (saved != null && TranslationLanguages.all.any { it.code == saved }) saved else "en"
     }
 
+    private fun readEngine(): TranslationEngine {
+        val saved = store.getString(KEY_ENGINE, null)
+        return TranslationEngine.values().firstOrNull { it.name == saved } ?: TranslationEngine.Server
+    }
+
     private companion object {
         const val KEY_THEME = "theme_mode"
         const val KEY_LANGUAGE = "gh-language"
+        const val KEY_ENGINE = "translation_engine"
     }
 }
