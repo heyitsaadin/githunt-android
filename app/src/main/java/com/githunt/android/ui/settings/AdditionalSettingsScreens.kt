@@ -277,7 +277,7 @@ fun AboutScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 SettingsRow(title = "What is this", subtitle = "What GitHunt is", icon = SettingsIcons.Info, onClick = { onNavigate("what") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
-                SettingsRow(title = "Logs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Docs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("docs") }, trailing = { ChevronTrailing() })
             }
         }
         SettingsSection(title = "Legal", description = "Review GitHunt's policies.") {
