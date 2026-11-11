@@ -59,6 +59,7 @@ fun SettingsHost(
     initialRoute: String? = null,
 ) {
     var stackKey by rememberSaveable { mutableStateOf(initialRoute ?: "root") }
+    val developerOptions by viewModel.prefs.developerOptions.collectAsStateWithLifecycle()
 
     fun pop() {
         if (stackKey.contains(',')) stackKey = stackKey.substringBeforeLast(',') else onClose()
@@ -105,8 +106,8 @@ fun SettingsHost(
             "howto" -> HowToUseScreen(onBack = { pop() })
             "info" -> InfoScreen(vm = viewModel, onBack = { pop() }, onNavigate = { push(it) })
             "docs" -> LogsScreen(vm = viewModel, onBack = { pop() })
-            "logs" -> ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() })
-            "debug" -> DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() })
+            "logs" -> if (developerOptions) ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() }) else DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() }, onNavigate = { push(it) })
+            "debug" -> DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() }, onNavigate = { push(it) })
             else -> SettingsHome(
                 user = user,
                 prefs = viewModel.prefs,
