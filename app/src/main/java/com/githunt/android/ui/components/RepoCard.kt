@@ -188,9 +188,10 @@ fun RepoCard(
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
         // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
         // image loads and drops images that can't be loaded, like the website.
-        if (item.readmeImages.isNotEmpty()) {
+        if (item.readmeImages.isNotEmpty() || item.readmeVideos.isNotEmpty()) {
             RepoImageCarousel(
                 images = item.readmeImages,
+                videos = item.readmeVideos,
                 contentDescription = "${item.fullName} README preview",
                 onOpenGithub = {
                     runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
@@ -668,6 +669,10 @@ internal fun proxiedImageUrl(src: String): String {
 // at most 1/0.6 (about 1.7x) as tall as wide, and at most 3x as wide as tall. A picture outside
 // that range still shows whole, it just has a little empty space beside or above it.
 private const val DEFAULT_IMAGE_RATIO = 16f / 9f
+
+// A YouTube slide is the key "yt:<id>" in the carousel's slide list; a real picture url never starts with it.
+// Videos are always a 16:9 player, so they use DEFAULT_IMAGE_RATIO.
+private const val VIDEO_KEY_PREFIX = "yt:"
 private const val MIN_IMAGE_RATIO = 0.6f
 private const val MAX_IMAGE_RATIO = 3f
 
@@ -699,6 +704,7 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 @Composable
 private fun RepoImageCarousel(
     images: List<String>,
+    videos: List<String>,
     contentDescription: String,
     onOpenGithub: () -> Unit,
 ) {
@@ -707,7 +713,10 @@ private fun RepoImageCarousel(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     var failed by remember(images) { mutableStateOf(setOf<String>()) }
-    val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    val videoIds = remember(videos) { videos.distinct() }
+    val imageSlides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    // Videos lead the carousel (a trailer is the headline), like the website.
+    val slides = remember(videoIds, imageSlides) { videoIds.map { VIDEO_KEY_PREFIX + it } + imageSlides }
     val pagerState = rememberPagerState(pageCount = { slides.size })
 
     // Each picture's own width / height, learned as it loads. Also kept for the whole session,
@@ -718,7 +727,10 @@ private fun RepoImageCarousel(
         }
     }
     val currentUrl = slides.getOrNull(pagerState.currentPage)
-    val targetRatio = (currentUrl?.let { ratios[it] } ?: DEFAULT_IMAGE_RATIO)
+    val targetRatio = (
+        currentUrl?.let { if (it.startsWith(VIDEO_KEY_PREFIX)) DEFAULT_IMAGE_RATIO else ratios[it] }
+            ?: DEFAULT_IMAGE_RATIO
+        )
         .coerceIn(MIN_IMAGE_RATIO, MAX_IMAGE_RATIO)
     val boxRatio by animateFloatAsState(
         targetValue = targetRatio,
@@ -728,6 +740,11 @@ private fun RepoImageCarousel(
 
     // Index of the picture open in the full-screen preview, or null when it is closed.
     var previewIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Id of the YouTube video playing in place, or null. Swiping to another slide stops it, and
+    // autoplay never scrolls away from a video someone is watching.
+    var playingId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pagerState.settledPage) { playingId = null }
 
     var onScreen by remember { mutableStateOf(false) }
     var pausedUntil by remember { mutableLongStateOf(0L) }
@@ -750,8 +767,8 @@ private fun RepoImageCarousel(
 
     // Auto-advance. Restarts whenever the slide count, on-screen state or motion setting changes,
     // and stops while the app is in the background.
-    LaunchedEffect(slides.size, onScreen, reduceMotion) {
-        if (slides.size <= 1 || !onScreen || reduceMotion) return@LaunchedEffect
+    LaunchedEffect(slides.size, onScreen, reduceMotion, playingId) {
+        if (slides.size <= 1 || !onScreen || reduceMotion || playingId != null) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(AUTOPLAY_INTERVAL_MS)
@@ -784,6 +801,17 @@ private fun RepoImageCarousel(
             modifier = Modifier.matchParentSize(),
         ) { page ->
             val url = slides[page]
+            if (url.startsWith(VIDEO_KEY_PREFIX)) {
+                val videoId = url.removePrefix(VIDEO_KEY_PREFIX)
+                YouTubeVideo(
+                    id = videoId,
+                    playing = playingId == videoId && pagerState.currentPage == page,
+                    onPlay = { playingId = videoId },
+                    contentDescription = "$contentDescription video",
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@HorizontalPager
+            }
             val request = remember(url) {
                 ImageRequest.Builder(context)
                     .data(proxiedImageUrl(url))
@@ -805,7 +833,7 @@ private fun RepoImageCarousel(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable {
-                        previewIndex = page
+                        previewIndex = page - videoIds.size
                         // Keep the carousel still behind the preview.
                         pausedUntil = Long.MAX_VALUE
                     },
@@ -814,7 +842,7 @@ private fun RepoImageCarousel(
 
         previewIndex?.let { start ->
             ImagePreviewDialog(
-                images = slides,
+                images = imageSlides,
                 startIndex = start,
                 contentDescription = contentDescription,
                 onDismiss = {

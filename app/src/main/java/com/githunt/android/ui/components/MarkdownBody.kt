@@ -8,6 +8,7 @@ import android.graphics.Typeface
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.method.LinkMovementMethod
+import android.view.Gravity
 import android.text.style.ForegroundColorSpan
 import android.text.style.MetricAffectingSpan
 import android.widget.TextView
@@ -55,6 +56,8 @@ fun MarkdownBody(
     markdown: String,
     modifier: Modifier = Modifier,
     textSizeSp: Float = 13.5f,
+    /** Centres the text, for README blocks inside `align="center"`. */
+    centered: Boolean = false,
 ) {
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
@@ -91,6 +94,7 @@ fun MarkdownBody(
         update = { view ->
             view.setTextColor(textColor)
             view.setLinkTextColor(linkColor)
+            view.gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
             view.chipColor = chipColor
             if (view.tag !== rendered) {
                 view.tag = rendered

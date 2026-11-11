@@ -41,6 +41,8 @@ data class RepoItem(
     val updatedAt: String?,
     val readmeSnippet: String?,
     val readmeImages: List<String>,
+    /** YouTube video ids linked from the README (the backend's `readme_videos`), shown first in the carousel. */
+    val readmeVideos: List<String> = emptyList(),
     /** The repo object as the server sent it. Clipping sends it back untouched, like the website does. */
     val raw: JsonObject? = null,
 ) : FeedItem {
@@ -76,6 +78,20 @@ internal fun JsonObject.textList(key: String): List<String> =
         ?.mapNotNull { el -> (el as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content }
         ?: emptyList()
 
+/** `readme_videos` is `[{ "id": "..." }]`; a plain list of id strings is accepted too. */
+internal fun JsonObject.videoIds(key: String): List<String> =
+    (this[key] as? JsonArray)
+        ?.mapNotNull { el ->
+            when (el) {
+                is JsonObject -> el.text("id")
+                is JsonPrimitive -> el.takeIf { it !is JsonNull }?.content
+                else -> null
+            }
+        }
+        ?.filter { it.isNotBlank() }
+        ?.distinct()
+        ?: emptyList()
+
 internal fun JsonObject.toRepoItem(): RepoItem? {
     val fullName = text("full_name") ?: return null
     return RepoItem(
@@ -92,6 +108,7 @@ internal fun JsonObject.toRepoItem(): RepoItem? {
         updatedAt = text("updated_at"),
         readmeSnippet = text("readme_snippet"),
         readmeImages = textList("readme_images"),
+        readmeVideos = videoIds("readme_videos"),
         raw = this,
     )
 }
