@@ -103,7 +103,7 @@ fun SettingsHost(
             "about" -> AboutScreen(onBack = { pop() }, onNavigate = { push(it) })
             "what" -> WhatIsThisScreen(onBack = { pop() })
             "howto" -> HowToUseScreen(onBack = { pop() })
-            "info" -> InfoScreen(vm = viewModel, onBack = { pop() })
+            "info" -> InfoScreen(vm = viewModel, onBack = { pop() }, onNavigate = { push(it) })
             "docs" -> LogsScreen(vm = viewModel, onBack = { pop() })
             "logs" -> ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() })
             "debug" -> DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() })
