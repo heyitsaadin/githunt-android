@@ -94,6 +94,7 @@ internal fun JsonObject.toRepoItem(): RepoItem? {
         updatedAt = text("updated_at"),
         readmeSnippet = text("readme_snippet"),
         readmeImages = textList("readme_images"),
+        readmeVideos = videoIds("readme_videos"),
         raw = this,
     )
 }
