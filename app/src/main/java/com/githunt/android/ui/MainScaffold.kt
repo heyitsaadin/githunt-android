@@ -251,6 +251,7 @@ fun MainScaffold(
                                         AppTab.Profile -> profileTap++
                                     }
                                 } else {
+                                    settingsViewModel.activityLog.record("Navigation", "Opened tab", picked.name)
                                     tab = picked
                                 }
                             },
