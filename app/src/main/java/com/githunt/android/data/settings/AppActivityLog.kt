@@ -11,6 +11,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.io.PrintWriter
+import java.io.StringWriter
 
 data class ActivityLogEntry(
     val id: String,
@@ -26,6 +28,31 @@ class AppActivityLog(context: Context) {
     private val lock = Any()
     private val _entries = MutableStateFlow(readEntries())
     val entries: StateFlow<List<ActivityLogEntry>> = _entries.asStateFlow()
+
+    init {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            runCatching {
+                val trace = StringWriter().also { writer -> error.printStackTrace(PrintWriter(writer)) }.toString()
+                val report = buildString {
+                    appendLine("GitHunt crash report")
+                    appendLine("Time: ${Date(System.currentTimeMillis())}")
+                    appendLine("Thread: ${thread.name}")
+                    appendLine("App version: ${com.githunt.android.BuildConfig.VERSION_NAME}")
+                    appendLine()
+                    append(trace)
+                }
+                preferences.edit().putString(KEY_CRASH_REPORT, report).commit()
+            }
+            previous?.uncaughtException(thread, error)
+        }
+    }
+
+    fun latestCrashReport(): String? = preferences.getString(KEY_CRASH_REPORT, null)
+
+    fun clearCrashReport() {
+        preferences.edit().remove(KEY_CRASH_REPORT).apply()
+    }
 
     fun record(category: String, action: String, details: String = "", status: String = "info") {
         synchronized(lock) {
@@ -63,6 +90,7 @@ class AppActivityLog(context: Context) {
 
     private companion object {
         const val KEY_ENTRIES = "entries"
+        const val KEY_CRASH_REPORT = "latest_crash_report"
         const val MAX_ENTRIES = 300
     }
 }
