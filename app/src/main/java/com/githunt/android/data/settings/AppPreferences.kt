@@ -42,7 +42,7 @@ object TranslationLanguages {
 }
 
 /** Device-only settings (the website keeps these in localStorage). */
-class AppPreferences(context: Context) {
+class AppPreferences(context: Context, private val activityLog: AppActivityLog) {
     private val store = context.getSharedPreferences("githunt_settings", Context.MODE_PRIVATE)
 
     private val _theme = MutableStateFlow(readTheme())
@@ -52,12 +52,14 @@ class AppPreferences(context: Context) {
     val language: StateFlow<String> = _language.asStateFlow()
 
     fun setTheme(mode: ThemeMode) {
+        if (_theme.value != mode) activityLog.record("Settings", "Theme changed", mode.label, "success")
         store.edit().putString(KEY_THEME, mode.name).apply()
         _theme.value = mode
     }
 
     fun setLanguage(code: String) {
         if (TranslationLanguages.all.none { it.code == code }) return
+        if (_language.value != code) activityLog.record("Settings", "Translation language changed", TranslationLanguages.label(code), "success")
         store.edit().putString(KEY_LANGUAGE, code).apply()
         _language.value = code
     }
