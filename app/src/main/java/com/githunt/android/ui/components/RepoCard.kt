@@ -675,11 +675,17 @@ private fun CardAction(
     onClick: () -> Unit,
     filled: Boolean = false,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(animatedPressCorner(interaction, rest = 20.dp, pressed = 10.dp))
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .clip(shape)
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PathIcon(pathData = icon, tint = tint, iconSize = 18.dp, strokeWidth = 1.8f, filled = filled)
