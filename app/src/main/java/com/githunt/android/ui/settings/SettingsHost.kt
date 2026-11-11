@@ -106,6 +106,7 @@ fun SettingsHost(
             "info" -> InfoScreen(vm = viewModel, onBack = { pop() })
             "docs" -> LogsScreen(vm = viewModel, onBack = { pop() })
             "logs" -> ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() })
+            "debug" -> DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() })
             else -> SettingsHome(
                 user = user,
                 prefs = viewModel.prefs,
@@ -225,6 +226,22 @@ private fun SettingsHome(
                         subtitle = "Use your own GitHub API token",
                         icon = NavIcons.Code,
                         onClick = { onNavigate("api") },
+                        trailing = { ChevronTrailing() },
+                    )
+                },
+            ),
+        ),
+        Group(
+            id = "debug",
+            title = "Developer",
+            description = "Developer tools and diagnostics.",
+            entries = listOf(
+                Entry("debug", "debug developer options diagnostics crash logs") {
+                    SettingsRow(
+                        title = "Debug",
+                        subtitle = "Developer options and diagnostics",
+                        icon = SettingsIcons.Info,
+                        onClick = { onNavigate("debug") },
                         trailing = { ChevronTrailing() },
                     )
                 },
