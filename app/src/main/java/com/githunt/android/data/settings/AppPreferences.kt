@@ -54,11 +54,16 @@ class AppPreferences(context: Context, private val activityLog: AppActivityLog) 
     private val _developerOptions = MutableStateFlow(store.getBoolean(KEY_DEVELOPER_OPTIONS, false))
     val developerOptions: StateFlow<Boolean> = _developerOptions.asStateFlow()
 
+    init {
+        activityLog.setEnabled(_developerOptions.value)
+    }
+
     fun setDeveloperOptions(enabled: Boolean) {
         if (_developerOptions.value == enabled) return
         store.edit().putBoolean(KEY_DEVELOPER_OPTIONS, enabled).apply()
         _developerOptions.value = enabled
-        activityLog.record("Settings", "Developer options ${if (enabled) "enabled" else "disabled"}", status = "success")
+        activityLog.setEnabled(enabled)
+        if (enabled) activityLog.record("Settings", "Developer options enabled", status = "success")
     }
 
     fun setTheme(mode: ThemeMode) {
