@@ -57,7 +57,7 @@ class AppActivityLog(context: Context) {
         val handler = Thread.UncaughtExceptionHandler { thread, error ->
             if (enabled) {
                 runCatching {
-                    val trace = StringWriter().also { writer -> error.printStackTrace(writer) }.toString()
+                    val trace = StringWriter().also { writer -> error.printStackTrace(PrintWriter(writer)) }.toString()
                     val report = buildString {
                         appendLine("GitHunt crash report")
                         appendLine("Time: ${Date(System.currentTimeMillis())}")
