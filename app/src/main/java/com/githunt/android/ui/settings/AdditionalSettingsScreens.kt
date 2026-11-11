@@ -45,6 +45,7 @@ fun LanguageScreen(prefs: AppPreferences, onBack: () -> Unit) {
                 }
             }
         }
+        TranslationLabSection(target = selected)
     }
 }
 
