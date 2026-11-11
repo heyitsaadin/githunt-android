@@ -22,7 +22,6 @@ import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Response
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
@@ -46,12 +45,6 @@ class AppContainer(context: Context) {
         .cookieJar(cookieJar)
         .addInterceptor(UserAgentInterceptor(userAgent()))
         .addInterceptor(ActivityLogInterceptor(activityLog))
-        .addInterceptor(
-            HttpLoggingInterceptor().apply {
-                // BASIC logs method, URL and status only. Never bodies: they hold passwords.
-                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
-            }
-        )
         .connectTimeout(20, TimeUnit.SECONDS)
         // The feed page does live GitHub lookups on the server, so a cold page can take a while.
         .readTimeout(60, TimeUnit.SECONDS)
