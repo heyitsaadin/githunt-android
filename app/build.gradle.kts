@@ -174,10 +174,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // On-device translation backup: language detection and offline translation (ML Kit).
-    // Translation models (about 30 MB per language) are downloaded on demand, not bundled.
-    implementation("com.google.mlkit:translate:17.0.3")
-    implementation("com.google.mlkit:language-id:17.0.6")
+    // Background check for new notifications (runs about every 15 minutes)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     testImplementation("junit:junit:4.13.2")
 }
