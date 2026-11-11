@@ -103,7 +103,8 @@ fun SettingsHost(
             "what" -> WhatIsThisScreen(onBack = { pop() })
             "howto" -> HowToUseScreen(onBack = { pop() })
             "info" -> InfoScreen(vm = viewModel, onBack = { pop() })
-            "logs" -> LogsScreen(vm = viewModel, onBack = { pop() })
+            "docs" -> DocsScreen(vm = viewModel, onBack = { pop() })
+            "logs" -> ActivityLogScreen(onBack = { pop() })
             else -> SettingsHome(
                 user = user,
                 prefs = viewModel.prefs,
