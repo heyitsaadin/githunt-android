@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import com.githunt.android.BuildConfig
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.settings.AppActivityLog
+import com.githunt.android.data.settings.displayTime
 import com.githunt.android.ui.components.GhSwitch
 import com.githunt.android.ui.components.MarkdownBody
 import com.githunt.android.ui.components.PathIcon
@@ -277,7 +279,8 @@ fun AboutScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 SettingsRow(title = "What is this", subtitle = "What GitHunt is", icon = SettingsIcons.Info, onClick = { onNavigate("what") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
-                SettingsRow(title = "Logs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Docs", subtitle = "Release notes and app documentation", icon = SettingsIcons.Book, onClick = { onNavigate("docs") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Logs", subtitle = "Requests and activity on this device", icon = SettingsIcons.Info, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
             }
         }
         SettingsSection(title = "Legal", description = "Review GitHunt's policies.") {
@@ -391,7 +394,7 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val state by vm.logs.collectAsState()
     LaunchedEffect(Unit) { vm.loadLogs() }
-    SettingsScaffold(title = "Changelog", onBack = onBack) {
+    SettingsScaffold(title = "Docs", onBack = onBack) {
         if (state.logs == null && state.error == null) {
             SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
                 SettingsNote("Loading build notes…")
@@ -418,4 +421,52 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+
+@Composable
+fun ActivityLogsScreen(log: AppActivityLog, onBack: () -> Unit) {
+    val entries by log.entries.collectAsState()
+    var filter by remember { mutableStateOf("All") }
+    var confirmClear by remember { mutableStateOf(false) }
+    val visible = entries.filter { filter == "All" || it.category == filter }
+    val context = LocalContext.current
+
+    SettingsScaffold(title = "Logs", onBack = onBack) {
+        SettingsSection(title = "App activity", description = "A private, on-device timeline of requests and actions performed in this app. Newest events appear first.", first = true) {
+            SettingsGroup {
+                listOf("All", "Network", "Settings", "Navigation").forEach { category ->
+                    SettingsRow(title = category, selected = filter == category, onClick = { filter = category })
+                }
+            }
+            SettingsActions {
+                SettingsButton(text = "Copy logs", kind = ButtonKind.Outlined, enabled = visible.isNotEmpty(), onClick = {
+                    val report = visible.joinToString("\n") { entry -> entry.displayTime() + " [" + entry.category + "] " + entry.action + " — " + entry.details + " (" + entry.status + ")" }
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GitHunt activity logs", report))
+                })
+                SettingsButton(text = "Clear logs", kind = ButtonKind.Outlined, enabled = entries.isNotEmpty(), onClick = { confirmClear = true })
+            }
+        }
+        if (visible.isEmpty()) {
+            SettingsSection(title = "Nothing to show", description = "Activity will appear here as you use GitHunt.") {}
+        } else {
+            SettingsSection(title = visible.size.toString() + " events", description = "Stored locally on this device (up to 300 entries).") {
+                SettingsGroup {
+                    visible.forEach { entry ->
+                        SettingsRow(title = entry.action, subtitle = entry.displayTime() + " · " + entry.category + " · " + entry.details, trailing = {
+                            val tint = when (entry.status) {
+                                "error", "warning" -> MaterialTheme.colorScheme.error
+                                "success" -> MaterialTheme.colorScheme.primary
+                                "running" -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            androidx.compose.material3.Text(text = entry.status.uppercase(), color = tint, style = MaterialTheme.typography.labelSmall)
+                        })
+                    }
+                }
+            }
+        }
+    }
+    if (confirmClear) ConfirmDialog(title = "Clear activity logs?", text = "This removes the locally stored activity history from this device.", confirmLabel = "Clear logs", destructive = true, onConfirm = { log.clear(); confirmClear = false }, onDismiss = { confirmClear = false })
 }
