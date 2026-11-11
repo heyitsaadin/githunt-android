@@ -111,6 +111,11 @@ class AppContainer(context: Context) {
 
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
+
+    /** Side-by-side test of the ways of translating (Settings > Translation language). */
+    val translationLab = com.githunt.android.data.translate.TranslationLab(
+        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+    )
 }
 
 private fun userAgent(): String {
