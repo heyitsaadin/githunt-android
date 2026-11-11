@@ -713,7 +713,10 @@ private fun RepoImageCarousel(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     var failed by remember(images) { mutableStateOf(setOf<String>()) }
-    val slides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    val videoIds = remember(videos) { videos.distinct() }
+    val imageSlides = remember(images, failed) { images.distinct().filter { it !in failed } }
+    // Videos lead the carousel (a trailer is the headline), like the website.
+    val slides = remember(videoIds, imageSlides) { videoIds.map { VIDEO_KEY_PREFIX + it } + imageSlides }
     val pagerState = rememberPagerState(pageCount = { slides.size })
 
     // Each picture's own width / height, learned as it loads. Also kept for the whole session,
