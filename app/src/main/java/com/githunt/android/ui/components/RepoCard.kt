@@ -188,9 +188,10 @@ fun RepoCard(
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
         // a dot pager and auto-scroll when the README has several. Shows a shimmer while each
         // image loads and drops images that can't be loaded, like the website.
-        if (item.readmeImages.isNotEmpty()) {
+        if (item.readmeImages.isNotEmpty() || item.readmeVideos.isNotEmpty()) {
             RepoImageCarousel(
                 images = item.readmeImages,
+                videos = item.readmeVideos,
                 contentDescription = "${item.fullName} README preview",
                 onOpenGithub = {
                     runCatching { uriHandler.openUri(githubUrl ?: item.readmeImages.first()) }
