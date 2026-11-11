@@ -741,6 +741,11 @@ private fun RepoImageCarousel(
     // Index of the picture open in the full-screen preview, or null when it is closed.
     var previewIndex by remember { mutableStateOf<Int?>(null) }
 
+    // Id of the YouTube video playing in place, or null. Swiping to another slide stops it, and
+    // autoplay never scrolls away from a video someone is watching.
+    var playingId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pagerState.settledPage) { playingId = null }
+
     var onScreen by remember { mutableStateOf(false) }
     var pausedUntil by remember { mutableLongStateOf(0L) }
     val reduceMotion = remember(context) {
