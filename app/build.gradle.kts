@@ -58,8 +58,13 @@ android {
         applicationId = "com.githunt.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0-alpha1"
+        // CI passes its run number (-PappVersionCode=N) so each published build upgrades the last.
+        // Local builds fall back to 2.
+        versionCode = buildSetting("appVersionCode", "GITHUNT_VERSION_CODE", "2").toInt()
+        // Shown on the Info screen. CI builds append their build number so you can tell
+        // which build is installed. Local builds show just the base version.
+        val ciBuild = buildSetting("appVersionCode", "GITHUNT_VERSION_CODE", "")
+        versionName = if (ciBuild.isNotBlank()) "2.0.0-alpha1 (build $ciBuild)" else "2.0.0-alpha1"
 
         // Where the GitHunt backend (the Next.js app on Vercel) lives.
         val apiBaseUrl = buildSetting("apiBaseUrl", "GITHUNT_API_BASE_URL", "https://githunt-aadin.vercel.app/")
