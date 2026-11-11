@@ -41,6 +41,8 @@ data class RepoItem(
     val updatedAt: String?,
     val readmeSnippet: String?,
     val readmeImages: List<String>,
+    /** YouTube video ids linked from the README (the backend's `readme_videos`), shown first in the carousel. */
+    val readmeVideos: List<String> = emptyList(),
     /** The repo object as the server sent it. Clipping sends it back untouched, like the website does. */
     val raw: JsonObject? = null,
 ) : FeedItem {
