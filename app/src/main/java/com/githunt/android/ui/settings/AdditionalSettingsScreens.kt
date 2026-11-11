@@ -34,7 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.githunt.android.BuildConfig
 import com.githunt.android.ui.components.MarkdownBody
 import com.githunt.android.data.settings.AppPreferences
+import com.githunt.android.data.settings.TranslationEngine
 import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.translate.EngineStats
+import com.githunt.android.data.translate.TranslateStats
 
 @Composable
 fun LanguageScreen(prefs: AppPreferences, onBack: () -> Unit) {
