@@ -289,7 +289,6 @@ fun AboutScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "Docs", subtitle = "Release notes and app documentation", icon = SettingsIcons.Book, onClick = { onNavigate("docs") }, trailing = { ChevronTrailing() })
-                SettingsRow(title = "Logs", subtitle = "Requests and activity on this device", icon = SettingsIcons.Info, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
             }
         }
         SettingsSection(title = "Legal", description = "Review GitHunt's policies.") {
@@ -354,6 +353,7 @@ fun DebugScreen(
     prefs: AppPreferences,
     log: AppActivityLog,
     onBack: () -> Unit,
+    onNavigate: (String) -> Unit,
 ) {
     val developerOptions by prefs.developerOptions.collectAsState()
     val context = LocalContext.current
@@ -376,13 +376,13 @@ fun DebugScreen(
     SettingsScaffold(title = "Debug", onBack = onBack) {
         SettingsSection(
             title = "Developer options",
-            description = "Enable internal debugging tools. Activity logs will then appear under Info.",
+            description = "Enable internal debugging tools. Activity logs and crash diagnostics are available here only while this is on.",
             first = true,
         ) {
             SettingsGroup {
                 SettingsRow(
                     title = "Developer options",
-                    subtitle = if (developerOptions) "Enabled · Activity logs are visible in Info" else "Disabled · Developer tools are hidden from Info",
+                    subtitle = if (developerOptions) "Enabled · Logs and diagnostics are active" else "Disabled · No activity or crash diagnostics are collected",
                     trailing = {
                         GhSwitch(checked = developerOptions, onCheckedChange = prefs::setDeveloperOptions)
                     },
@@ -390,32 +390,54 @@ fun DebugScreen(
             }
         }
 
-        SettingsSection(
-            title = "Diagnostics",
-            description = "Test crash reporting and export the most recent crash report from this device.",
-        ) {
-            SettingsGroup {
-                SettingsRow(
-                    title = "Crash report",
-                    subtitle = if (crashReport.isNullOrBlank()) "No crash report captured yet" else "A crash report is available to export",
-                    icon = SettingsIcons.Info,
-                )
+        if (developerOptions) {
+            SettingsSection(
+                title = "Activity logs",
+                description = "Requests and in-app actions captured locally while Developer options are enabled.",
+            ) {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "View activity logs",
+                        subtitle = "Network requests, navigation and settings changes",
+                        icon = SettingsIcons.Info,
+                        onClick = { onNavigate("logs") },
+                        trailing = { ChevronTrailing() },
+                    )
+                }
             }
-            SettingsActions {
-                SettingsButton(
-                    text = "Trigger crash",
-                    kind = ButtonKind.Danger,
-                    onClick = { confirmCrash = true },
-                )
-                SettingsButton(
-                    text = "Download crash results",
-                    kind = ButtonKind.Outlined,
-                    enabled = !crashReport.isNullOrBlank(),
-                    onClick = { exportLauncher.launch("githunt-crash-report.txt") },
-                )
+
+            SettingsSection(
+                title = "Diagnostics",
+                description = "Test crash reporting and export the most recent crash report from this device.",
+            ) {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Crash report",
+                        subtitle = if (crashReport.isNullOrBlank()) "No crash report captured yet" else "A crash report is available to export",
+                        icon = SettingsIcons.Info,
+                    )
+                }
+                SettingsActions {
+                    SettingsButton(
+                        text = "Trigger crash",
+                        kind = ButtonKind.Danger,
+                        onClick = { confirmCrash = true },
+                    )
+                    SettingsButton(
+                        text = "Download crash results",
+                        kind = ButtonKind.Outlined,
+                        enabled = !crashReport.isNullOrBlank(),
+                        onClick = { exportLauncher.launch("githunt-crash-report.txt") },
+                    )
+                }
+                exportMessage?.let { SettingsNote(it, error = it.startsWith("Couldn't")) }
+                SettingsNote("Trigger crash intentionally closes GitHunt. Reopen the app, return here, then download the saved report.")
             }
-            exportMessage?.let { SettingsNote(it, error = it.startsWith("Couldn't")) }
-            SettingsNote("Trigger crash intentionally closes GitHunt. Reopen the app, return here, then download the saved report.")
+        } else {
+            SettingsSection(
+                title = "Diagnostics",
+                description = "Turn on Developer options to enable activity logs and crash diagnostics.",
+            ) {}
         }
     }
 
@@ -456,19 +478,6 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit, onNavigate: (String) -
             }
         }
         SettingsSection(title = "Powered by the GitHub API", description = "Repository discovery, stats, and profile data are fetched live from GitHub. You can connect your own token in API Connection.") {}
-        if (developerOptions) {
-            SettingsSection(title = "Developer tools", description = "Available because Developer options are enabled.") {
-                SettingsGroup {
-                    SettingsRow(
-                        title = "Activity logs",
-                        subtitle = "Requests and in-app actions",
-                        icon = SettingsIcons.Info,
-                        onClick = { onNavigate("logs") },
-                        trailing = { ChevronTrailing() },
-                    )
-                }
-            }
-        }
         SettingsSection(title = "Developer", description = "Get in touch or follow along.") {
             SettingsGroup {
                 SettingsRow(
