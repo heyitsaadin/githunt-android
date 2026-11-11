@@ -65,6 +65,7 @@ fun SettingsHost(
     }
 
     fun push(route: String) {
+        viewModel.activityLog.record("Navigation", "Opened settings page", route)
         stackKey = "$stackKey,$route"
     }
 
@@ -103,7 +104,8 @@ fun SettingsHost(
             "what" -> WhatIsThisScreen(onBack = { pop() })
             "howto" -> HowToUseScreen(onBack = { pop() })
             "info" -> InfoScreen(vm = viewModel, onBack = { pop() })
-            "logs" -> LogsScreen(vm = viewModel, onBack = { pop() })
+            "docs" -> LogsScreen(vm = viewModel, onBack = { pop() })
+            "logs" -> ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() })
             else -> SettingsHome(
                 user = user,
                 prefs = viewModel.prefs,
