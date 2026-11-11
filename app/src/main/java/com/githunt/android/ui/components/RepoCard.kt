@@ -764,7 +764,7 @@ private fun ActionPill(
                     tint = content,
                     iconSize = 12.dp,
                     strokeWidth = 2f,
-                    modifier = Modifier.rotate(if (chevronUp) 180f else 0f),
+                    modifier = Modifier.rotate(chevronTurn),
                 )
             }
         }
