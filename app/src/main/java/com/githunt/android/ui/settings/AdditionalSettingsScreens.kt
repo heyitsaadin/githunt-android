@@ -42,11 +42,36 @@ import com.githunt.android.data.translate.TranslateStats
 @Composable
 fun LanguageScreen(prefs: AppPreferences, onBack: () -> Unit) {
     val selected by prefs.language.collectAsState()
+    val engine by prefs.engine.collectAsState()
+    val stats by TranslateStats.stats.collectAsState()
     SettingsScaffold(title = "Translation language", onBack = onBack) {
+        SettingsSection(
+            title = "Translation engine",
+            description = "Two ways to translate, so you can compare them. Cards on screen translate again when you switch.",
+            first = true,
+        ) {
+            TranslationEngine.values().forEach { option ->
+                SettingsRow(
+                    title = option.label,
+                    subtitle = option.detail,
+                    onClick = { prefs.setEngine(option) },
+                    trailing = { RadioButton(selected = engine == option, onClick = { prefs.setEngine(option) }) },
+                )
+            }
+            TranslationEngine.values().forEach { option ->
+                SettingsNote((stats[option.statsKey] ?: EngineStats()).summary(option.label))
+            }
+            SettingsActions {
+                SettingsButton(
+                    text = "Reset numbers",
+                    onClick = { TranslateStats.reset() },
+                    kind = ButtonKind.Outlined,
+                )
+            }
+        }
         SettingsSection(
             title = "Choose a language",
             description = "Choose the language used for translated repository descriptions.",
-            first = true,
         ) {
             TranslationLanguages.all.forEach { language ->
                 SettingsRow(
