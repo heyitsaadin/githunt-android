@@ -2,6 +2,13 @@ package com.githunt.android.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -431,6 +438,7 @@ fun ActivityLogsScreen(log: AppActivityLog, onBack: () -> Unit) {
     var confirmClear by remember { mutableStateOf(false) }
     val visible = entries.filter { filter == "All" || it.category == filter }
     val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
 
     SettingsScaffold(title = "Logs", onBack = onBack) {
         SettingsSection(title = "App activity", description = "A private, on-device timeline of requests and actions performed in this app. Newest events appear first.", first = true) {
@@ -452,17 +460,77 @@ fun ActivityLogsScreen(log: AppActivityLog, onBack: () -> Unit) {
             SettingsSection(title = "Nothing to show", description = "Activity will appear here as you use GitHunt.") {}
         } else {
             SettingsSection(title = visible.size.toString() + " events", description = "Stored locally on this device (up to 300 entries).") {
-                SettingsGroup {
-                    visible.forEach { entry ->
-                        SettingsRow(title = entry.action, subtitle = entry.displayTime() + " · " + entry.category + " · " + entry.details, trailing = {
-                            val tint = when (entry.status) {
-                                "error", "warning" -> MaterialTheme.colorScheme.error
-                                "success" -> MaterialTheme.colorScheme.primary
-                                "running" -> MaterialTheme.colorScheme.tertiary
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                androidx.compose.material3.Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    color = scheme.surface,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        visible.forEachIndexed { index, entry ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = entry.displayTime(),
+                                        color = scheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                    )
+                                    val statusTint = when (entry.status) {
+                                        "error", "warning" -> scheme.error
+                                        "success" -> scheme.primary
+                                        "running" -> scheme.tertiary
+                                        else -> scheme.onSurfaceVariant
+                                    }
+                                    Text(
+                                        text = entry.status.uppercase(),
+                                        color = statusTint,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "[${entry.category}]",
+                                        color = when (entry.category) {
+                                            "Network" -> scheme.primary
+                                            "Settings" -> scheme.tertiary
+                                            "Navigation" -> scheme.secondary
+                                            else -> scheme.onSurfaceVariant
+                                        },
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        text = entry.action,
+                                        color = scheme.onSurface,
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                                if (entry.details.isNotBlank()) {
+                                    Text(
+                                        text = entry.details,
+                                        color = scheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = FontFamily.Monospace,
+                                        softWrap = true,
+                                    )
+                                }
                             }
-                            androidx.compose.material3.Text(text = entry.status.uppercase(), color = tint, style = MaterialTheme.typography.labelSmall)
-                        })
+                            if (index != visible.lastIndex) {
+                                androidx.compose.material3.HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
+                            }
+                        }
                     }
                 }
             }
