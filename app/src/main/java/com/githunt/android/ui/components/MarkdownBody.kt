@@ -93,6 +93,7 @@ fun MarkdownBody(
         update = { view ->
             view.setTextColor(textColor)
             view.setLinkTextColor(linkColor)
+            view.gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
             view.chipColor = chipColor
             if (view.tag !== rendered) {
                 view.tag = rendered
