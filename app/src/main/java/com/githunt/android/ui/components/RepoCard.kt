@@ -767,8 +767,8 @@ private fun RepoImageCarousel(
 
     // Auto-advance. Restarts whenever the slide count, on-screen state or motion setting changes,
     // and stops while the app is in the background.
-    LaunchedEffect(slides.size, onScreen, reduceMotion) {
-        if (slides.size <= 1 || !onScreen || reduceMotion) return@LaunchedEffect
+    LaunchedEffect(slides.size, onScreen, reduceMotion, playingId) {
+        if (slides.size <= 1 || !onScreen || reduceMotion || playingId != null) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(AUTOPLAY_INTERVAL_MS)
