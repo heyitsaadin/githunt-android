@@ -6,6 +6,8 @@ import com.githunt.android.BuildConfig
 import com.githunt.android.data.auth.AuthApi
 import com.githunt.android.data.auth.AuthRepository
 import com.githunt.android.data.auth.GoogleSignIn
+import com.githunt.android.data.settings.AppActivityLog
+import com.githunt.android.data.settings.ActivityLogInterceptor
 import com.githunt.android.data.clips.ClipsApi
 import com.githunt.android.data.clips.ClipsRepository
 import com.githunt.android.data.discover.DiscoverApi
