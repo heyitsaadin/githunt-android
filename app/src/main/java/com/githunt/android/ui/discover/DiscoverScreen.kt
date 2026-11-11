@@ -74,6 +74,7 @@ import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.Wordmark
 import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.components.rememberTick
 import com.githunt.android.ui.components.languageColor
 import com.githunt.android.ui.settings.SettingsGroup
 import com.githunt.android.ui.settings.SettingsRow
@@ -480,6 +481,7 @@ private fun PillButton(
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 11.dp)
+    val tick = rememberTick()
     val container by animateColorAsState(
         targetValue = if (active) scheme.primaryContainer else scheme.surface,
         animationSpec = GhMotion.defaultEffects(),
@@ -497,7 +499,10 @@ private fun PillButton(
             .clickable(
                 interactionSource = interaction,
                 indication = LocalIndication.current,
-                onClick = onClick,
+                onClick = {
+                    tick()
+                    onClick()
+                },
             )
             .padding(start = 14.dp, end = 10.dp, top = 11.dp, bottom = 11.dp),
         verticalAlignment = Alignment.CenterVertically,

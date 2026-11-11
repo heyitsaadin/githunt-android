@@ -5,10 +5,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class ThemeMode(val label: String) {
-    System("System default"),
-    Light("Light"),
-    Dark("Dark"),
+/** [short] is the label used where space is tight (the segmented picker). */
+enum class ThemeMode(val label: String, val short: String) {
+    System("System default", "System"),
+    Light("Light", "Light"),
+    Dark("Dark", "Dark"),
+    Amoled("Pure black", "Black"),
 }
 
 data class TranslationLanguage(val code: String, val label: String)

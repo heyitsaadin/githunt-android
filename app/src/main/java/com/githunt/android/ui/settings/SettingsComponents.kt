@@ -74,6 +74,7 @@ import com.githunt.android.ui.components.GhLoadingIndicator
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.components.animatedPressCorner
+import com.githunt.android.ui.components.rememberTick
 import com.githunt.android.ui.theme.GhMotion
 import java.time.Duration
 import java.time.Instant
@@ -274,6 +275,7 @@ fun SettingsRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val inGroup = LocalInSettingsGroup.current
+    val tick = rememberTick()
     val tint = if (danger) scheme.error else scheme.onSurface
     val interaction = remember { MutableInteractionSource() }
     val corner = animatedPressCorner(
@@ -297,7 +299,10 @@ fun SettingsRow(
                         interactionSource = interaction,
                         indication = LocalIndication.current,
                         enabled = enabled,
-                        onClick = onClick,
+                        onClick = {
+                            tick()
+                            onClick()
+                        },
                     )
                 } else {
                     Modifier
@@ -334,6 +339,62 @@ fun SettingsRow(
             supportingColor = scheme.onSurfaceVariant,
         ),
     )
+}
+
+/**
+ * A tile with a title above a custom control (the theme picker). It sits in a [SettingsGroup]
+ * like a row does and takes the same corners.
+ */
+@Composable
+fun SettingsPickerRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    icon: String? = null,
+    content: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val inGroup = LocalInSettingsGroup.current
+    Column(
+        modifier = modifier
+            .then(if (inGroup) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(if (inGroup) 6.dp else 24.dp))
+            .background(scheme.surface)
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(scheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PathIcon(pathData = icon, tint = scheme.onSurface, iconSize = 22.dp)
+                }
+                Spacer(Modifier.width(16.dp))
+            }
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = scheme.onSurface,
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        content()
+    }
 }
 
 @Composable

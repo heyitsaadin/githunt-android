@@ -116,7 +116,7 @@ fun MainScaffold(
     val darkTheme = when (themeMode) {
         ThemeMode.System -> isSystemInDarkTheme()
         ThemeMode.Light -> false
-        ThemeMode.Dark -> true
+        ThemeMode.Dark, ThemeMode.Amoled -> true
     }
     val stateHolder = rememberSaveableStateHolder()
 

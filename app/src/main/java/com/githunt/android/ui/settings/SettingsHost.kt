@@ -38,6 +38,7 @@ import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.ThemeMode
 import com.githunt.android.data.settings.TranslationLanguages
 import com.githunt.android.ui.components.AppIcons
+import com.githunt.android.ui.components.GhSegmentedPicker
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.pageTransition
@@ -136,7 +137,6 @@ private fun SettingsHome(
     val theme by prefs.theme.collectAsStateWithLifecycle()
     val language by prefs.language.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
-    var showTheme by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
 
     val name = user.displayName?.takeIf { it.isNotBlank() } ?: user.username
@@ -175,13 +175,19 @@ private fun SettingsHome(
             title = "Preferences",
             description = "Customize your experience on GitHunt.",
             entries = listOf(
-                Entry("appearance", "appearance theme dark mode light mode display") {
-                    SettingsRow(
+                Entry("appearance", "appearance theme dark mode light mode display amoled black pure black") {
+                    SettingsPickerRow(
                         title = "Appearance",
                         subtitle = theme.label,
                         icon = SettingsIcons.Brightness,
-                        onClick = { showTheme = true },
-                    )
+                    ) {
+                        GhSegmentedPicker(
+                            items = ThemeMode.values().toList(),
+                            selected = theme,
+                            onSelect = prefs::setTheme,
+                            label = { it.short },
+                        )
+                    }
                 },
                 Entry("language", "translation language translate $languageLabel") {
                     SettingsRow(
@@ -326,10 +332,6 @@ private fun SettingsHome(
         }
     }
 
-    if (showTheme) {
-        ThemeSheet(current = theme, onPick = prefs::setTheme, onDismiss = { showTheme = false })
-    }
-
     if (confirmLogout) {
         ConfirmDialog(
             title = "Log out?",
@@ -341,55 +343,5 @@ private fun SettingsHome(
             },
             onDismiss = { confirmLogout = false },
         )
-    }
-}
-
-/** "Choose theme" bottom sheet: System default, Light or Dark, as a segmented choice list. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ThemeSheet(
-    current: ThemeMode,
-    onPick: (ThemeMode) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val sheetState = rememberModalBottomSheetState()
-    val scope = rememberCoroutineScope()
-
-    fun close() {
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = scheme.background,
-    ) {
-        Text(
-            text = "Choose theme",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onBackground,
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
-        )
-        SettingsGroup {
-            ThemeMode.values().forEach { mode ->
-                SettingsRow(
-                    title = mode.label,
-                    selected = mode == current,
-                    onClick = {
-                        onPick(mode)
-                        close()
-                    },
-                    trailing = {
-                        if (mode == current) {
-                            PathIcon(pathData = NavIcons.Check, tint = scheme.onPrimaryContainer, iconSize = 22.dp)
-                        }
-                    },
-                )
-            }
-        }
-        Spacer(Modifier.navigationBarsPadding().height(16.dp))
     }
 }

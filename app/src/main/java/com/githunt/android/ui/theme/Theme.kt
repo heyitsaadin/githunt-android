@@ -82,6 +82,21 @@ private val LightColors = lightColorScheme(
     surfaceContainerHighest = PaperHigh,
 )
 
+// Pure black for OLED screens: the page itself is #000 so those pixels switch off. Cards, pills
+// and sheets stay a hair lighter than the page so they still read as separate shapes.
+private val AmoledColors = DarkColors.copy(
+    background = Color.Black,
+    surface = Color(0xFF0C0C0E),
+    surfaceVariant = Color(0xFF18181B),
+    outline = Color(0xFF26262A),
+    outlineVariant = Color(0xFF26262A),
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF080809),
+    surfaceContainer = Color(0xFF0C0C0E),
+    surfaceContainerHigh = Color(0xFF131316),
+    surfaceContainerHighest = Color(0xFF18181B),
+)
+
 // Expressive shapes: rounder across the board than the old 10 / 14 / 20.
 private val GhShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -94,6 +109,7 @@ private val GhShapes = Shapes(
 @Composable
 fun GitHuntTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -101,7 +117,11 @@ fun GitHuntTheme(
     val mono = remember(context) { ghMonoFamily(context) }
     CompositionLocalProvider(LocalGhMono provides mono) {
         MaterialTheme(
-            colorScheme = if (darkTheme) DarkColors else LightColors,
+            colorScheme = when {
+                !darkTheme -> LightColors
+                amoled -> AmoledColors
+                else -> DarkColors
+            },
             typography = typography,
             shapes = GhShapes,
             content = content,
