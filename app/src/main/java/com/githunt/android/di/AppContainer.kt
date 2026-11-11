@@ -92,10 +92,24 @@ class AppContainer(context: Context) {
 
     val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
 
-    /** Auto-translates repo card text and READMEs into the language chosen in Settings (/api/translate). */
-    val translateRepository = com.githunt.android.data.translate.TranslateRepository(
-        retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+    // Two translation engines, each with its own repository (and so its own cache) so they can be
+    // compared fairly. Settings > Translation language picks the one the cards use.
+    private val serverTranslateRepository = com.githunt.android.data.translate.TranslateRepository(
+        com.githunt.android.data.translate.TimedTranslateApi(
+            com.githunt.android.data.translate.TranslateStats.SERVER,
+            retrofit.create(com.githunt.android.data.translate.TranslateApi::class.java),
+        ),
     )
+    private val directTranslateRepository = com.githunt.android.data.translate.TranslateRepository(
+        com.githunt.android.data.translate.DirectTranslateApi(),
+    )
+
+    /** Auto-translates repo card text and READMEs into the language chosen in Settings. */
+    val translateRepository: com.githunt.android.data.translate.TranslateRepository
+        get() = when (appPreferences.engine.value) {
+            com.githunt.android.data.settings.TranslationEngine.Direct -> directTranslateRepository
+            com.githunt.android.data.settings.TranslationEngine.Server -> serverTranslateRepository
+        }
 
     /** Ask AI on repo cards and the AI search box on Home (/api/ai-chat and /api/ai-search). */
     val aiRepository = com.githunt.android.data.ai.AiRepository(
