@@ -8,6 +8,7 @@ import android.graphics.Typeface
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.method.LinkMovementMethod
+import android.view.Gravity
 import android.text.style.ForegroundColorSpan
 import android.text.style.MetricAffectingSpan
 import android.widget.TextView
