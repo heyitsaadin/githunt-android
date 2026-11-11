@@ -15,6 +15,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import com.githunt.android.data.net.ApiResult
 import com.githunt.android.data.push.DevicePush
+import com.githunt.android.data.settings.AppActivityLog
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.BuildLog
 import com.githunt.android.data.settings.DeviceSession
@@ -168,6 +169,7 @@ class SettingsViewModel(
     private val repo: SettingsRepository,
     val prefs: AppPreferences,
     private val devicePush: DevicePush,
+    val activityLog: AppActivityLog,
 ) : ViewModel() {
 
     // ---- Security ----
@@ -758,5 +760,5 @@ class SettingsViewModel(
 class SettingsViewModelFactory(private val container: AppContainer) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        SettingsViewModel(container.settingsRepository, container.appPreferences, container.devicePush) as T
+        SettingsViewModel(container.settingsRepository, container.appPreferences, container.devicePush, container.activityLog) as T
 }
