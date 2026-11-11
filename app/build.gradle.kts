@@ -150,6 +150,12 @@ dependencies {
     // Images (feed avatars)
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-svg:2.7.0")
+    // Animated GIF / WebP in README pictures and the card carousel
+    implementation("io.coil-kt:coil-gif:2.7.0")
+
+    // In-place playback of README videos (GitHub uploads, .mp4 / .webm links)
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-ui:1.4.1")
 
     // README markdown, rendered inside the repo card (headings, tables, task lists, inline HTML)
     implementation("io.noties.markwon:core:4.6.2")
