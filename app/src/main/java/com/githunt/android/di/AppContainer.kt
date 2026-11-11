@@ -6,6 +6,8 @@ import com.githunt.android.BuildConfig
 import com.githunt.android.data.auth.AuthApi
 import com.githunt.android.data.auth.AuthRepository
 import com.githunt.android.data.auth.GoogleSignIn
+import com.githunt.android.data.settings.AppActivityLog
+import com.githunt.android.data.settings.ActivityLogInterceptor
 import com.githunt.android.data.clips.ClipsApi
 import com.githunt.android.data.clips.ClipsRepository
 import com.githunt.android.data.discover.DiscoverApi
@@ -20,7 +22,6 @@ import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Response
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
@@ -38,16 +39,12 @@ class AppContainer(context: Context) {
     }
 
     val cookieJar = SessionCookieJar(context.applicationContext)
+    val activityLog = AppActivityLog(context.applicationContext)
 
     private val okHttp: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
         .addInterceptor(UserAgentInterceptor(userAgent()))
-        .addInterceptor(
-            HttpLoggingInterceptor().apply {
-                // BASIC logs method, URL and status only. Never bodies: they hold passwords.
-                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
-            }
-        )
+        .addInterceptor(ActivityLogInterceptor(activityLog))
         .connectTimeout(20, TimeUnit.SECONDS)
         // The feed page does live GitHub lookups on the server, so a cold page can take a while.
         .readTimeout(60, TimeUnit.SECONDS)
@@ -110,7 +107,7 @@ class AppContainer(context: Context) {
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
     /** Device-only settings: appearance and translation language. */
-    val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
+    val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext, activityLog)
 }
 
 private fun userAgent(): String {

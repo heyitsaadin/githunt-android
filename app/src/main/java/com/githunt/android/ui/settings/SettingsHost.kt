@@ -60,12 +60,14 @@ fun SettingsHost(
     initialRoute: String? = null,
 ) {
     var stackKey by rememberSaveable { mutableStateOf(initialRoute ?: "root") }
+    val developerOptions by viewModel.prefs.developerOptions.collectAsStateWithLifecycle()
 
     fun pop() {
         if (stackKey.contains(',')) stackKey = stackKey.substringBeforeLast(',') else onClose()
     }
 
     fun push(route: String) {
+        viewModel.activityLog.record("Navigation", "Opened settings page", route)
         stackKey = "$stackKey,$route"
     }
 
@@ -104,7 +106,9 @@ fun SettingsHost(
             "what" -> WhatIsThisScreen(onBack = { pop() })
             "howto" -> HowToUseScreen(onBack = { pop() })
             "info" -> InfoScreen(vm = viewModel, onBack = { pop() })
-            "logs" -> LogsScreen(vm = viewModel, onBack = { pop() })
+            "docs" -> LogsScreen(vm = viewModel, onBack = { pop() })
+            "logs" -> if (developerOptions) ActivityLogsScreen(log = viewModel.activityLog, onBack = { pop() }) else DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() }, onNavigate = { push(it) })
+            "debug" -> DebugScreen(prefs = viewModel.prefs, log = viewModel.activityLog, onBack = { pop() }, onNavigate = { push(it) })
             else -> SettingsHome(
                 user = user,
                 prefs = viewModel.prefs,
@@ -235,11 +239,27 @@ private fun SettingsHome(
             ),
         ),
         Group(
+            id = "debug",
+            title = "Developer",
+            description = "Developer tools and diagnostics.",
+            entries = listOf(
+                Entry("debug", "debug developer options diagnostics crash logs") {
+                    SettingsRow(
+                        title = "Debug",
+                        subtitle = "Developer options and diagnostics",
+                        icon = SettingsIcons.Info,
+                        onClick = { onNavigate("debug") },
+                        trailing = { ChevronTrailing() },
+                    )
+                },
+            ),
+        ),
+        Group(
             id = "about",
             title = "About and legal",
             description = "Learn how GitHunt works and review our policies.",
             entries = listOf(
-                Entry("about", "about what is this how to use legal terms privacy logs changelog version") {
+                Entry("about", "about what is this how to use legal terms privacy docs logs release notes version") {
                     SettingsRow(
                         title = "About",
                         subtitle = "What this is, how to use it, legal",

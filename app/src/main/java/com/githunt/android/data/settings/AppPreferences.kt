@@ -44,7 +44,7 @@ object TranslationLanguages {
 }
 
 /** Device-only settings (the website keeps these in localStorage). */
-class AppPreferences(context: Context) {
+class AppPreferences(context: Context, private val activityLog: AppActivityLog) {
     private val store = context.getSharedPreferences("githunt_settings", Context.MODE_PRIVATE)
 
     private val _theme = MutableStateFlow(readTheme())
@@ -53,13 +53,30 @@ class AppPreferences(context: Context) {
     private val _language = MutableStateFlow(readLanguage())
     val language: StateFlow<String> = _language.asStateFlow()
 
+    private val _developerOptions = MutableStateFlow(store.getBoolean(KEY_DEVELOPER_OPTIONS, false))
+    val developerOptions: StateFlow<Boolean> = _developerOptions.asStateFlow()
+
+    init {
+        activityLog.setEnabled(_developerOptions.value)
+    }
+
+    fun setDeveloperOptions(enabled: Boolean) {
+        if (_developerOptions.value == enabled) return
+        store.edit().putBoolean(KEY_DEVELOPER_OPTIONS, enabled).apply()
+        _developerOptions.value = enabled
+        activityLog.setEnabled(enabled)
+        if (enabled) activityLog.record("Settings", "Developer options enabled", status = "success")
+    }
+
     fun setTheme(mode: ThemeMode) {
+        if (_theme.value != mode) activityLog.record("Settings", "Theme changed", mode.label, "success")
         store.edit().putString(KEY_THEME, mode.name).apply()
         _theme.value = mode
     }
 
     fun setLanguage(code: String) {
         if (TranslationLanguages.all.none { it.code == code }) return
+        if (_language.value != code) activityLog.record("Settings", "Translation language changed", TranslationLanguages.label(code), "success")
         store.edit().putString(KEY_LANGUAGE, code).apply()
         _language.value = code
     }
@@ -77,5 +94,6 @@ class AppPreferences(context: Context) {
     private companion object {
         const val KEY_THEME = "theme_mode"
         const val KEY_LANGUAGE = "gh-language"
+        const val KEY_DEVELOPER_OPTIONS = "developer_options_enabled"
     }
 }

@@ -2,6 +2,13 @@ package com.githunt.android.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,9 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.os.Handler
+import android.os.Looper
 import com.githunt.android.BuildConfig
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
+import com.githunt.android.data.settings.AppActivityLog
+import com.githunt.android.data.settings.displayTime
 import com.githunt.android.ui.components.GhSwitch
 import com.githunt.android.ui.components.MarkdownBody
 import com.githunt.android.ui.components.PathIcon
@@ -277,7 +288,7 @@ fun AboutScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 SettingsRow(title = "What is this", subtitle = "What GitHunt is", icon = SettingsIcons.Info, onClick = { onNavigate("what") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "How to use", subtitle = "Posting, discovering, and more", icon = SettingsIcons.Book, onClick = { onNavigate("howto") }, trailing = { ChevronTrailing() })
                 SettingsRow(title = "Info", subtitle = "Version, developer, and request a feature", icon = SettingsIcons.Info, onClick = { onNavigate("info") }, trailing = { ChevronTrailing() })
-                SettingsRow(title = "Logs", subtitle = "What's changed, most recent first", icon = SettingsIcons.Book, onClick = { onNavigate("logs") }, trailing = { ChevronTrailing() })
+                SettingsRow(title = "Docs", subtitle = "Release notes and app documentation", icon = SettingsIcons.Book, onClick = { onNavigate("docs") }, trailing = { ChevronTrailing() })
             }
         }
         SettingsSection(title = "Legal", description = "Review GitHunt's policies.") {
@@ -332,6 +343,121 @@ private fun InfoIconSlot(pathData: String) {
             pathData = pathData,
             tint = MaterialTheme.colorScheme.onBackground,
             iconSize = 22.dp,
+        )
+    }
+}
+
+
+@Composable
+fun DebugScreen(
+    prefs: AppPreferences,
+    log: AppActivityLog,
+    onBack: () -> Unit,
+    onNavigate: (String) -> Unit,
+) {
+    val developerOptions by prefs.developerOptions.collectAsState()
+    val context = LocalContext.current
+    var confirmCrash by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
+    val crashReport = log.latestCrashReport()
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (!prefs.developerOptions.value) {
+            exportMessage = "Enable Developer options to export diagnostics."
+        } else if (uri == null) {
+            exportMessage = "Export cancelled."
+        } else {
+            val saved = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write((log.latestCrashReport() ?: "No crash report is available.").toByteArray(Charsets.UTF_8))
+                } ?: error("Could not open the selected file.")
+            }
+            exportMessage = if (saved.isSuccess) "Crash report saved." else "Couldn't save the crash report."
+        }
+    }
+
+    SettingsScaffold(title = "Debug", onBack = onBack) {
+        SettingsSection(
+            title = "Developer options",
+            description = "Enable internal debugging tools. Activity logs and crash diagnostics are available here only while this is on.",
+            first = true,
+        ) {
+            SettingsGroup {
+                SettingsRow(
+                    title = "Developer options",
+                    subtitle = if (developerOptions) "Enabled · Logs and diagnostics are active" else "Disabled · No activity or crash diagnostics are collected",
+                    trailing = {
+                        GhSwitch(checked = developerOptions, onCheckedChange = prefs::setDeveloperOptions)
+                    },
+                )
+            }
+        }
+
+        if (developerOptions) {
+            SettingsSection(
+                title = "Activity logs",
+                description = "Requests and in-app actions captured locally while Developer options are enabled.",
+            ) {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "View activity logs",
+                        subtitle = "Network requests, navigation and settings changes",
+                        icon = SettingsIcons.Info,
+                        onClick = { onNavigate("logs") },
+                        trailing = { ChevronTrailing() },
+                    )
+                }
+            }
+
+            SettingsSection(
+                title = "Diagnostics",
+                description = "Test crash reporting and export the most recent crash report from this device.",
+            ) {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Crash report",
+                        subtitle = if (crashReport.isNullOrBlank()) "No crash report captured yet" else "A crash report is available to export",
+                        icon = SettingsIcons.Info,
+                    )
+                }
+                SettingsActions {
+                    SettingsButton(
+                        text = "Trigger crash",
+                        kind = ButtonKind.Danger,
+                        onClick = { confirmCrash = true },
+                    )
+                    SettingsButton(
+                        text = "Download crash results",
+                        kind = ButtonKind.Outlined,
+                        enabled = !crashReport.isNullOrBlank(),
+                        onClick = { exportLauncher.launch("githunt-crash-report.txt") },
+                    )
+                }
+                exportMessage?.let { SettingsNote(it, error = it.startsWith("Couldn't")) }
+                SettingsNote("Trigger crash intentionally closes GitHunt. Reopen the app, return here, then download the saved report.")
+            }
+        } else {
+            SettingsSection(
+                title = "Diagnostics",
+                description = "Turn on Developer options to enable activity logs and crash diagnostics.",
+            ) {}
+        }
+    }
+
+    if (confirmCrash && developerOptions) {
+        ConfirmDialog(
+            title = "Trigger a test crash?",
+            text = "GitHunt will close immediately. Reopen the app to inspect and download the captured crash report.",
+            confirmLabel = "Crash app",
+            destructive = true,
+            onConfirm = {
+                confirmCrash = false
+                if (prefs.developerOptions.value) {
+                    Handler(Looper.getMainLooper()).post {
+                        throw IllegalStateException("GitHunt diagnostic test crash")
+                    }
+                }
+            },
+            onDismiss = { confirmCrash = false },
         )
     }
 }
@@ -391,7 +517,7 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
 fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     val state by vm.logs.collectAsState()
     LaunchedEffect(Unit) { vm.loadLogs() }
-    SettingsScaffold(title = "Changelog", onBack = onBack) {
+    SettingsScaffold(title = "Docs", onBack = onBack) {
         if (state.logs == null && state.error == null) {
             SettingsSection(title = "Build history", description = "Recent app build notes and changes.", first = true) {
                 SettingsNote("Loading build notes…")
@@ -418,4 +544,113 @@ fun LogsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+
+@Composable
+fun ActivityLogsScreen(log: AppActivityLog, onBack: () -> Unit) {
+    val entries by log.entries.collectAsState()
+    var filter by remember { mutableStateOf("All") }
+    var confirmClear by remember { mutableStateOf(false) }
+    val visible = entries.filter { filter == "All" || it.category == filter }
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+
+    SettingsScaffold(title = "Logs", onBack = onBack) {
+        SettingsSection(title = "App activity", description = "A private, on-device timeline of requests and actions performed in this app. Newest events appear first.", first = true) {
+            SettingsGroup {
+                listOf("All", "Network", "Settings", "Navigation").forEach { category ->
+                    SettingsRow(title = category, selected = filter == category, onClick = { filter = category })
+                }
+            }
+            SettingsActions {
+                SettingsButton(text = "Copy logs", kind = ButtonKind.Outlined, enabled = visible.isNotEmpty(), onClick = {
+                    val report = visible.joinToString("\n") { entry -> entry.displayTime() + " [" + entry.category + "] " + entry.action + " — " + entry.details + " (" + entry.status + ")" }
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GitHunt activity logs", report))
+                })
+                SettingsButton(text = "Clear logs", kind = ButtonKind.Outlined, enabled = entries.isNotEmpty(), onClick = { confirmClear = true })
+            }
+        }
+        if (visible.isEmpty()) {
+            SettingsSection(title = "Nothing to show", description = "Activity will appear here as you use GitHunt.") {}
+        } else {
+            SettingsSection(title = visible.size.toString() + " events", description = "Stored locally on this device (up to 300 entries).") {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    color = scheme.surface,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        visible.forEachIndexed { index, entry ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = entry.displayTime(),
+                                        color = scheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = FontFamily.Monospace,
+                                    )
+                                    val statusTint = when (entry.status) {
+                                        "error", "warning" -> scheme.error
+                                        "success" -> scheme.primary
+                                        "running" -> scheme.tertiary
+                                        else -> scheme.onSurfaceVariant
+                                    }
+                                    Text(
+                                        text = entry.status.uppercase(),
+                                        color = statusTint,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "[${entry.category}]",
+                                        color = when (entry.category) {
+                                            "Network" -> scheme.primary
+                                            "Settings" -> scheme.tertiary
+                                            "Navigation" -> scheme.secondary
+                                            else -> scheme.onSurfaceVariant
+                                        },
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Text(
+                                        text = entry.action,
+                                        color = scheme.onSurface,
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                                if (entry.details.isNotBlank()) {
+                                    Text(
+                                        text = entry.details,
+                                        color = scheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = FontFamily.Monospace,
+                                        softWrap = true,
+                                    )
+                                }
+                            }
+                            if (index != visible.lastIndex) {
+                                androidx.compose.material3.HorizontalDivider(color = scheme.outlineVariant.copy(alpha = 0.55f))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (confirmClear) ConfirmDialog(title = "Clear activity logs?", text = "This removes the locally stored activity history from this device.", confirmLabel = "Clear logs", destructive = true, onConfirm = { log.clear(); confirmClear = false }, onDismiss = { confirmClear = false })
 }
