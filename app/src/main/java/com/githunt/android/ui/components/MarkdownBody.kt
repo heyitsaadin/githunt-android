@@ -56,6 +56,8 @@ fun MarkdownBody(
     markdown: String,
     modifier: Modifier = Modifier,
     textSizeSp: Float = 13.5f,
+    /** Centres the text, for README blocks inside `align="center"`. */
+    centered: Boolean = false,
 ) {
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
