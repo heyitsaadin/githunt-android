@@ -833,7 +833,7 @@ private fun RepoImageCarousel(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable {
-                        previewIndex = page
+                        previewIndex = page - videoIds.size
                         // Keep the carousel still behind the preview.
                         pausedUntil = Long.MAX_VALUE
                     },
