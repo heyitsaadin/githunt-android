@@ -463,11 +463,10 @@ fun DebugScreen(
 }
 
 @Composable
-fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit, onNavigate: (String) -> Unit) {
+fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     var message by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
     val state by vm.feature.collectAsState()
-    val developerOptions by vm.prefs.developerOptions.collectAsState()
     val open = rememberWebOpener()
     SettingsScaffold(title = "Info", onBack = onBack) {
         SettingsSection(title = "GitHunt Android", description = "A feed for sharing images, files, and links, unified with GitHub project discovery.", first = true) {
