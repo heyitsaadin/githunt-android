@@ -38,10 +38,12 @@ class AppContainer(context: Context) {
     }
 
     val cookieJar = SessionCookieJar(context.applicationContext)
+    val activityLog = AppActivityLog(context.applicationContext)
 
     private val okHttp: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
         .addInterceptor(UserAgentInterceptor(userAgent()))
+        .addInterceptor(ActivityLogInterceptor(activityLog))
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 // BASIC logs method, URL and status only. Never bodies: they hold passwords.
@@ -110,7 +112,7 @@ class AppContainer(context: Context) {
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
     /** Device-only settings: appearance and translation language. */
-    val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext)
+    val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext, activityLog)
 }
 
 private fun userAgent(): String {
