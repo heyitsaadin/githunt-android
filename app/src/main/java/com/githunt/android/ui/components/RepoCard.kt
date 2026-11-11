@@ -704,6 +704,7 @@ private const val RESUME_AFTER_INTERACTION_MS = 8000L
 @Composable
 private fun RepoImageCarousel(
     images: List<String>,
+    videos: List<String>,
     contentDescription: String,
     onOpenGithub: () -> Unit,
 ) {
