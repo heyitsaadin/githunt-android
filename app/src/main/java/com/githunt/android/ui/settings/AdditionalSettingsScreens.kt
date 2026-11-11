@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.os.Handler
+import android.os.Looper
 import com.githunt.android.BuildConfig
 import com.githunt.android.data.settings.AppPreferences
 import com.githunt.android.data.settings.TranslationLanguages
@@ -346,11 +348,100 @@ private fun InfoIconSlot(pathData: String) {
     }
 }
 
+
 @Composable
-fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+fun DebugScreen(
+    prefs: AppPreferences,
+    log: AppActivityLog,
+    onBack: () -> Unit,
+) {
+    val developerOptions by prefs.developerOptions.collectAsState()
+    val context = LocalContext.current
+    var confirmCrash by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
+    val crashReport = log.latestCrashReport()
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri == null) {
+            exportMessage = "Export cancelled."
+        } else {
+            val saved = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write((log.latestCrashReport() ?: "No crash report is available.").toByteArray(Charsets.UTF_8))
+                } ?: error("Could not open the selected file.")
+            }
+            exportMessage = if (saved.isSuccess) "Crash report saved." else "Couldn't save the crash report."
+        }
+    }
+
+    SettingsScaffold(title = "Debug", onBack = onBack) {
+        SettingsSection(
+            title = "Developer options",
+            description = "Enable internal debugging tools. Activity logs will then appear under Info.",
+            first = true,
+        ) {
+            SettingsGroup {
+                SettingsRow(
+                    title = "Developer options",
+                    subtitle = if (developerOptions) "Enabled · Activity logs are visible in Info" else "Disabled · Developer tools are hidden from Info",
+                    trailing = {
+                        GhSwitch(checked = developerOptions, onCheckedChange = prefs::setDeveloperOptions)
+                    },
+                )
+            }
+        }
+
+        SettingsSection(
+            title = "Diagnostics",
+            description = "Test crash reporting and export the most recent crash report from this device.",
+        ) {
+            SettingsGroup {
+                SettingsRow(
+                    title = "Crash report",
+                    subtitle = if (crashReport.isNullOrBlank()) "No crash report captured yet" else "A crash report is available to export",
+                    icon = SettingsIcons.Info,
+                )
+            }
+            SettingsActions {
+                SettingsButton(
+                    text = "Trigger crash",
+                    kind = ButtonKind.Danger,
+                    onClick = { confirmCrash = true },
+                )
+                SettingsButton(
+                    text = "Download crash results",
+                    kind = ButtonKind.Outlined,
+                    enabled = !crashReport.isNullOrBlank(),
+                    onClick = { exportLauncher.launch("githunt-crash-report.txt") },
+                )
+            }
+            exportMessage?.let { SettingsNote(it, error = it.startsWith("Couldn't")) }
+            SettingsNote("Trigger crash intentionally closes GitHunt. Reopen the app, return here, then download the saved report.")
+        }
+    }
+
+    if (confirmCrash) {
+        ConfirmDialog(
+            title = "Trigger a test crash?",
+            text = "GitHunt will close immediately. Reopen the app to inspect and download the captured crash report.",
+            confirmLabel = "Crash app",
+            destructive = true,
+            onConfirm = {
+                confirmCrash = false
+                Handler(Looper.getMainLooper()).post {
+                    throw IllegalStateException("GitHunt diagnostic test crash")
+                }
+            },
+            onDismiss = { confirmCrash = false },
+        )
+    }
+}
+
+@Composable
+fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit, onNavigate: (String) -> Unit) {
     var message by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
     val state by vm.feature.collectAsState()
+    val developerOptions by vm.prefs.developerOptions.collectAsState()
     val open = rememberWebOpener()
     SettingsScaffold(title = "Info", onBack = onBack) {
         SettingsSection(title = "GitHunt Android", description = "A feed for sharing images, files, and links, unified with GitHub project discovery.", first = true) {
@@ -365,6 +456,19 @@ fun InfoScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             }
         }
         SettingsSection(title = "Powered by the GitHub API", description = "Repository discovery, stats, and profile data are fetched live from GitHub. You can connect your own token in API Connection.") {}
+        if (developerOptions) {
+            SettingsSection(title = "Developer tools", description = "Available because Developer options are enabled.") {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Activity logs",
+                        subtitle = "Requests and in-app actions",
+                        icon = SettingsIcons.Info,
+                        onClick = { onNavigate("logs") },
+                        trailing = { ChevronTrailing() },
+                    )
+                }
+            }
+        }
         SettingsSection(title = "Developer", description = "Get in touch or follow along.") {
             SettingsGroup {
                 SettingsRow(
