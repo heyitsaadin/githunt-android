@@ -801,6 +801,17 @@ private fun RepoImageCarousel(
             modifier = Modifier.matchParentSize(),
         ) { page ->
             val url = slides[page]
+            if (url.startsWith(VIDEO_KEY_PREFIX)) {
+                val videoId = url.removePrefix(VIDEO_KEY_PREFIX)
+                YouTubeVideo(
+                    id = videoId,
+                    playing = playingId == videoId && pagerState.currentPage == page,
+                    onPlay = { playingId = videoId },
+                    contentDescription = "$contentDescription video",
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@HorizontalPager
+            }
             val request = remember(url) {
                 ImageRequest.Builder(context)
                     .data(proxiedImageUrl(url))
