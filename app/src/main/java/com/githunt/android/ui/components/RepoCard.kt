@@ -125,7 +125,7 @@ fun RepoCard(
     val mono = LocalGhMono.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(24.dp)
     val githubUrl = item.url
     val repoName = item.fullName.substringAfter('/')
     val readmeRepository = remember(context) {
