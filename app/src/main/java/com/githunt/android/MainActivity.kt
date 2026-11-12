@@ -207,41 +207,69 @@ class MainActivity : ComponentActivity() {
                                 var setupDone by remember(current.user.id) {
                                     mutableStateOf(onboardingStore.isDone(current.user.id))
                                 }
-                                if (!setupDone) {
-                                    // The feed view model is not touched until setup is over, so the
-                                    // feed loads with the person's picks already saved on the server.
-                                    OnboardingScreen(
-                                        viewModel = onboardingViewModel,
-                                        userName = (current.user.displayName ?: "").trim()
-                                            .substringBefore(' ')
-                                            .ifEmpty { current.user.username },
-                                        // Saved picks mean setup is done even if the app is closed
-                                        // before the last button is tapped.
-                                        onSaved = { onboardingStore.markDone(current.user.id) },
-                                        onFinished = {
-                                            onboardingStore.markDone(current.user.id)
-                                            setupDone = true
-                                        },
-                                    )
-                                } else {
-                                    val feed by feedViewModel.state.collectAsStateWithLifecycle()
-                                    LaunchedEffect(current.user.id) { prepareDeviceNotifications() }
-                                    MainScaffold(
-                                        user = current.user,
-                                        feed = feed,
-                                        home = home,
-                                        onRefreshFeed = feedViewModel::refresh,
-                                        onLoadMore = feedViewModel::loadMore,
-                                        onRefreshUser = authViewModel::refreshUser,
-                                        onUserUpdated = authViewModel::updateUser,
-                                        onResend = authViewModel::resendVerification,
-                                        onSignOut = authViewModel::signOut,
-                                        discoverViewModel = discoverViewModel,
-                                        profileViewModel = profileViewModel,
-                                        settingsViewModel = settingsViewModel,
-                                        clipsRepository = (application as GitHuntApp).container.clipsRepository,
-                                        openNotificationsTick = openNotificationsTick,
-                                    )
+                                // True when this launch started on the setup screen, so the landing
+                                // animation below has something to wait for.
+                                val cameFromSetup = remember(current.user.id) { !setupDone }
+                                // Setup to home: the setup page zooms out and fades fast, while the
+                                // home UI springs in from slightly smaller and lower. A launch that
+                                // starts on home (returning users) shows no animation at all.
+                                AnimatedContent(
+                                    targetState = setupDone,
+                                    modifier = Modifier.fillMaxSize(),
+                                    transitionSpec = {
+                                        (
+                                            fadeIn(GhMotion.slowEffects()) +
+                                                scaleIn(GhMotion.defaultSpatial(), initialScale = 0.9f) +
+                                                slideInVertically(GhMotion.defaultSpatial()) { full -> full / 10 }
+                                            ) togetherWith (
+                                            fadeOut(GhMotion.fastEffects()) +
+                                                scaleOut(GhMotion.defaultSpatial(), targetScale = 1.1f)
+                                            )
+                                    },
+                                    label = "setup-to-home",
+                                ) { finished ->
+                                    if (!finished) {
+                                        // The feed view model is not touched until setup is over, so
+                                        // the feed loads with the person's picks already saved on the
+                                        // server.
+                                        OnboardingScreen(
+                                            viewModel = onboardingViewModel,
+                                            userName = (current.user.displayName ?: "").trim()
+                                                .substringBefore(' ')
+                                                .ifEmpty { current.user.username },
+                                            // Saved picks mean setup is done even if the app is closed
+                                            // before the last button is tapped.
+                                            onSaved = { onboardingStore.markDone(current.user.id) },
+                                            onFinished = {
+                                                onboardingStore.markDone(current.user.id)
+                                                setupDone = true
+                                            },
+                                        )
+                                    } else {
+                                        val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                                        LaunchedEffect(current.user.id) {
+                                            // Keep the system permission dialog from cutting into the
+                                            // landing animation.
+                                            if (cameFromSetup) delay(800)
+                                            prepareDeviceNotifications()
+                                        }
+                                        MainScaffold(
+                                            user = current.user,
+                                            feed = feed,
+                                            home = home,
+                                            onRefreshFeed = feedViewModel::refresh,
+                                            onLoadMore = feedViewModel::loadMore,
+                                            onRefreshUser = authViewModel::refreshUser,
+                                            onUserUpdated = authViewModel::updateUser,
+                                            onResend = authViewModel::resendVerification,
+                                            onSignOut = authViewModel::signOut,
+                                            discoverViewModel = discoverViewModel,
+                                            profileViewModel = profileViewModel,
+                                            settingsViewModel = settingsViewModel,
+                                            clipsRepository = (application as GitHuntApp).container.clipsRepository,
+                                            openNotificationsTick = openNotificationsTick,
+                                        )
+                                    }
                                 }
                             }
                             is Session.Unavailable -> UnavailableScreen(
