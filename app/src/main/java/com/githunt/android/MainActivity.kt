@@ -203,6 +203,12 @@ class MainActivity : ComponentActivity() {
                                     // feed loads with the person's picks already saved on the server.
                                     OnboardingScreen(
                                         viewModel = onboardingViewModel,
+                                        userName = (current.user.displayName ?: "").trim()
+                                            .substringBefore(' ')
+                                            .ifEmpty { current.user.username },
+                                        // Saved picks mean setup is done even if the app is closed
+                                        // before the last button is tapped.
+                                        onSaved = { onboardingStore.markDone(current.user.id) },
                                         onFinished = {
                                             onboardingStore.markDone(current.user.id)
                                             setupDone = true
