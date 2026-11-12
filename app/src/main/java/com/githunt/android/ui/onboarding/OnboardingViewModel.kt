@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** The languages offered on the first setup step (the Discover list plus a few more). */
+/** The languages offered on the languages step (the Discover list plus a few more). */
 val OnboardingLanguages: List<String> = listOf(
     "JavaScript", "TypeScript", "Python", "Java", "Go", "Rust", "C++", "C", "C#",
     "PHP", "Ruby", "Swift", "Kotlin", "Dart", "Scala", "Lua", "Zig", "Elixir",
@@ -32,10 +32,11 @@ const val MAX_ONBOARDING_LANGUAGES = 5
 
 private const val SUGGESTION_TARGET = 24
 
-enum class OnboardingStep { Languages, Repos }
+/** In order: the order of the dots at the bottom of the screen. */
+enum class OnboardingStep { Welcome, Languages, Repos, Done }
 
 data class OnboardingUiState(
-    val step: OnboardingStep = OnboardingStep.Languages,
+    val step: OnboardingStep = OnboardingStep.Welcome,
     val languages: Set<String> = emptySet(),
     val repos: List<RepoItem> = emptyList(),
     val loading: Boolean = false,
@@ -46,9 +47,11 @@ data class OnboardingUiState(
 )
 
 /**
- * First-run setup, shown once after sign-in: pick favourite languages, then tap the trending repos
- * in those languages that look interesting. The picks are sent as engagement events, which is what
- * the server builds the person's taste profile (and so their feed ranking) from.
+ * First-run setup, shown once after sign-in: a greeting, favourite languages, then the trending
+ * repos in those languages to tap on, then an "all set" page. The picks are sent as engagement
+ * events, which is what the server builds the person's taste profile (and so their feed ranking)
+ * from. The events are sent while the repos step shows its spinner, so by the time the last page
+ * appears they have been saved and the feed will load with them.
  */
 class OnboardingViewModel(
     private val discover: DiscoverRepository,
@@ -59,6 +62,10 @@ class OnboardingViewModel(
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
     private var loadJob: Job? = null
+
+    fun start() {
+        _state.update { it.copy(step = OnboardingStep.Languages) }
+    }
 
     fun toggleLanguage(name: String) {
         _state.update { s ->
@@ -79,9 +86,16 @@ class OnboardingViewModel(
     fun retry() = loadRepos()
 
     fun back() {
-        if (_state.value.saving) return
-        loadJob?.cancel()
-        _state.update { it.copy(step = OnboardingStep.Languages, loading = false, error = null) }
+        val s = _state.value
+        if (s.saving) return
+        when (s.step) {
+            OnboardingStep.Repos -> {
+                loadJob?.cancel()
+                _state.update { it.copy(step = OnboardingStep.Languages, loading = false, error = null) }
+            }
+            OnboardingStep.Languages -> _state.update { it.copy(step = OnboardingStep.Welcome) }
+            else -> Unit
+        }
     }
 
     fun togglePick(item: RepoItem) {
@@ -134,11 +148,11 @@ class OnboardingViewModel(
     }
 
     /**
-     * Saves the picks. Each tapped repo counts as a clip (a strong "I like this" signal). A language
-     * that was chosen but has no tapped repo still gets one mild signal, so choosing it on the first
-     * step counts even if nothing in it was tapped.
+     * Saves the picks, then moves to the last page. Each tapped repo counts as a clip (a strong
+     * "I like this" signal). A language that was chosen but has no tapped repo still gets one mild
+     * signal, so choosing it on the languages step counts even if nothing in it was tapped.
      */
-    fun finish(onDone: () -> Unit) {
+    fun finish() {
         val s = _state.value
         if (s.saving) return
         _state.update { it.copy(saving = true) }
@@ -153,9 +167,14 @@ class OnboardingViewModel(
                 if (sample != null) events.add(sample to EngagementEvent.README)
             }
             if (events.isNotEmpty()) withTimeoutOrNull(6_000) { tracker.recordAll(events) }
-            _state.value = OnboardingUiState()
-            onDone()
+            _state.update { it.copy(saving = false, step = OnboardingStep.Done) }
         }
+    }
+
+    /** The last page's button: forget the setup state and hand over to the app. */
+    fun complete(onDone: () -> Unit) {
+        _state.value = OnboardingUiState()
+        onDone()
     }
 
     fun skip(onDone: () -> Unit) {
