@@ -194,24 +194,40 @@ class MainActivity : ComponentActivity() {
                             Session.Loading -> LoadingScreen()
                             Session.SignedOut -> AuthScreen(viewModel = authViewModel)
                             is Session.SignedIn -> {
-                                val feed by feedViewModel.state.collectAsStateWithLifecycle()
-                                LaunchedEffect(current.user.id) { prepareDeviceNotifications() }
-                                MainScaffold(
-                                    user = current.user,
-                                    feed = feed,
-                                    home = home,
-                                    onRefreshFeed = feedViewModel::refresh,
-                                    onLoadMore = feedViewModel::loadMore,
-                                    onRefreshUser = authViewModel::refreshUser,
-                                    onUserUpdated = authViewModel::updateUser,
-                                    onResend = authViewModel::resendVerification,
-                                    onSignOut = authViewModel::signOut,
-                                    discoverViewModel = discoverViewModel,
-                                    profileViewModel = profileViewModel,
-                                    settingsViewModel = settingsViewModel,
-                                    clipsRepository = (application as GitHuntApp).container.clipsRepository,
-                                    openNotificationsTick = openNotificationsTick,
-                                )
+                                val onboardingStore = (application as GitHuntApp).container.onboardingStore
+                                var setupDone by remember(current.user.id) {
+                                    mutableStateOf(onboardingStore.isDone(current.user.id))
+                                }
+                                if (!setupDone) {
+                                    // The feed view model is not touched until setup is over, so the
+                                    // feed loads with the person's picks already saved on the server.
+                                    OnboardingScreen(
+                                        viewModel = onboardingViewModel,
+                                        onFinished = {
+                                            onboardingStore.markDone(current.user.id)
+                                            setupDone = true
+                                        },
+                                    )
+                                } else {
+                                    val feed by feedViewModel.state.collectAsStateWithLifecycle()
+                                    LaunchedEffect(current.user.id) { prepareDeviceNotifications() }
+                                    MainScaffold(
+                                        user = current.user,
+                                        feed = feed,
+                                        home = home,
+                                        onRefreshFeed = feedViewModel::refresh,
+                                        onLoadMore = feedViewModel::loadMore,
+                                        onRefreshUser = authViewModel::refreshUser,
+                                        onUserUpdated = authViewModel::updateUser,
+                                        onResend = authViewModel::resendVerification,
+                                        onSignOut = authViewModel::signOut,
+                                        discoverViewModel = discoverViewModel,
+                                        profileViewModel = profileViewModel,
+                                        settingsViewModel = settingsViewModel,
+                                        clipsRepository = (application as GitHuntApp).container.clipsRepository,
+                                        openNotificationsTick = openNotificationsTick,
+                                    )
+                                }
                             }
                             is Session.Unavailable -> UnavailableScreen(
                                 message = current.message,
