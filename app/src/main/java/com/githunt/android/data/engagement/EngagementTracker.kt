@@ -4,6 +4,9 @@ import com.githunt.android.data.feed.RepoItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +35,20 @@ class EngagementTracker(private val api: EngagementApi) {
 
     /** Full names of repos marked "Not interested" in this app session; the feed drops them at once. */
     val hidden: StateFlow<Set<String>> = _hidden.asStateFlow()
+
+    /**
+     * Sends several events at once and waits for them to finish (still never throws). Used by the
+     * first-run setup screen so the feed is only loaded after the server has seen the person's picks.
+     */
+    suspend fun recordAll(events: List<Pair<RepoItem, String>>) {
+        coroutineScope {
+            events.map { (item, event) ->
+                async(Dispatchers.IO) {
+                    runCatching { api.record(EngagementPayload(repo = item.toEngagementRepo(), eventType = event)) }
+                }
+            }.awaitAll()
+        }
+    }
 
     fun record(item: RepoItem, event: String, dwellSeconds: Double? = null) {
         val payload = EngagementPayload(

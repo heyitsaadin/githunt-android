@@ -106,6 +106,9 @@ class AppContainer(context: Context) {
 
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
+    /** Remembers, per account, that the first-run setup screen was finished or skipped. */
+    val onboardingStore = com.githunt.android.data.onboarding.OnboardingStore(context.applicationContext)
+
     /** Device-only settings: appearance and translation language. */
     val appPreferences = com.githunt.android.data.settings.AppPreferences(context.applicationContext, activityLog)
 }
