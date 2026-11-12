@@ -70,6 +70,11 @@ class MainActivity : ComponentActivity() {
         ProfileViewModelFactory((application as GitHuntApp).container)
     }
 
+    // First-run setup (languages, then repos to react to) shown once after sign-in.
+    private val onboardingViewModel: OnboardingViewModel by viewModels {
+        OnboardingViewModelFactory((application as GitHuntApp).container)
+    }
+
     private val settingsViewModel: SettingsViewModel by viewModels {
         SettingsViewModelFactory((application as GitHuntApp).container)
     }
