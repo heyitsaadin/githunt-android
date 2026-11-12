@@ -3,12 +3,18 @@ package com.githunt.android.ui.onboarding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,11 +45,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.githunt.android.data.feed.RepoItem
+import com.githunt.android.ui.components.CookieShape
 import com.githunt.android.ui.components.NavIcons
 import com.githunt.android.ui.components.OutlineButton
 import com.githunt.android.ui.components.PathIcon
@@ -61,21 +73,35 @@ import com.githunt.android.ui.components.Wordmark
 import com.githunt.android.ui.components.animatedPressCorner
 import com.githunt.android.ui.components.languageColor
 import com.githunt.android.ui.components.rememberTick
+import com.githunt.android.ui.theme.GhMotion
 import java.util.Locale
 
 /**
- * First-run setup, shown once right after sign-in. Step 1: favourite languages. Step 2: trending
- * repos in those languages to tap on. [onFinished] is called when the person finishes or skips.
+ * First-run setup, shown once right after sign-in, as four pages with a dot indicator:
+ * greeting, favourite languages, repos to react to, all set.
+ *
+ * [onSaved] fires once the picks are saved (the last page is showing), so the caller can remember
+ * the setup is done even if the app is closed before the last button is tapped. [onFinished] fires
+ * when the person taps through the last page, or skips.
  */
 @Composable
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
+    userName: String,
+    onSaved: () -> Unit = {},
     onFinished: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scheme = MaterialTheme.colorScheme
+    val step = state.step
 
-    BackHandler(enabled = state.step == OnboardingStep.Repos && !state.saving) { viewModel.back() }
+    BackHandler(
+        enabled = (step == OnboardingStep.Languages || step == OnboardingStep.Repos) && !state.saving,
+    ) { viewModel.back() }
+
+    LaunchedEffect(step) {
+        if (step == OnboardingStep.Done) onSaved()
+    }
 
     Column(
         modifier = Modifier
@@ -86,34 +112,53 @@ fun OnboardingScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .height(56.dp)
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Wordmark(size = 26.sp)
-            Text(
-                text = "Skip",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = if (state.saving) scheme.onSurfaceVariant.copy(alpha = 0.5f) else scheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable(enabled = !state.saving) { viewModel.skip(onFinished) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            )
+            if (step != OnboardingStep.Done) {
+                Text(
+                    text = "Skip",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.onSurfaceVariant.copy(alpha = if (state.saving) 0.5f else 1f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(enabled = !state.saving) { viewModel.skip(onFinished) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
         }
 
         AnimatedContent(
-            targetState = state.step,
+            targetState = step,
             modifier = Modifier.weight(1f),
             transitionSpec = {
-                val forward = targetState == OnboardingStep.Repos
-                (slideInHorizontally(tween(300)) { width -> if (forward) width / 4 else -width / 4 } + fadeIn(tween(300))) togetherWith
-                    (slideOutHorizontally(tween(300)) { width -> if (forward) -width / 4 else width / 4 } + fadeOut(tween(200)))
+                val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                (slideInHorizontally(GhMotion.defaultSpatial()) { full -> full * dir / 3 } +
+                    fadeIn(GhMotion.defaultEffects())) togetherWith
+                    (slideOutHorizontally(GhMotion.defaultSpatial()) { full -> -full * dir / 3 } +
+                        fadeOut(GhMotion.defaultEffects()))
             },
             label = "onboarding-step",
-        ) { step ->
-            when (step) {
+        ) { page ->
+            when (page) {
+                OnboardingStep.Welcome -> HeroPage(
+                    title = "Hi, $userName!",
+                    body = "Welcome to githunt. Two quick questions and your feed will start " +
+                        "showing repos you'll actually like.",
+                    glyph = {
+                        Text(
+                            text = "</>",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 46.sp,
+                            fontWeight = FontWeight.Black,
+                            color = scheme.onPrimaryContainer,
+                        )
+                    },
+                )
                 OnboardingStep.Languages -> LanguageStep(
                     selected = state.languages,
                     onToggle = viewModel::toggleLanguage,
@@ -126,6 +171,17 @@ fun OnboardingScreen(
                     onToggle = viewModel::togglePick,
                     onRetry = viewModel::retry,
                 )
+                OnboardingStep.Done -> HeroPage(
+                    title = "You're all set, $userName!",
+                    body = doneBody(state.languages),
+                    glyph = {
+                        PathIcon(
+                            pathData = NavIcons.Check,
+                            tint = scheme.onPrimaryContainer,
+                            iconSize = 76.dp,
+                        )
+                    },
+                )
             }
         }
 
@@ -133,9 +189,16 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when (state.step) {
+            StepDots(current = step.ordinal, count = OnboardingStep.values().size)
+            Spacer(Modifier.height(20.dp))
+            when (step) {
+                OnboardingStep.Welcome -> PrimaryButton(
+                    text = "Get started",
+                    onClick = viewModel::start,
+                )
                 OnboardingStep.Languages -> {
                     val count = state.languages.size
                     PrimaryButton(
@@ -148,7 +211,7 @@ fun OnboardingScreen(
                     val count = state.picked.size
                     PrimaryButton(
                         text = if (count == 0) "Finish" else "Finish ($count)",
-                        onClick = { viewModel.finish(onFinished) },
+                        onClick = viewModel::finish,
                         enabled = !state.loading,
                         loading = state.saving,
                     )
@@ -159,7 +222,213 @@ fun OnboardingScreen(
                         enabled = !state.saving,
                     )
                 }
+                OnboardingStep.Done -> PrimaryButton(
+                    text = "Let's go",
+                    onClick = { viewModel.complete(onFinished) },
+                )
             }
+        }
+    }
+}
+
+private fun doneBody(languages: Set<String>): String {
+    if (languages.isEmpty()) return "Your feed is ready. Happy hunting."
+    val shown = languages.take(3)
+    val list = when (shown.size) {
+        1 -> shown[0]
+        2 -> "${shown[0]} and ${shown[1]}"
+        else -> "${shown[0]}, ${shown[1]} and ${shown[2]}"
+    }
+    val more = if (languages.size > 3) " (and more)" else ""
+    return "Your feed is tuned to $list$more. Happy hunting."
+}
+
+/** Pager dots: the current one stretches into a pill, on a bouncy spring. */
+@Composable
+private fun StepDots(current: Int, count: Int) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(count) { index ->
+            val active = index == current
+            val dotWidth by animateDpAsState(
+                targetValue = if (active) 28.dp else 8.dp,
+                animationSpec = GhMotion.fastSpatial(),
+                label = "dot-width",
+            )
+            val dotColor by animateColorAsState(
+                targetValue = if (active) scheme.primary else scheme.outlineVariant,
+                animationSpec = GhMotion.defaultEffects(),
+                label = "dot-color",
+            )
+            Box(
+                modifier = Modifier
+                    .height(8.dp)
+                    .width(dotWidth.coerceAtLeast(8.dp))
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+        }
+    }
+}
+
+/**
+ * The big expressive illustration for the first and last pages: a slowly turning cookie, a
+ * counter-turning rounded square and a circle, a few doodle marks, and [glyph] in the middle.
+ * It pops in on a spring when the page appears.
+ */
+@Composable
+private fun HeroArt(glyph: @Composable () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val entrance by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.6f,
+        animationSpec = GhMotion.slowSpatial(),
+        label = "hero-entrance",
+    )
+    val spin by rememberInfiniteTransition(label = "hero-spin").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(40_000, easing = LinearEasing)),
+        label = "hero-spin-angle",
+    )
+    Box(
+        modifier = Modifier
+            .size(250.dp)
+            .graphicsLayer {
+                scaleX = entrance
+                scaleY = entrance
+                alpha = ((entrance - 0.6f) / 0.4f).coerceIn(0f, 1f)
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .graphicsLayer { rotationZ = spin }
+                .clip(CookieShape)
+                .background(scheme.primaryContainer),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 4.dp, bottom = 8.dp)
+                .size(88.dp)
+                .graphicsLayer { rotationZ = 12f - spin / 3f }
+                .clip(RoundedCornerShape(28.dp))
+                .background(scheme.tertiaryContainer),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 8.dp, top = 16.dp)
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(scheme.secondaryContainer),
+        )
+        Text(
+            text = "+",
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+            color = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 20.dp, end = 18.dp),
+        )
+        Text(
+            text = "\u00D7",
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+            color = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 18.dp, bottom = 24.dp),
+        )
+        glyph()
+    }
+}
+
+/** The first and last pages: big hero, big centred title, short body. */
+@Composable
+private fun HeroPage(
+    title: String,
+    body: String,
+    glyph: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        HeroArt(glyph)
+        Spacer(Modifier.height(28.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = scheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** Title block for the two working pages: a cookie badge with a glyph, title and subtitle. */
+@Composable
+private fun StepHeader(
+    glyph: String,
+    mono: Boolean,
+    title: String,
+    subtitle: String,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CookieShape)
+                .background(scheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = glyph,
+                fontFamily = if (mono) FontFamily.Monospace else FontFamily.Default,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                color = scheme.onTertiaryContainer,
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onBackground,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -170,28 +439,20 @@ private fun LanguageStep(
     selected: Set<String>,
     onToggle: (String) -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = "What do you code in?",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = scheme.onBackground,
+        StepHeader(
+            glyph = "{ }",
+            mono = true,
+            title = "What do you code in?",
+            subtitle = "Pick up to $MAX_ONBOARDING_LANGUAGES.",
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Pick up to $MAX_ONBOARDING_LANGUAGES. We'll tune your feed around them.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
         FlowRow(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -203,7 +464,6 @@ private fun LanguageStep(
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -215,10 +475,11 @@ private fun LanguageChip(
 ) {
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
-    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 11.dp)
+    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 10.dp)
     val tick = rememberTick()
     val container by animateColorAsState(
         targetValue = if (selected) scheme.primaryContainer else scheme.surface,
+        animationSpec = GhMotion.defaultEffects(),
         label = "chip-container",
     )
     Row(
@@ -270,22 +531,14 @@ private fun RepoStep(
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Anything catch your eye?",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = scheme.onBackground,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Tap the repos you find interesting. Leave the rest.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(16.dp))
-        }
+        Spacer(Modifier.height(8.dp))
+        StepHeader(
+            glyph = "\u2605",
+            mono = false,
+            title = "Anything catch your eye?",
+            subtitle = "Tap the ones you like.",
+        )
+        Spacer(Modifier.height(16.dp))
         when {
             loading -> Column(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -340,23 +593,31 @@ private fun RepoPickTile(
 ) {
     val scheme = MaterialTheme.colorScheme
     val tick = rememberTick()
+    val interaction = remember { MutableInteractionSource() }
+    val corner = animatedPressCorner(interaction, rest = 22.dp, pressed = 12.dp)
     val container by animateColorAsState(
         targetValue = if (picked) scheme.primaryContainer else scheme.surface,
+        animationSpec = GhMotion.defaultEffects(),
         label = "tile-container",
     )
     val circleFill by animateColorAsState(
         targetValue = if (picked) scheme.primary else scheme.surface,
+        animationSpec = GhMotion.defaultEffects(),
         label = "tile-check",
     )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(corner))
             .background(container)
-            .clickable {
-                tick()
-                onClick()
-            }
+            .clickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = {
+                    tick()
+                    onClick()
+                },
+            )
             .padding(14.dp),
         verticalAlignment = Alignment.Top,
     ) {
