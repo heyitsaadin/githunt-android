@@ -1,7 +1,9 @@
 package com.githunt.android.ui.components
 
-import android.os.Build
-import android.view.ViewGroup
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
