@@ -286,6 +286,43 @@ fun ImagePreviewDialog(
             }
         }
     }
+
+    val host = LocalPreviewHost.current
+    if (host != null) {
+        val latestBody by rememberUpdatedState(body)
+        val view = LocalView.current
+        DisposableEffect(host) {
+            // While the viewer is up the bars sit on a dark backdrop, so force light icons and
+            // put the person's setting back afterwards.
+            val window = view.context.findActivity()?.window
+            val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+            val wasLightStatus = controller?.isAppearanceLightStatusBars
+            val wasLightNav = controller?.isAppearanceLightNavigationBars
+            controller?.isAppearanceLightStatusBars = false
+            controller?.isAppearanceLightNavigationBars = false
+
+            host.content = { latestBody() }
+            onDispose {
+                host.content = null
+                if (controller != null) {
+                    wasLightStatus?.let { controller.isAppearanceLightStatusBars = it }
+                    wasLightNav?.let { controller.isAppearanceLightNavigationBars = it }
+                }
+            }
+        }
+        BackHandler(onBack = onDismiss)
+    } else {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) { body() }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable
