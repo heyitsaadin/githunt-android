@@ -182,7 +182,7 @@ fun RepoCard(
             .bringIntoViewRequester(topRequester)
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .border(1.5.dp, scheme.outline.copy(alpha = 0.85f), shape)
             .trackDwell(dwell),
     ) {
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
@@ -229,6 +229,10 @@ fun RepoCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        if (isVerifiedOwner(item.owner)) {
+                            Spacer(Modifier.width(4.dp))
+                            VerifiedBadge()
+                        }
                         val ago = relativeTime(item.updatedAt)
                         if (ago.isNotEmpty()) {
                             // Web: text-[12px] font-mono (Inter)
@@ -425,7 +429,7 @@ fun RepoCard(
                 StatChip(icon = CardIcons.Fork, value = formatCount(item.forks), tint = scheme.onSurfaceVariant)
                 val language = item.language
                 if (language != null) {
-                    // Takes the free space, so the GitHub pill ends up flush right.
+                    // Takes the free space of the stats row.
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         languageColor(language)?.let { dot ->
                             Box(
@@ -448,12 +452,6 @@ fun RepoCard(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                GitHubPill(
-                    onClick = {
-                        track(EngagementEvent.GITHUB_CLICK)
-                        githubUrl?.let { runCatching { uriHandler.openUri(it) } }
-                    },
-                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -607,42 +605,6 @@ private fun ActionPill(
                 )
             }
         }
-    }
-}
-
-/** Small "GitHub ›" pill at the right end of the stats row (replaces the old Open GitHub button). */
-@Composable
-private fun GitHubPill(onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(animatedPressCorner(interaction, rest = 18.dp, pressed = 8.dp))
-    Row(
-        modifier = Modifier
-            .clip(shape)
-            .background(scheme.surfaceVariant)
-            .clickable(
-                interactionSource = interaction,
-                indication = LocalIndication.current,
-                onClick = onClick,
-            )
-            .padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "GitHub",
-            fontFamily = LocalGhMono.current,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = scheme.onSurface,
-            maxLines = 1,
-        )
-        Spacer(Modifier.width(2.dp))
-        PathIcon(
-            pathData = CardIcons.ChevronRight,
-            tint = scheme.onSurfaceVariant,
-            iconSize = 12.dp,
-            strokeWidth = 2f,
-        )
     }
 }
 
