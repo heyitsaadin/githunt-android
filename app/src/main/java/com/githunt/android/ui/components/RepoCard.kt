@@ -229,6 +229,10 @@ fun RepoCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        if (isVerifiedOwner(item.owner)) {
+                            Spacer(Modifier.width(4.dp))
+                            VerifiedBadge()
+                        }
                         val ago = relativeTime(item.updatedAt)
                         if (ago.isNotEmpty()) {
                             // Web: text-[12px] font-mono (Inter)
