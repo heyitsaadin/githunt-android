@@ -38,14 +38,11 @@ fun PreviewHost(content: @Composable () -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        // Nothing under the overlay may react to touches that land on it.
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitPointerEvent().changes.forEach { it.consume() }
-                                }
-                            }
-                        },
+                        // Touches that land on the overlay must not reach the app under it. Compose
+                        // stops hit-testing at the first sibling that has a pointer-input node, so
+                        // an empty one is enough. It must NOT consume events: a parent that
+                        // consumes makes the child's drag and tap detectors cancel themselves.
+                        .pointerInput(Unit) {},
                 ) {
                     overlay()
                 }
