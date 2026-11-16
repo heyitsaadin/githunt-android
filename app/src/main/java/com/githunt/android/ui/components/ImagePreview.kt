@@ -130,39 +130,10 @@ fun ImagePreviewDialog(
     val dragState = rememberDraggableState { delta -> dragY += delta }
     val dragProgress = { (abs(dragY) / (screenHeightPx * 0.45f)).coerceIn(0f, 1f) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        // A Dialog window does not paint under the status bar and the navigation bar by default,
-        // so the screen behind showed through those two strips. Make the window span the whole
-        // display, draw under the bars (including a camera cutout) and keep the bars transparent
-        // with light icons, so the viewer's own backdrop fills every pixel.
-        val dialogView = LocalView.current
-        SideEffect {
-            val window = (dialogView.parent as? DialogWindowProvider)?.window ?: return@SideEffect
-            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            @Suppress("DEPRECATION")
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            @Suppress("DEPRECATION")
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            if (Build.VERSION.SDK_INT >= 29) {
-                window.isNavigationBarContrastEnforced = false
-                window.isStatusBarContrastEnforced = false
-            }
-            if (Build.VERSION.SDK_INT >= 28) {
-                window.attributes = window.attributes.also {
-                    it.layoutInDisplayCutoutMode =
-                        android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-            }
-            WindowCompat.getInsetsController(window, dialogView).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
-            }
-        }
-
+    // The viewer itself. It is drawn by the app-level PreviewHost (the activity's own edge-to-edge
+    // window) so it covers the status bar and navigation bar completely; a Dialog is only the
+    // fallback when there is no host.
+    val body: @Composable () -> Unit = {
         Box(
             modifier = Modifier.fillMaxSize().draggable(
                 state = dragState,
