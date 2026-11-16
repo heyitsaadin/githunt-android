@@ -429,7 +429,7 @@ fun RepoCard(
                 StatChip(icon = CardIcons.Fork, value = formatCount(item.forks), tint = scheme.onSurfaceVariant)
                 val language = item.language
                 if (language != null) {
-                    // Takes the free space, so the GitHub pill ends up flush right.
+                    // Takes the free space of the stats row.
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         languageColor(language)?.let { dot ->
                             Box(
