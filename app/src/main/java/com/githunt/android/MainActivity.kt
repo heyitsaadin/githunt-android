@@ -192,6 +192,7 @@ class MainActivity : ComponentActivity() {
                 // the session check is already done.
                 var splashPlayed by rememberSaveable { mutableStateOf(animationsOff) }
 
+                PreviewHost {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
