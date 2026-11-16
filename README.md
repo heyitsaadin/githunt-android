@@ -20,6 +20,12 @@ Native app built with Kotlin and Jetpack Compose.
 [![Last commit](https://img.shields.io/github/last-commit/heyitsaadin/githunt-android?label=last%20commit)](https://github.com/heyitsaadin/githunt-android/commits/main)
 [![Downloads](https://img.shields.io/github/downloads/heyitsaadin/githunt-android/total?label=downloads&color=green)](https://github.com/heyitsaadin/githunt-android/releases)
 
+[![Views](https://hits.sh/github.com/heyitsaadin/githunt-android.svg?style=flat&label=views&color=8957e5)](https://hits.sh/github.com/heyitsaadin/githunt-android/)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/heyitsaadin/githunt-android?style=flat&label=commits%2Fmonth)](https://github.com/heyitsaadin/githunt-android/graphs/commit-activity)
+[![Contributors](https://img.shields.io/github/contributors/heyitsaadin/githunt-android?style=flat&label=contributors)](https://github.com/heyitsaadin/githunt-android/graphs/contributors)
+[![Repo size](https://img.shields.io/github/repo-size/heyitsaadin/githunt-android?style=flat&label=size)](https://github.com/heyitsaadin/githunt-android)
+[![Insights](https://img.shields.io/badge/repo-insights-181717?style=flat&logo=github)](https://github.com/heyitsaadin/githunt-android/pulse)
+
 [Website](https://githunt-aadin.vercel.app) ·
 [Releases](https://github.com/heyitsaadin/githunt-android/releases) ·
 [Issues](https://github.com/heyitsaadin/githunt-android/issues) ·
@@ -79,6 +85,7 @@ Browse trending and long-tail repos, read their READMEs without leaving the app,
 - Translation language setting.
 - Searchable settings, in-app guides (What is this, How to use) and an Info screen with the build number.
 - Animated page transitions, shimmer loading skeletons, and a top bar and dock that hide while scrolling.
+- Full-screen **image preview** with pinch and double-tap zoom, and swipe up or down to dismiss.
 
 ## Screenshots
 
