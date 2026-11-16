@@ -182,7 +182,7 @@ fun RepoCard(
             .bringIntoViewRequester(topRequester)
             .clip(shape)
             .background(scheme.surface)
-            .border(1.dp, scheme.outline.copy(alpha = 0.55f), shape)
+            .border(1.5.dp, scheme.outline.copy(alpha = 0.85f), shape)
             .trackDwell(dwell),
     ) {
         // The website's full-bleed README media preview. One picture, or a swipeable carousel with
