@@ -91,8 +91,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // The build people actually install. Compose is much slower in a debuggable,
+            // un-optimised build, so this is the one that ships (see android-ci.yml).
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Same fixed key as debug: Google sign-in needs the registered SHA-1, and an update
+            // only installs over the existing app when the signature matches.
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isDebuggable = true
