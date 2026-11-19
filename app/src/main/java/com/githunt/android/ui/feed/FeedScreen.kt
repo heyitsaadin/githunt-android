@@ -555,6 +555,52 @@ private fun Avatar(url: String?, size: Dp = 36.dp) {
     }
 }
 
+/** One row of the feed list: a card, or a side-scrolling rail between cards. */
+private sealed interface FeedRow {
+    val key: String
+
+    class Entry(val item: FeedItem) : FeedRow {
+        override val key: String get() = item.key
+    }
+
+    class Rail(val slot: Int) : FeedRow {
+        override val key: String get() = "rail-$slot"
+    }
+}
+
+// A rail goes in every 9-16 cards (random gaps, so it doesn't read as a fixed ad slot), like the website.
+private const val RAIL_MIN_GAP = 9
+private const val RAIL_MAX_GAP = 16
+
+/**
+ * Puts a [FeedRow.Rail] before some of the [items]. The positions depend only on [seed], never on
+ * how many items there are, so loading more of the feed never shifts a rail that is already there.
+ */
+private fun buildFeedRows(
+    items: List<FeedItem>,
+    seed: Long,
+    emptySlots: Set<Int>,
+    withRails: Boolean,
+): List<FeedRow> {
+    if (!withRails) return items.map { FeedRow.Entry(it) }
+
+    val random = Random(seed)
+    val slotAt = HashMap<Int, Int>() // item index -> rail slot
+    var next = RAIL_MIN_GAP + random.nextInt(RAIL_MAX_GAP - RAIL_MIN_GAP)
+    var slot = 0
+    while (next < items.size) {
+        slotAt[next] = slot++
+        next += RAIL_MIN_GAP + random.nextInt(RAIL_MAX_GAP - RAIL_MIN_GAP)
+    }
+
+    val rows = ArrayList<FeedRow>(items.size + slot)
+    items.forEachIndexed { index, item ->
+        slotAt[index]?.let { railSlot -> if (railSlot !in emptySlots) rows.add(FeedRow.Rail(railSlot)) }
+        rows.add(FeedRow.Entry(item))
+    }
+    return rows
+}
+
 private fun compact(n: Int): String = when {
     n >= 1_000_000 -> String.format(Locale.US, "%.1fM", n / 1_000_000.0)
     n >= 1_000 -> String.format(Locale.US, "%.1fk", n / 1_000.0)
