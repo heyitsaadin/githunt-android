@@ -35,6 +35,23 @@ class FeedViewModel(private val repo: FeedRepository) : ViewModel() {
     private var job: Job? = null
 
     init {
+        // Paint the last first page straight away (a small local file) instead of staring at
+        // skeletons until the server answers; the fresh page replaces it when it arrives.
+        viewModelScope.launch {
+            val cached = repo.cachedFirstPage() ?: return@launch
+            _state.update {
+                if (it.items.isEmpty()) {
+                    it.copy(
+                        items = cached.items,
+                        cursor = cached.nextCursor,
+                        hasMore = cached.hasMore,
+                        loading = false,
+                    )
+                } else {
+                    it
+                }
+            }
+        }
         refresh()
     }
 
