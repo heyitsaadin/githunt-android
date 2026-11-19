@@ -265,10 +265,13 @@ fun FeedScreen(
                         }
                     }
 
-                    items(visibleItems, key = { it.key }) { item ->
-                        when (item) {
-                            is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
-                            is PostItem -> PostCard(item)
+                    items(rows, key = { it.key }) { row ->
+                        when (row) {
+                            is FeedRow.Rail -> if (railStore != null) RepoRail(slot = row.slot, store = railStore)
+                            is FeedRow.Entry -> when (val item = row.item) {
+                                is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
+                                is PostItem -> PostCard(item)
+                            }
                         }
                     }
 
