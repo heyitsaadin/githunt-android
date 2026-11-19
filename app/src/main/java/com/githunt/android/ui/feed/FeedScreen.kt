@@ -594,6 +594,9 @@ private sealed interface FeedRow {
 }
 
 // A rail goes in every 9-16 cards (random gaps, so it doesn't read as a fixed ad slot), like the website.
+// Start loading the next page when this many list rows (the footer counts as one) are left below.
+private const val PREFETCH_ITEMS_LEFT = 4
+
 private const val RAIL_MIN_GAP = 9
 private const val RAIL_MAX_GAP = 16
 
