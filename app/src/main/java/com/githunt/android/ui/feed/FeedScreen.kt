@@ -78,6 +78,8 @@ import com.githunt.android.data.discover.RailShelf
 import com.githunt.android.data.feed.FeedItem
 import com.githunt.android.data.feed.RepoItem
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.githunt.android.ui.auth.HomeState
