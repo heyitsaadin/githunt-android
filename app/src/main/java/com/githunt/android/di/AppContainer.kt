@@ -83,6 +83,7 @@ class AppContainer(context: Context) {
     val feedRepository = com.githunt.android.data.feed.FeedRepository(
         retrofit.create(com.githunt.android.data.feed.FeedApi::class.java),
         json,
+        java.io.File(context.applicationContext.cacheDir, "feed-first-page.json"),
     )
 
     val clipsRepository = ClipsRepository(retrofit.create(ClipsApi::class.java), json)
