@@ -283,6 +283,7 @@ class MainActivity : ComponentActivity() {
                                             settingsViewModel = settingsViewModel,
                                             clipsRepository = (application as GitHuntApp).container.clipsRepository,
                                             openNotificationsTick = openNotificationsTick,
+                                            onScreen = visitTracker::screen,
                                         )
                                     }
                                 }
