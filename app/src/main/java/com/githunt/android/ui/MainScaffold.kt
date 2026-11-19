@@ -102,6 +102,8 @@ fun MainScaffold(
     clipsRepository: ClipsRepository,
     /** Goes up by one each time a system notification is tapped; opens the Notifications page. */
     openNotificationsTick: Int = 0,
+    /** Called with the screen's path (e.g. "/app/home") each time a different screen is shown. */
+    onScreen: (String) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
