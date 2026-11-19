@@ -1,5 +1,9 @@
 package com.githunt.android.ui.components
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -22,10 +26,8 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +41,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -59,15 +62,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
-import com.githunt.android.ui.theme.LocalGhMono
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlinx.coroutines.Job
@@ -79,8 +84,11 @@ private const val MaxZoom = 5f
 private const val DoubleTapZoom = 2.5f
 private const val FlingDismissVelocity = 1800f
 private val DismissDistance = 120.dp
-private val ControlSurface = Color.Black.copy(alpha = 0.45f)
-private val ControlBorder = Color.White.copy(alpha = 0.16f)
+
+// Fully opaque controls: a solid dark fill with a solid outline, nothing see-through.
+private val ControlFill = Color(0xFF1C1C1F)
+private val ControlOutline = Color(0xFF3F3F46)
+private val ControlOnFill = Color(0xFFF4F4F5)
 
 /**
  * Full-screen image viewer with a blurred ambient backdrop, tap-to-hide controls,
@@ -122,10 +130,10 @@ fun ImagePreviewDialog(
     val dragState = rememberDraggableState { delta -> dragY += delta }
     val dragProgress = { (abs(dragY) / (screenHeightPx * 0.45f)).coerceIn(0f, 1f) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
+    // The viewer itself. It is drawn by the app-level PreviewHost (the activity's own edge-to-edge
+    // window) so it covers the status bar and navigation bar completely; a Dialog is only the
+    // fallback when there is no host.
+    val body: @Composable () -> Unit = {
         Box(
             modifier = Modifier.fillMaxSize().draggable(
                 state = dragState,
@@ -197,7 +205,7 @@ fun ImagePreviewDialog(
                 )
             }
 
-            // Top bar: close, counter, open on GitHub.
+            // Top bar: close on the left, open on GitHub on the right.
             AnimatedVisibility(
                 visible = controlsVisible,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 3 }),
@@ -205,48 +213,40 @@ fun ImagePreviewDialog(
                 modifier = Modifier.align(Alignment.TopCenter)
                     .graphicsLayer { alpha = (1f - dragProgress() * 3f).coerceIn(0f, 1f) },
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().background(
-                        Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)),
-                    ),
+                Row(
+                    modifier = Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Close: solid dark circle.
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(CircleShape)
+                            .background(ControlFill)
+                            .border(1.5.dp, ControlOutline, CircleShape)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PathIcon(pathData = ClosePath, tint = ControlOnFill, iconSize = 18.dp, strokeWidth = 2.2f)
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    // Open on GitHub: solid light button so it reads as the primary action.
                     Row(
-                        modifier = Modifier.fillMaxWidth().statusBarsPadding()
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 28.dp),
+                        modifier = Modifier.height(44.dp).clip(CircleShape)
+                            .background(ControlOnFill)
+                            .clickable(onClick = onOpenGithub)
+                            .padding(start = 18.dp, end = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape)
-                                .background(ControlSurface).border(1.dp, ControlBorder, CircleShape)
-                                .clickable(onClick = onDismiss),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            PathIcon(pathData = ClosePath, tint = Color.White, iconSize = 18.dp, strokeWidth = 2f)
-                        }
-
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            if (images.size > 1) {
-                                ControlPill {
-                                    Text(
-                                        text = "${pagerState.currentPage + 1} / ${images.size}",
-                                        fontFamily = LocalGhMono.current,
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.92f),
-                                    )
-                                }
-                            }
-                        }
-
-                        ControlPill(onClick = onOpenGithub) {
-                            Text(
-                                text = "GitHub",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White,
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            PathIcon(pathData = OpenPath, tint = Color.White, iconSize = 14.dp, strokeWidth = 2f)
-                        }
+                        Text(
+                            text = "GitHub",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF111113),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        PathIcon(pathData = OpenPath, tint = Color(0xFF111113), iconSize = 16.dp, strokeWidth = 2.2f)
                     }
                 }
             }
@@ -263,9 +263,9 @@ fun ImagePreviewDialog(
                     Row(
                         modifier = Modifier.navigationBarsPadding().padding(bottom = 20.dp)
                             .clip(CircleShape)
-                            .background(ControlSurface)
-                            .border(1.dp, ControlBorder, CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                            .background(ControlFill)
+                            .border(1.5.dp, ControlOutline, CircleShape)
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         repeat(images.size) { index ->
@@ -278,7 +278,7 @@ fun ImagePreviewDialog(
                                 modifier = Modifier.padding(horizontal = 3.dp)
                                     .size(width = dotWidth, height = 6.dp)
                                     .clip(CircleShape)
-                                    .background(if (selected) Color.White else Color.White.copy(alpha = 0.35f)),
+                                    .background(if (selected) ControlOnFill else Color(0xFF71717A)),
                             )
                         }
                     }
@@ -286,24 +286,43 @@ fun ImagePreviewDialog(
             }
         }
     }
+
+    val host = LocalPreviewHost.current
+    if (host != null) {
+        val latestBody by rememberUpdatedState(body)
+        val view = LocalView.current
+        DisposableEffect(host) {
+            // While the viewer is up the bars sit on a dark backdrop, so force light icons and
+            // put the person's setting back afterwards.
+            val window = view.context.findActivity()?.window
+            val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+            val wasLightStatus = controller?.isAppearanceLightStatusBars
+            val wasLightNav = controller?.isAppearanceLightNavigationBars
+            controller?.isAppearanceLightStatusBars = false
+            controller?.isAppearanceLightNavigationBars = false
+
+            host.content = { latestBody() }
+            onDispose {
+                host.content = null
+                if (controller != null) {
+                    wasLightStatus?.let { controller.isAppearanceLightStatusBars = it }
+                    wasLightNav?.let { controller.isAppearanceLightNavigationBars = it }
+                }
+            }
+        }
+        BackHandler(onBack = onDismiss)
+    } else {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) { body() }
+    }
 }
 
-/** Translucent pill used for the counter and the GitHub link. */
-@Composable
-private fun ControlPill(
-    onClick: (() -> Unit)? = null,
-    content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier = Modifier.height(40.dp).clip(CircleShape)
-            .background(ControlSurface)
-            .border(1.dp, ControlBorder, CircleShape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        content = content,
-    )
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 @Composable
