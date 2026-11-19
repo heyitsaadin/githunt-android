@@ -135,6 +135,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val visitTracker
+        get() = (application as GitHuntApp).container.visitTracker
+
+    override fun onStart() {
+        super.onStart()
+        visitTracker.onForeground()
+    }
+
+    override fun onStop() {
+        visitTracker.onBackground()
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -203,7 +216,10 @@ class MainActivity : ComponentActivity() {
                     } else {
                         when (val current = session) {
                             Session.Loading -> LoadingScreen()
-                            Session.SignedOut -> AuthScreen(viewModel = authViewModel)
+                            Session.SignedOut -> {
+                                LaunchedEffect(Unit) { visitTracker.screen("/app/sign-in") }
+                                AuthScreen(viewModel = authViewModel)
+                            }
                             is Session.SignedIn -> {
                                 val onboardingStore = (application as GitHuntApp).container.onboardingStore
                                 var setupDone by remember(current.user.id) {
@@ -270,6 +286,7 @@ class MainActivity : ComponentActivity() {
                                             settingsViewModel = settingsViewModel,
                                             clipsRepository = (application as GitHuntApp).container.clipsRepository,
                                             openNotificationsTick = openNotificationsTick,
+                                            onScreen = visitTracker::screen,
                                         )
                                     }
                                 }

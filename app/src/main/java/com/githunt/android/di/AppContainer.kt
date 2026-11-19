@@ -108,6 +108,12 @@ class AppContainer(context: Context) {
         retrofit.create(com.githunt.android.data.engagement.EngagementApi::class.java),
     )
 
+    /** Reports app sessions and screen views to the website's /api/track, so the admin console can show Android traffic. */
+    val visitTracker = com.githunt.android.data.analytics.VisitTracker(
+        retrofit.create(com.githunt.android.data.analytics.AnalyticsApi::class.java),
+        context.applicationContext,
+    )
+
     val profileRepository = ProfileRepository(retrofit.create(ProfileApi::class.java), clipsRepository, json)
 
     /** Remembers, per account, that the first-run setup screen was finished or skipped. */

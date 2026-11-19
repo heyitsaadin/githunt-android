@@ -102,6 +102,8 @@ fun MainScaffold(
     clipsRepository: ClipsRepository,
     /** Goes up by one each time a system notification is tapped; opens the Notifications page. */
     openNotificationsTick: Int = 0,
+    /** Called with the screen's path (e.g. "/app/home") each time a different screen is shown. */
+    onScreen: (String) -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     var tab by rememberSaveable { mutableStateOf(AppTab.Home) }
@@ -123,6 +125,19 @@ fun MainScaffold(
     // Home's feed hides the top bar and this bottom dock while you scroll down it.
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
+
+    // Tells the visit tracker which screen is showing: Settings and the full-screen pages sit on top
+    // of the tabs, so they win over the selected tab.
+    val screenPath = when {
+        settingsOpen -> "/app/settings"
+        quickPage != null -> "/app/$quickPage"
+        else -> when (tab) {
+            AppTab.Home -> "/app/home"
+            AppTab.Discover -> "/app/search"
+            AppTab.Profile -> "/app/profile"
+        }
+    }
+    LaunchedEffect(screenPath) { onScreen(screenPath) }
 
     // Tapping a system notification asks for the Notifications page.
     LaunchedEffect(openNotificationsTick) {

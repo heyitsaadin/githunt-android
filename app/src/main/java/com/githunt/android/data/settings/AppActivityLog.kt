@@ -134,7 +134,8 @@ class AppActivityLog(context: Context) {
 /** Records request lifecycle metadata only. URLs are reduced to paths; headers and bodies are never stored. */
 class ActivityLogInterceptor(private val log: AppActivityLog) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        if (!log.isEnabled()) return chain.proceed(chain.request())
+        // The visit tracker pings every 20 seconds; logging those would bury everything else.
+        if (!log.isEnabled() || chain.request().url.encodedPath.endsWith("/api/track")) return chain.proceed(chain.request())
         val request = chain.request()
         val path = request.url.encodedPath
         val label = "${request.method} $path"
