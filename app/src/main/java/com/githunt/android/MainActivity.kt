@@ -216,7 +216,10 @@ class MainActivity : ComponentActivity() {
                     } else {
                         when (val current = session) {
                             Session.Loading -> LoadingScreen()
-                            Session.SignedOut -> AuthScreen(viewModel = authViewModel)
+                            Session.SignedOut -> {
+                                LaunchedEffect(Unit) { visitTracker.screen("/app/sign-in") }
+                                AuthScreen(viewModel = authViewModel)
+                            }
                             is Session.SignedIn -> {
                                 val onboardingStore = (application as GitHuntApp).container.onboardingStore
                                 var setupDone by remember(current.user.id) {
