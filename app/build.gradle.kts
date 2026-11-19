@@ -183,5 +183,9 @@ dependencies {
     // Background check for new notifications (runs about every 15 minutes)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    // Installs the baseline profiles that Compose / Coil / etc. ship inside their libraries, so
+    // the release build starts and scrolls ahead-of-time compiled instead of cold-JIT.
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
+
     testImplementation("junit:junit:4.13.2")
 }
