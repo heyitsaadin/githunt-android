@@ -126,6 +126,19 @@ fun MainScaffold(
     val homeBars = rememberScrollBarsState()
     LaunchedEffect(tab) { homeBars.show() }
 
+    // Tells the visit tracker which screen is showing: Settings and the full-screen pages sit on top
+    // of the tabs, so they win over the selected tab.
+    val screenPath = when {
+        settingsOpen -> "/app/settings"
+        quickPage != null -> "/app/$quickPage"
+        else -> when (tab) {
+            AppTab.Home -> "/app/home"
+            AppTab.Discover -> "/app/search"
+            AppTab.Profile -> "/app/profile"
+        }
+    }
+    LaunchedEffect(screenPath) { onScreen(screenPath) }
+
     // Tapping a system notification asks for the Notifications page.
     LaunchedEffect(openNotificationsTick) {
         if (openNotificationsTick > 0) {
