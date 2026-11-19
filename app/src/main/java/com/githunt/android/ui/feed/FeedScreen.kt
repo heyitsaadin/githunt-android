@@ -154,6 +154,20 @@ fun FeedScreen(
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
 
+    // Fetch the next page while a few cards are still left to read, so more is already there when
+    // the person reaches the end (the website does the same with a 600px lookahead). Before this
+    // the next page only started once the footer was on screen, i.e. after hitting the bottom.
+    val loadMore by rememberUpdatedState(onLoadMore)
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            info.totalItemsCount - 1 - lastVisible
+        }.collect { itemsLeft ->
+            if (itemsLeft in 0..PREFETCH_ITEMS_LEFT) loadMore()
+        }
+    }
+
     // Coming back from the mail app: check whether the link was opened.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         onRefreshUser(false)
