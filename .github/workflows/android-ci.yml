@@ -46,6 +46,17 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
 
+      # The optimised (R8-minified, non-debuggable) build. This is the one that gets published:
+      # a debug build runs Compose far slower than the website feels.
+      - name: Build release APK
+        run: ./gradlew assembleRelease -PappVersionCode=${{ github.run_number }}
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/*.apk
+
   # Runs only if the build job (lint, build, tests) succeeded, and only for pushes
   # to main, never for pull requests. This is the only job with write access.
   # Obtainium watches these releases and installs the APK.
