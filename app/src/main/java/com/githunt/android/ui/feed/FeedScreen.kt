@@ -281,7 +281,16 @@ fun FeedScreen(
                         }
                     }
 
-                    items(rows, key = { it.key }) { row ->
+                    items(
+                        rows,
+                        key = { it.key },
+                        contentType = { row ->
+                            when (row) {
+                                is FeedRow.Rail -> "rail"
+                                is FeedRow.Entry -> if (row.item is RepoItem) "repo" else "post"
+                            }
+                        },
+                    ) { row ->
                         when (row) {
                             is FeedRow.Rail -> if (railStore != null) RepoRail(slot = row.slot, store = railStore)
                             is FeedRow.Entry -> when (val item = row.item) {
