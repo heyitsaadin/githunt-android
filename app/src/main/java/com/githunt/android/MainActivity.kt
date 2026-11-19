@@ -135,6 +135,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val visitTracker
+        get() = (application as GitHuntApp).container.visitTracker
+
+    override fun onStart() {
+        super.onStart()
+        visitTracker.onForeground()
+    }
+
+    override fun onStop() {
+        visitTracker.onBackground()
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
