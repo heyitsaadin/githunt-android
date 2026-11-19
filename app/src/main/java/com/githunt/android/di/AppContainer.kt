@@ -83,11 +83,15 @@ class AppContainer(context: Context) {
     val feedRepository = com.githunt.android.data.feed.FeedRepository(
         retrofit.create(com.githunt.android.data.feed.FeedApi::class.java),
         json,
+        java.io.File(context.applicationContext.cacheDir, "feed-first-page.json"),
     )
 
     val clipsRepository = ClipsRepository(retrofit.create(ClipsApi::class.java), json)
 
     val discoverRepository = DiscoverRepository(retrofit.create(DiscoverApi::class.java), json)
+
+    /** The feed's side-scrolling repo rails (the website's RandomRepoRail). */
+    val railShelves = com.githunt.android.data.discover.RailShelfStore(discoverRepository)
 
     /** Ask AI on repo cards and the AI search box on Home (/api/ai-chat and /api/ai-search). */
     val aiRepository = com.githunt.android.data.ai.AiRepository(

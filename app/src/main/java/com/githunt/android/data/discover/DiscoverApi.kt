@@ -27,4 +27,12 @@ interface DiscoverApi {
         @Query("language") language: String?,
         @Query("force") force: String?,
     ): Response<DefaultFeedResponse>
+
+    /** One topic's repos, used by the side-scrolling rail in the feed (the website's RandomRepoRail). */
+    @GET("api/github")
+    suspend fun byTopic(
+        @Query("page") page: Int,
+        @Query("mode") mode: String,
+        @Query("topic") topic: String,
+    ): Response<DefaultFeedResponse>
 }

@@ -64,4 +64,14 @@ class DiscoverRepository(
         }
         return ApiResult.Ok(RepoPage(emptyList(), false, current))
     }
+
+    /**
+     * One page of a topic's most-starred repos (`mode=top`), for the feed's side-scrolling rail.
+     * [page] starts at 1. Same request the website's RandomRepoRail makes.
+     */
+    suspend fun loadTopic(topic: String, page: Int): ApiResult<List<RepoItem>> =
+        when (val result = apiCall(json) { api.byTopic(page, "top", topic) }) {
+            is ApiResult.Err -> result
+            is ApiResult.Ok -> ApiResult.Ok(result.value.repos.mapNotNull { it.toRepoItemOrNull() })
+        }
 }

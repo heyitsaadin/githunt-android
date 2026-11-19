@@ -74,7 +74,13 @@ import com.githunt.android.data.feed.PostItem
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import com.githunt.android.GitHuntApp
+import com.githunt.android.data.discover.RailShelf
+import com.githunt.android.data.feed.FeedItem
 import com.githunt.android.data.feed.RepoItem
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.githunt.android.ui.auth.HomeState
 import com.githunt.android.ui.components.OutlineButton
@@ -130,8 +136,36 @@ fun FeedScreen(
         else feed.items.filterNot { it is RepoItem && it.fullName in hiddenRepos }
     }
 
+    // The website's side-scrolling repo rail, dropped into the feed every ~9-16 cards. Which
+    // slots get a rail comes from a seeded random, so adding more items never moves an existing
+    // rail; slots whose shelf turned out empty are left out so they don't leave a gap.
+    val railStore = remember(appContext) { (appContext as? GitHuntApp)?.container?.railShelves }
+    val railSeed = rememberSaveable { Random.nextLong() }
+    val shelves by (railStore?.shelves ?: remember { MutableStateFlow(emptyMap<Int, RailShelf>()) })
+        .collectAsState()
+    val emptySlots = remember(shelves) {
+        shelves.filterValues { it is RailShelf.Empty }.keys
+    }
+    val rows = remember(visibleItems, emptySlots, railSeed, railStore) {
+        buildFeedRows(visibleItems, railSeed, emptySlots, withRails = railStore != null)
+    }
+
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
+    }
+
+    // Fetch the next page while a few cards are still left to read, so more is already there when
+    // the person reaches the end (the website does the same with a 600px lookahead). Before this
+    // the next page only started once the footer was on screen, i.e. after hitting the bottom.
+    val loadMore by rememberUpdatedState(onLoadMore)
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            info.totalItemsCount - 1 - lastVisible
+        }.collect { itemsLeft ->
+            if (itemsLeft in 0..PREFETCH_ITEMS_LEFT) loadMore()
+        }
     }
 
     // Coming back from the mail app: check whether the link was opened.
@@ -191,7 +225,10 @@ fun FeedScreen(
             val pullState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
-                onRefresh = onRefreshFeed,
+                onRefresh = {
+                    railStore?.reset()
+                    onRefreshFeed()
+                },
                 state = pullState,
                 indicator = {
                     GhPullIndicator(
@@ -244,10 +281,22 @@ fun FeedScreen(
                         }
                     }
 
-                    items(visibleItems, key = { it.key }) { item ->
-                        when (item) {
-                            is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
-                            is PostItem -> PostCard(item)
+                    items(
+                        rows,
+                        key = { it.key },
+                        contentType = { row ->
+                            when (row) {
+                                is FeedRow.Rail -> "rail"
+                                is FeedRow.Entry -> if (row.item is RepoItem) "repo" else "post"
+                            }
+                        },
+                    ) { row ->
+                        when (row) {
+                            is FeedRow.Rail -> if (railStore != null) RepoRail(slot = row.slot, store = railStore)
+                            is FeedRow.Entry -> when (val item = row.item) {
+                                is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
+                                is PostItem -> PostCard(item)
+                            }
                         }
                     }
 
@@ -529,6 +578,55 @@ private fun Avatar(url: String?, size: Dp = 36.dp) {
             )
         }
     }
+}
+
+/** One row of the feed list: a card, or a side-scrolling rail between cards. */
+private sealed interface FeedRow {
+    val key: String
+
+    class Entry(val item: FeedItem) : FeedRow {
+        override val key: String get() = item.key
+    }
+
+    class Rail(val slot: Int) : FeedRow {
+        override val key: String get() = "rail-$slot"
+    }
+}
+
+// A rail goes in every 9-16 cards (random gaps, so it doesn't read as a fixed ad slot), like the website.
+// Start loading the next page when this many list rows (the footer counts as one) are left below.
+private const val PREFETCH_ITEMS_LEFT = 4
+
+private const val RAIL_MIN_GAP = 9
+private const val RAIL_MAX_GAP = 16
+
+/**
+ * Puts a [FeedRow.Rail] before some of the [items]. The positions depend only on [seed], never on
+ * how many items there are, so loading more of the feed never shifts a rail that is already there.
+ */
+private fun buildFeedRows(
+    items: List<FeedItem>,
+    seed: Long,
+    emptySlots: Set<Int>,
+    withRails: Boolean,
+): List<FeedRow> {
+    if (!withRails) return items.map { FeedRow.Entry(it) }
+
+    val random = Random(seed)
+    val slotAt = HashMap<Int, Int>() // item index -> rail slot
+    var next = RAIL_MIN_GAP + random.nextInt(RAIL_MAX_GAP - RAIL_MIN_GAP)
+    var slot = 0
+    while (next < items.size) {
+        slotAt[next] = slot++
+        next += RAIL_MIN_GAP + random.nextInt(RAIL_MAX_GAP - RAIL_MIN_GAP)
+    }
+
+    val rows = ArrayList<FeedRow>(items.size + slot)
+    items.forEachIndexed { index, item ->
+        slotAt[index]?.let { railSlot -> if (railSlot !in emptySlots) rows.add(FeedRow.Rail(railSlot)) }
+        rows.add(FeedRow.Entry(item))
+    }
+    return rows
 }
 
 private fun compact(n: Int): String = when {
