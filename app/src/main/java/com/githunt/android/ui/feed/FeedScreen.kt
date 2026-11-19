@@ -209,7 +209,10 @@ fun FeedScreen(
             val pullState = rememberPullToRefreshState()
             PullToRefreshBox(
                 isRefreshing = feed.refreshing,
-                onRefresh = onRefreshFeed,
+                onRefresh = {
+                    railStore?.reset()
+                    onRefreshFeed()
+                },
                 state = pullState,
                 indicator = {
                     GhPullIndicator(
