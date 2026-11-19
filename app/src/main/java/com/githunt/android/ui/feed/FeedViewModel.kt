@@ -84,6 +84,8 @@ class FeedViewModel(private val repo: FeedRepository) : ViewModel() {
     fun loadMore() {
         val current = _state.value
         if (!current.hasMore || current.loading || current.refreshing || current.loadingMore) return
+        // The first page can still be loading behind the cached one; don't race it.
+        if (job?.isActive == true) return
 
         _state.update { it.copy(loadingMore = true, error = null) }
         job = viewModelScope.launch {
