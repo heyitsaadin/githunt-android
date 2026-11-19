@@ -134,6 +134,20 @@ fun FeedScreen(
         else feed.items.filterNot { it is RepoItem && it.fullName in hiddenRepos }
     }
 
+    // The website's side-scrolling repo rail, dropped into the feed every ~9-16 cards. Which
+    // slots get a rail comes from a seeded random, so adding more items never moves an existing
+    // rail; slots whose shelf turned out empty are left out so they don't leave a gap.
+    val railStore = remember(appContext) { (appContext as? GitHuntApp)?.container?.railShelves }
+    val railSeed = rememberSaveable { Random.nextLong() }
+    val shelves by (railStore?.shelves ?: remember { MutableStateFlow(emptyMap<Int, RailShelf>()) })
+        .collectAsState()
+    val emptySlots = remember(shelves) {
+        shelves.filterValues { it is RailShelf.Empty }.keys
+    }
+    val rows = remember(visibleItems, emptySlots, railSeed, railStore) {
+        buildFeedRows(visibleItems, railSeed, emptySlots, withRails = railStore != null)
+    }
+
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
