@@ -489,7 +489,7 @@ fun RepoCard(
                     },
                 )
                 Spacer(Modifier.weight(1f))
-                if (onClipToggle != null) {
+                if (onClipToggle != null && showClipButton) {
                     CardAction(
                         icon = CardIcons.Clip,
                         filled = clipped,
