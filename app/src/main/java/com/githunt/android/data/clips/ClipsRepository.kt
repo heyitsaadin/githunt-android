@@ -101,6 +101,10 @@ class ClipsRepository(
         }
 }
 
+/** The server's collection ids are numbers, so send one as a number whenever it reads as one. */
+private fun collectionIdPrimitive(id: String): JsonPrimitive =
+    id.toLongOrNull()?.let { JsonPrimitive(it) } ?: JsonPrimitive(id)
+
 private fun CollectionRow.toCollection(): RepoCollection? {
     val key = id?.content?.takeIf { it.isNotBlank() && it != "null" } ?: return null
     return RepoCollection(
