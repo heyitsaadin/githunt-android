@@ -251,7 +251,7 @@ internal fun RepoMoreMenu(
                                 )
                                 MenuRow(
                                     label = "Not interested",
-                                    index = 2,
+                                    index = if (onClip != null) 3 else 2,
                                     progress = { progress.value },
                                     color = scheme.onSurfaceVariant,
                                     onClick = { choose(waitMs = 160L, action = onNotInterested) },
