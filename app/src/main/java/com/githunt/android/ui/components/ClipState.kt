@@ -81,6 +81,28 @@ class ClipState(
             busy.remove(name)
         }
     }
+
+    /**
+     * Clips [item] into [collection], the one picked in the "Save to collection" sheet. Marks it
+     * clipped at once and undoes that if the server says no.
+     */
+    fun save(item: RepoItem, collection: RepoCollection) {
+        val repository = clips ?: return
+        val name = item.fullName
+        if (!busy.add(name)) return
+        val wasClipped = name in clipped
+        clipped = clipped + name
+        scope.launch {
+            val result = repository.add(item, collection.id)
+            if (result is ApiResult.Err) {
+                clipped = if (wasClipped) clipped + name else clipped - name
+                onMessage(result.message)
+            } else {
+                onMessage("Saved to ${collection.name}")
+            }
+            busy.remove(name)
+        }
+    }
 }
 
 /** A [ClipState] for the signed-in account: it starts over when the account changes. */
