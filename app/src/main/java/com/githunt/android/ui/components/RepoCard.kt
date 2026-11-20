@@ -275,15 +275,31 @@ fun RepoCard(
                     } else {
                         null
                     },
-                    // Same action as the bottom Clip button, so it is tracked the same way.
+                    // Clipping from the menu asks where to put the repo (when the screen supports
+                    // collections). Unclipping, and screens without them, act straight away like the
+                    // bottom Clip button does, tracked the same way.
                     onClip = onClipToggle?.let { toggle ->
                         ({
-                            track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
-                            toggle()
+                            if (!clipped && onClipToCollection != null && clipsRepository != null) {
+                                saveSheetOpen = true
+                            } else {
+                                track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                                toggle()
+                            }
                         })
                     },
                     clipped = clipped,
                 )
+                if (saveSheetOpen && onClipToCollection != null && clipsRepository != null) {
+                    SaveToCollectionSheet(
+                        repository = clipsRepository,
+                        onDismiss = { saveSheetOpen = false },
+                        onPick = { collection ->
+                            track(EngagementEvent.CLIP)
+                            onClipToCollection(collection)
+                        },
+                    )
+                }
             }
 
             item.description?.takeIf { it.isNotBlank() }?.let { description ->
