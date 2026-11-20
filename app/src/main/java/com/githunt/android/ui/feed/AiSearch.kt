@@ -476,6 +476,7 @@ internal fun LazyListScope.aiSearchResults(state: AiSearchState, clips: ClipStat
                     item = repo,
                     clipped = clips?.isClipped(repo.fullName) == true,
                     onClipToggle = if (clips != null && clips.enabled) ({ clips.toggle(repo) }) else null,
+                    showClipButton = false,
                 )
             }
         }
