@@ -113,6 +113,8 @@ fun RepoCard(
     onClipToggle: (() -> Unit)? = null,
     /** Shows the card's "..." menu with Not interested (Home feed). The card is hidden by the feed. */
     notInterestedEnabled: Boolean = false,
+    /** False hides the bottom Clip button; clipping then lives only in the "..." menu (Home). */
+    showClipButton: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
