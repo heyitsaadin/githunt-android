@@ -125,6 +125,15 @@ fun FeedScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     val aiSearch = rememberAiSearchState()
 
+    // Which repos on Home are clipped. It asks the server about each card as it arrives (feed
+    // pages and AI search results alike), so the bookmark and the menu show the right state.
+    val clips = rememberClipState(user.id)
+    LaunchedEffect(feed.items) { clips.sync(feed.items.filterIsInstance<RepoItem>()) }
+    LaunchedEffect(aiSearch, clips) {
+        snapshotFlow { aiSearch.messages.flatMap { it.block?.items.orEmpty() } }
+            .collect { clips.sync(it) }
+    }
+
     // Repos marked "Not interested" leave the feed at once. The server also stops sending them
     // (for about three weeks) and scores down similar repos, so a refresh keeps them gone.
     val appContext = LocalContext.current.applicationContext
