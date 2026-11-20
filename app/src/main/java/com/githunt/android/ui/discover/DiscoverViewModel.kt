@@ -54,7 +54,12 @@ class DiscoverViewModel(
 
     /** Discover hits GitHub through the server, so it only loads once the tab is first opened. */
     fun ensureLoaded() {
-        if (started) return
+        if (started) {
+            // Back on this tab: a repo may have been clipped or unclipped on Home in the meantime.
+            // (The server answers for at most 100 names at a time, so only the first 100 are asked.)
+            syncClips(_state.value.items.take(100))
+            return
+        }
         started = true
         reload(refresh = false)
     }
