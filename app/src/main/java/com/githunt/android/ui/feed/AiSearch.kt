@@ -436,7 +436,7 @@ private fun SearchFilterChip(
  * Search results as ordinary repo cards, straight into the feed's list right under the box.
  * Newest search first, so a follow-up's results are never pushed off the bottom of the phone.
  */
-internal fun LazyListScope.aiSearchResults(state: AiSearchState) {
+internal fun LazyListScope.aiSearchResults(state: AiSearchState, clips: ClipState? = null) {
     val searched = state.messages.filter { it.block != null }.reversed()
     searched.forEachIndexed { index, m ->
         val block = m.block ?: return@forEachIndexed
