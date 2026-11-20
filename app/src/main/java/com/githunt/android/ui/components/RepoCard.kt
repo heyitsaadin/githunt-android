@@ -260,6 +260,14 @@ fun RepoCard(
                     } else {
                         null
                     },
+                    // Same action as the bottom Clip button, so it is tracked the same way.
+                    onClip = onClipToggle?.let { toggle ->
+                        ({
+                            track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                            toggle()
+                        })
+                    },
+                    clipped = clipped,
                 )
             }
 
