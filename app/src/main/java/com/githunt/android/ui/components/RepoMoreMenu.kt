@@ -236,7 +236,8 @@ internal fun RepoMoreMenu(
                                     label = if (clipped) "Unclip this repo" else "Clip this repo",
                                     index = 2,
                                     progress = { progress.value },
-                                    onClick = { choose(action = onClip) },
+                                    // Short wait so the menu finishes closing before the save sheet opens.
+                                    onClick = { choose(waitMs = 160L, action = onClip) },
                                 )
                             }
                             if (onNotInterested != null) {
