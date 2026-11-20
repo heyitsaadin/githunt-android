@@ -132,6 +132,12 @@ fun RepoCard(
     val readmeRepository = remember(context) {
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
+    // The "Save to collection" sheet that the menu's "Clip this repo" opens needs the person's
+    // collections, which come from the clips repository.
+    val clipsRepository = remember(context) {
+        (context.applicationContext as? GitHuntApp)?.container?.clipsRepository
+    }
+    var saveSheetOpen by remember { mutableStateOf(false) }
 
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
