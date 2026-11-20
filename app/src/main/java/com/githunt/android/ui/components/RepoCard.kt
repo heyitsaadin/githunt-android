@@ -95,7 +95,8 @@ import java.util.Locale
 /**
  * One repo, as the website draws it. Used by Home (the feed), Discover and the profile tabs, so
  * all of them render identically.
- * Pass [onClipToggle] to show the bookmark; [clipped] says whether it is filled.
+ * Pass [onClipToggle] to show the bookmark and the "Clip this repo" option in the "..." menu;
+ * [clipped] says whether the bookmark is filled (and turns the option into "Unclip this repo").
  *
  * Text uses the website's two faces: Plus Jakarta Sans for normal text and Inter (the site's
  * `font-mono` class) for stats, times, topic chips and pill buttons.
