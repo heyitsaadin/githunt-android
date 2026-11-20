@@ -52,7 +52,7 @@ class ClipsRepository(
             put("topics", JsonArray(item.topics.map { JsonPrimitive(it) }))
             item.updatedAt?.let { put("updated_at", it) }
         }
-        return when (val result = apiCall(json) { api.add(ClipRequest(item.fullName, repo)) }) {
+        return when (val result = apiCall(json) { api.add(ClipRequest(item.fullName, repo, collectionId?.let { collectionIdPrimitive(it) })) }) {
             is ApiResult.Ok -> ApiResult.Ok(Unit)
             is ApiResult.Err -> result
         }
