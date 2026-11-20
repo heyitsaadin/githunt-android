@@ -24,6 +24,8 @@ data class ClipRow(
 data class ClipRequest(
     @SerialName("repo_full_name") val repoFullName: String,
     val repo: JsonElement,
+    /** Which collection to save into. Null lets the server use the default, "Watch Later". */
+    @SerialName("collection_id") val collectionId: JsonPrimitive? = null,
 )
 
 // ---- Collections (the website's /clipped page: "Watch Later" + the person's own collections) ----
