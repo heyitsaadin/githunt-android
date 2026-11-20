@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.githunt.android.GitHuntApp
 import com.githunt.android.data.clips.ClipsRepository
+import com.githunt.android.data.clips.RepoCollection
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.net.ApiResult
 import kotlinx.coroutines.CoroutineScope
