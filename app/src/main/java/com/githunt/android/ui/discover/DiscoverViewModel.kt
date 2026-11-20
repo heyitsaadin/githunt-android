@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.githunt.android.data.clips.ClipsRepository
+import com.githunt.android.data.clips.RepoCollection
 import com.githunt.android.data.discover.DiscoverRepository
 import com.githunt.android.data.discover.SortMode
 import com.githunt.android.data.feed.RepoItem
