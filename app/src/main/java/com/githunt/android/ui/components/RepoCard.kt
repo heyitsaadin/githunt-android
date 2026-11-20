@@ -115,6 +115,12 @@ fun RepoCard(
     notInterestedEnabled: Boolean = false,
     /** False hides the bottom Clip button; clipping then lives only in the "..." menu (Home). */
     showClipButton: Boolean = true,
+    /**
+     * Called with the collection the person picked in the "Save to collection" sheet that
+     * "Clip this repo" opens. Null skips the sheet: the menu then clips straight into the default
+     * collection through [onClipToggle], like the bottom Clip button.
+     */
+    onClipToCollection: ((RepoCollection) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
