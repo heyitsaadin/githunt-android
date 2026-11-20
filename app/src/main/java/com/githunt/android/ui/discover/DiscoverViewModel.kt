@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.githunt.android.data.clips.ClipsRepository
+import com.githunt.android.data.clips.RepoCollection
 import com.githunt.android.data.discover.DiscoverRepository
 import com.githunt.android.data.discover.SortMode
 import com.githunt.android.data.feed.RepoItem
@@ -54,7 +55,12 @@ class DiscoverViewModel(
 
     /** Discover hits GitHub through the server, so it only loads once the tab is first opened. */
     fun ensureLoaded() {
-        if (started) return
+        if (started) {
+            // Back on this tab: a repo may have been clipped or unclipped on Home in the meantime.
+            // (The server answers for at most 100 names at a time, so only the first 100 are asked.)
+            syncClips(_state.value.items.take(100))
+            return
+        }
         started = true
         reload(refresh = false)
     }
@@ -199,6 +205,29 @@ class DiscoverViewModel(
                 }
             } else if (!wasClipped) {
                 _state.update { it.copy(message = "Clipped. Find it on your profile.") }
+            }
+        }
+    }
+
+    /**
+     * "Clip this repo" in the card menu, after the person picked [collection] in the save sheet.
+     * Flips at once, and flips back if the server says no.
+     */
+    fun clipInto(item: RepoItem, collection: RepoCollection) {
+        val name = item.fullName
+        val wasClipped = name in _state.value.clipped
+        _state.update { it.copy(clipped = it.clipped + name) }
+        viewModelScope.launch {
+            val result = clips.add(item, collection.id)
+            if (result is ApiResult.Err) {
+                _state.update {
+                    it.copy(
+                        clipped = if (wasClipped) it.clipped + name else it.clipped - name,
+                        message = result.message,
+                    )
+                }
+            } else {
+                _state.update { it.copy(message = "Saved to ${collection.name}") }
             }
         }
     }

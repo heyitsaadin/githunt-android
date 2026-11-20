@@ -89,6 +89,7 @@ import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
 import com.githunt.android.ui.components.ScrollBarsState
 import com.githunt.android.ui.components.Wordmark
+import com.githunt.android.ui.components.rememberClipState
 import com.githunt.android.ui.components.rememberScrollBarsState
 import java.util.Locale
 
@@ -123,6 +124,15 @@ fun FeedScreen(
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
     val aiSearch = rememberAiSearchState()
+
+    // Which repos on Home are clipped. It asks the server about each card as it arrives (feed
+    // pages and AI search results alike), so the bookmark and the menu show the right state.
+    val clips = rememberClipState(user.id)
+    LaunchedEffect(feed.items) { clips.sync(feed.items.filterIsInstance<RepoItem>()) }
+    LaunchedEffect(aiSearch, clips) {
+        snapshotFlow { aiSearch.messages.flatMap { it.block?.items.orEmpty() } }
+            .collect { clips.sync(it) }
+    }
 
     // Repos marked "Not interested" leave the feed at once. The server also stops sending them
     // (for about three weeks) and scores down similar repos, so a refresh keeps them gone.
@@ -255,7 +265,7 @@ fun FeedScreen(
 
                     // AI search: the box, then any repos its searches found, then the normal feed.
                     item(key = "ai-search") { AiSearchPanel(state = aiSearch) }
-                    aiSearchResults(aiSearch)
+                    aiSearchResults(aiSearch, clips)
 
                     if (feed.loading && feed.items.isEmpty()) {
                         // Same placeholder cards Discover shows while it loads.
@@ -294,7 +304,14 @@ fun FeedScreen(
                         when (row) {
                             is FeedRow.Rail -> if (railStore != null) RepoRail(slot = row.slot, store = railStore)
                             is FeedRow.Entry -> when (val item = row.item) {
-                                is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
+                                is RepoItem -> RepoCard(
+                                    item = item,
+                                    notInterestedEnabled = true,
+                                    clipped = clips.isClipped(item.fullName),
+                                    onClipToggle = if (clips.enabled) ({ clips.toggle(item) }) else null,
+                                    showClipButton = false,
+                                    onClipToCollection = { collection -> clips.save(item, collection) },
+                                )
                                 is PostItem -> PostCard(item)
                             }
                         }

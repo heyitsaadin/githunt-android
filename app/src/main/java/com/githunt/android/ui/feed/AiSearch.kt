@@ -65,6 +65,7 @@ import com.githunt.android.data.net.ApiResult
 import com.githunt.android.ui.components.CardIcons
 import com.githunt.android.ui.components.ChatBubble
 import com.githunt.android.ui.components.ChatTextField
+import com.githunt.android.ui.components.ClipState
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
@@ -436,7 +437,7 @@ private fun SearchFilterChip(
  * Search results as ordinary repo cards, straight into the feed's list right under the box.
  * Newest search first, so a follow-up's results are never pushed off the bottom of the phone.
  */
-internal fun LazyListScope.aiSearchResults(state: AiSearchState) {
+internal fun LazyListScope.aiSearchResults(state: AiSearchState, clips: ClipState? = null) {
     val searched = state.messages.filter { it.block != null }.reversed()
     searched.forEachIndexed { index, m ->
         val block = m.block ?: return@forEachIndexed
@@ -471,7 +472,13 @@ internal fun LazyListScope.aiSearchResults(state: AiSearchState) {
                 )
             }
             else -> items(block.items.orEmpty(), key = { "ai-res-${m.id}-${it.fullName}" }) { repo ->
-                RepoCard(item = repo)
+                RepoCard(
+                    item = repo,
+                    clipped = clips?.isClipped(repo.fullName) == true,
+                    onClipToggle = if (clips != null && clips.enabled) ({ clips.toggle(repo) }) else null,
+                    showClipButton = false,
+                    onClipToCollection = if (clips != null) ({ collection -> clips.save(repo, collection) }) else null,
+                )
             }
         }
     }

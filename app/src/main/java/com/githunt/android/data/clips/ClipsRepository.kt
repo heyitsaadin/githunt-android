@@ -38,7 +38,8 @@ class ClipsRepository(
             is ApiResult.Err -> result
         }
 
-    suspend fun add(item: RepoItem): ApiResult<Unit> {
+    /** Clips [item]. [collectionId] picks the collection; null means the default, "Watch Later". */
+    suspend fun add(item: RepoItem, collectionId: String? = null): ApiResult<Unit> {
         val repo: JsonElement = item.raw ?: buildJsonObject {
             put("full_name", item.fullName)
             put("owner", item.owner)
@@ -51,7 +52,7 @@ class ClipsRepository(
             put("topics", JsonArray(item.topics.map { JsonPrimitive(it) }))
             item.updatedAt?.let { put("updated_at", it) }
         }
-        return when (val result = apiCall(json) { api.add(ClipRequest(item.fullName, repo)) }) {
+        return when (val result = apiCall(json) { api.add(ClipRequest(item.fullName, repo, collectionId?.let { collectionIdPrimitive(it) })) }) {
             is ApiResult.Ok -> ApiResult.Ok(Unit)
             is ApiResult.Err -> result
         }
@@ -99,6 +100,10 @@ class ClipsRepository(
             is ApiResult.Err -> result
         }
 }
+
+/** The server's collection ids are numbers, so send one as a number whenever it reads as one. */
+private fun collectionIdPrimitive(id: String): JsonPrimitive =
+    id.toLongOrNull()?.let { JsonPrimitive(it) } ?: JsonPrimitive(id)
 
 private fun CollectionRow.toCollection(): RepoCollection? {
     val key = id?.content?.takeIf { it.isNotBlank() && it != "null" } ?: return null

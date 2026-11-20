@@ -82,6 +82,7 @@ import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.githunt.android.BuildConfig
 import com.githunt.android.GitHuntApp
+import com.githunt.android.data.clips.RepoCollection
 import com.githunt.android.data.engagement.EngagementEvent
 import com.githunt.android.data.feed.RepoItem
 import com.githunt.android.data.feed.text
@@ -95,7 +96,8 @@ import java.util.Locale
 /**
  * One repo, as the website draws it. Used by Home (the feed), Discover and the profile tabs, so
  * all of them render identically.
- * Pass [onClipToggle] to show the bookmark; [clipped] says whether it is filled.
+ * Pass [onClipToggle] to show the bookmark and the "Clip this repo" option in the "..." menu;
+ * [clipped] says whether the bookmark is filled (and turns the option into "Unclip this repo").
  *
  * Text uses the website's two faces: Plus Jakarta Sans for normal text and Inter (the site's
  * `font-mono` class) for stats, times, topic chips and pill buttons.
@@ -112,6 +114,14 @@ fun RepoCard(
     onClipToggle: (() -> Unit)? = null,
     /** Shows the card's "..." menu with Not interested (Home feed). The card is hidden by the feed. */
     notInterestedEnabled: Boolean = false,
+    /** False hides the bottom Clip button; clipping then lives only in the "..." menu (Home). */
+    showClipButton: Boolean = true,
+    /**
+     * Called with the collection the person picked in the "Save to collection" sheet that
+     * "Clip this repo" opens. Null skips the sheet: the menu then clips straight into the default
+     * collection through [onClipToggle], like the bottom Clip button.
+     */
+    onClipToCollection: ((RepoCollection) -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val mono = LocalGhMono.current
@@ -123,6 +133,12 @@ fun RepoCard(
     val readmeRepository = remember(context) {
         (context.applicationContext as? GitHuntApp)?.container?.readmeRepository
     }
+    // The "Save to collection" sheet that the menu's "Clip this repo" opens needs the person's
+    // collections, which come from the clips repository.
+    val clipsRepository = remember(context) {
+        (context.applicationContext as? GitHuntApp)?.container?.clipsRepository
+    }
+    var saveSheetOpen by remember { mutableStateOf(false) }
 
     // README state. `expanded` survives scrolling the card off screen and back; the text itself
     // comes from the repository's in-memory cache when the card is reopened.
@@ -260,7 +276,31 @@ fun RepoCard(
                     } else {
                         null
                     },
+                    // Clipping from the menu asks where to put the repo (when the screen supports
+                    // collections). Unclipping, and screens without them, act straight away like the
+                    // bottom Clip button does, tracked the same way.
+                    onClip = onClipToggle?.let { toggle ->
+                        ({
+                            if (!clipped && onClipToCollection != null && clipsRepository != null) {
+                                saveSheetOpen = true
+                            } else {
+                                track(if (clipped) EngagementEvent.UNCLIP else EngagementEvent.CLIP)
+                                toggle()
+                            }
+                        })
+                    },
+                    clipped = clipped,
                 )
+                if (saveSheetOpen && onClipToCollection != null && clipsRepository != null) {
+                    SaveToCollectionSheet(
+                        repository = clipsRepository,
+                        onDismiss = { saveSheetOpen = false },
+                        onPick = { collection ->
+                            track(EngagementEvent.CLIP)
+                            onClipToCollection(collection)
+                        },
+                    )
+                }
             }
 
             item.description?.takeIf { it.isNotBlank() }?.let { description ->
@@ -478,7 +518,7 @@ fun RepoCard(
                     },
                 )
                 Spacer(Modifier.weight(1f))
-                if (onClipToggle != null) {
+                if (onClipToggle != null && showClipButton) {
                     CardAction(
                         icon = CardIcons.Clip,
                         filled = clipped,

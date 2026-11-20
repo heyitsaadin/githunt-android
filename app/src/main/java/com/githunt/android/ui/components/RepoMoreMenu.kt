@@ -116,6 +116,8 @@ private const val ROW_STAGGER = 0.14f
  * @param onOpenRepo opens the repository on GitHub.
  * @param onOpenOwner opens the owner's profile.
  * @param onNotInterested null hides the row (cards outside the Home feed).
+ * @param onClip null hides the "Clip this repo" row (cards that can't be clipped).
+ * @param clipped true turns that row into "Unclip this repo".
  */
 @Composable
 internal fun RepoMoreMenu(
@@ -123,6 +125,8 @@ internal fun RepoMoreMenu(
     onOpenOwner: () -> Unit,
     onNotInterested: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onClip: (() -> Unit)? = null,
+    clipped: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -227,6 +231,15 @@ internal fun RepoMoreMenu(
                                 progress = { progress.value },
                                 onClick = { choose(action = onOpenOwner) },
                             )
+                            if (onClip != null) {
+                                MenuRow(
+                                    label = if (clipped) "Unclip this repo" else "Clip this repo",
+                                    index = 2,
+                                    progress = { progress.value },
+                                    // Short wait so the menu finishes closing before the save sheet opens.
+                                    onClick = { choose(waitMs = 160L, action = onClip) },
+                                )
+                            }
                             if (onNotInterested != null) {
                                 // A thin line, then the one negative choice in grey text. No fill:
                                 // a filled row reads as "selected".
@@ -239,7 +252,7 @@ internal fun RepoMoreMenu(
                                 )
                                 MenuRow(
                                     label = "Not interested",
-                                    index = 2,
+                                    index = if (onClip != null) 3 else 2,
                                     progress = { progress.value },
                                     color = scheme.onSurfaceVariant,
                                     onClick = { choose(waitMs = 160L, action = onNotInterested) },
