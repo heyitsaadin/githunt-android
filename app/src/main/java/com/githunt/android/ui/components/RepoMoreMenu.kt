@@ -231,6 +231,14 @@ internal fun RepoMoreMenu(
                                 progress = { progress.value },
                                 onClick = { choose(action = onOpenOwner) },
                             )
+                            if (onClip != null) {
+                                MenuRow(
+                                    label = if (clipped) "Unclip this repo" else "Clip this repo",
+                                    index = 2,
+                                    progress = { progress.value },
+                                    onClick = { choose(action = onClip) },
+                                )
+                            }
                             if (onNotInterested != null) {
                                 // A thin line, then the one negative choice in grey text. No fill:
                                 // a filled row reads as "selected".
