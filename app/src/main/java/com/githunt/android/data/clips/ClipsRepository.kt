@@ -38,7 +38,8 @@ class ClipsRepository(
             is ApiResult.Err -> result
         }
 
-    suspend fun add(item: RepoItem): ApiResult<Unit> {
+    /** Clips [item]. [collectionId] picks the collection; null means the default, "Watch Later". */
+    suspend fun add(item: RepoItem, collectionId: String? = null): ApiResult<Unit> {
         val repo: JsonElement = item.raw ?: buildJsonObject {
             put("full_name", item.fullName)
             put("owner", item.owner)
