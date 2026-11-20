@@ -208,6 +208,29 @@ class DiscoverViewModel(
         }
     }
 
+    /**
+     * "Clip this repo" in the card menu, after the person picked [collection] in the save sheet.
+     * Flips at once, and flips back if the server says no.
+     */
+    fun clipInto(item: RepoItem, collection: RepoCollection) {
+        val name = item.fullName
+        val wasClipped = name in _state.value.clipped
+        _state.update { it.copy(clipped = it.clipped + name) }
+        viewModelScope.launch {
+            val result = clips.add(item, collection.id)
+            if (result is ApiResult.Err) {
+                _state.update {
+                    it.copy(
+                        clipped = if (wasClipped) it.clipped + name else it.clipped - name,
+                        message = result.message,
+                    )
+                }
+            } else {
+                _state.update { it.copy(message = "Saved to ${collection.name}") }
+            }
+        }
+    }
+
     /** Asks the server which of these repos are clipped, so the bookmarks show the right state. */
     private fun syncClips(items: List<RepoItem>) {
         if (boundUser == null || items.isEmpty()) return
