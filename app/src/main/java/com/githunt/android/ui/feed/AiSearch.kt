@@ -65,6 +65,7 @@ import com.githunt.android.data.net.ApiResult
 import com.githunt.android.ui.components.CardIcons
 import com.githunt.android.ui.components.ChatBubble
 import com.githunt.android.ui.components.ChatTextField
+import com.githunt.android.ui.components.ClipState
 import com.githunt.android.ui.components.PathIcon
 import com.githunt.android.ui.components.RepoCard
 import com.githunt.android.ui.components.RepoCardSkeleton
