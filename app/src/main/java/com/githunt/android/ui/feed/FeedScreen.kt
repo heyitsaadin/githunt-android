@@ -310,6 +310,7 @@ fun FeedScreen(
                                     clipped = clips.isClipped(item.fullName),
                                     onClipToggle = if (clips.enabled) ({ clips.toggle(item) }) else null,
                                     showClipButton = false,
+                                    onClipToCollection = { collection -> clips.save(item, collection) },
                                 )
                                 is PostItem -> PostCard(item)
                             }
