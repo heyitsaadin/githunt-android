@@ -304,7 +304,12 @@ fun FeedScreen(
                         when (row) {
                             is FeedRow.Rail -> if (railStore != null) RepoRail(slot = row.slot, store = railStore)
                             is FeedRow.Entry -> when (val item = row.item) {
-                                is RepoItem -> RepoCard(item = item, notInterestedEnabled = true)
+                                is RepoItem -> RepoCard(
+                                    item = item,
+                                    notInterestedEnabled = true,
+                                    clipped = clips.isClipped(item.fullName),
+                                    onClipToggle = if (clips.enabled) ({ clips.toggle(item) }) else null,
+                                )
                                 is PostItem -> PostCard(item)
                             }
                         }
